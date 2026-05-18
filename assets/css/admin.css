@@ -30,6 +30,8 @@
     box-shadow: 0 1px 1px rgba(0, 0, 0, 0.04);
 }
 
+/* === Заглушки вкладок === */
+
 .sb-tab-placeholder {
     padding: 24px 12px;
     max-width: 720px;
@@ -77,6 +79,182 @@
     margin-bottom: 2px;
 }
 
-#toplevel_page_site-builder .wp-menu-image .dashicons-screenoptions:before {
+#toplevel_page_site-builder .wp-menu-image .dashicons-database-import:before {
     font-size: 18px;
+}
+
+/* === Вкладка "Создание сайта" === */
+
+.sb-create-tab {
+    max-width: 820px;
+}
+
+.sb-warning-box {
+    background: #fcf0f1;
+    border: 1px solid #d63638;
+    border-left: 6px solid #d63638;
+    padding: 16px 20px;
+    margin-bottom: 24px;
+    border-radius: 2px;
+}
+
+.sb-warning-box h2 {
+    color: #b32d2e;
+    margin: 0 0 8px;
+    font-size: 17px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.sb-warning-box h2 .dashicons {
+    font-size: 20px;
+    width: 20px;
+    height: 20px;
+}
+
+.sb-warning-box p {
+    margin: 8px 0;
+}
+
+.sb-warning-box code {
+    background: #fff;
+    border: 1px solid #d63638;
+    padding: 2px 6px;
+    border-radius: 2px;
+    font-weight: bold;
+    color: #b32d2e;
+}
+
+.sb-confirm-label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 12px;
+    font-weight: 500;
+}
+
+.sb-confirm-label input[type="text"] {
+    width: 260px;
+}
+
+.sb-confirm-status {
+    font-weight: normal;
+    font-size: 13px;
+}
+
+.sb-confirm-status.sb-ok {
+    color: #00a32a;
+}
+
+.sb-confirm-status.sb-fail {
+    color: #d63638;
+}
+
+/* === Форма === */
+
+.sb-form-card {
+    background: #fff;
+    padding: 0 20px 12px;
+    border: 1px solid #dcdcde;
+    border-radius: 2px;
+    margin-bottom: 20px;
+}
+
+.sb-form-card h2 {
+    margin: 16px 0 8px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #f0f0f1;
+}
+
+.sb-form-card[data-locked="1"] {
+    opacity: 0.55;
+    pointer-events: none;
+}
+
+.sb-form-card .submit {
+    padding-top: 4px;
+}
+
+.sb-form-card .button-primary .dashicons,
+.sb-form-card .button .dashicons {
+    vertical-align: -3px;
+    margin-right: 2px;
+}
+
+/* === Прогресс === */
+
+.sb-progress-card {
+    background: #fff;
+    border: 1px solid #2271b1;
+    border-left: 6px solid #2271b1;
+    padding: 16px 20px;
+    border-radius: 2px;
+    margin-bottom: 20px;
+}
+
+.sb-progress-card h2 {
+    margin: 0 0 12px;
+    font-size: 17px;
+    color: #2271b1;
+}
+
+.sb-progress-bar-outer {
+    width: 100%;
+    background: #f0f0f1;
+    border-radius: 10px;
+    height: 12px;
+    overflow: hidden;
+    margin-bottom: 8px;
+}
+
+.sb-progress-bar-inner {
+    background: #2271b1;
+    height: 100%;
+    width: 0%;
+    transition: width 0.3s ease;
+}
+
+.sb-progress-meta {
+    margin: 4px 0;
+    font-size: 13px;
+    color: #50575e;
+}
+
+.sb-progress-current {
+    margin: 4px 0 0;
+    font-size: 12px;
+    color: #757575;
+    font-family: monospace;
+    word-break: break-all;
+}
+
+.sb-progress-current .dashicons {
+    font-size: 14px;
+    width: 14px;
+    height: 14px;
+    vertical-align: -2px;
+}
+
+/* === Результат === */
+
+.sb-result-card {
+    background: #fff;
+    border: 1px solid #dcdcde;
+    border-left: 6px solid #00a32a;
+    padding: 16px 20px;
+    border-radius: 2px;
+    margin-bottom: 20px;
+}
+
+.sb-result-card.sb-result-failed {
+    border-left-color: #d63638;
+}
+
+.sb-result-card.sb-result-cancelled {
+    border-left-color: #dba617;
+}
+
+.sb-result-card h2 {
+    margin: 0 0 8px;
 }

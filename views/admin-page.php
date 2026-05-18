@@ -1,15 +1,11 @@
-<?php
-if (!defined('ABSPATH')) {
-    exit;
-}
-?>
+<?php if (!defined('ABSPATH')) exit; ?>
 <div class="wrap site-builder-wrap">
     <h1>
         Site Builder
         <span class="sb-version">v<?php echo esc_html(SITE_BUILDER_VERSION); ?></span>
     </h1>
 
-    <p class="sb-intro">Инструмент массового импорта контента. Этап 1 из 5: каркас плагина.</p>
+    <p class="sb-intro">Инструмент массового импорта контента. Этап 2 из 5: режим CREATE.</p>
 
     <nav class="nav-tab-wrapper sb-tabs">
         <?php foreach ($tabs as $slug => $tab): ?>
