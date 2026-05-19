@@ -83,7 +83,15 @@
                     updateStartButtonState();
                 });
                 updateStartButtonState();
+            } else {
+                // No confirmation field on the page after all — enable the button.
+                $startBtn.prop('disabled', false);
             }
+        } else {
+            // No confirmation required — ensure the button is enabled regardless of its
+            // initial HTML state. (CREATE button is `disabled` by default to defend against
+            // a flash of clickable state before JS runs.)
+            $startBtn.prop('disabled', false);
         }
 
         function updateProgress(processed, total, label) {

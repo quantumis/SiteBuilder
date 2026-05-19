@@ -65,6 +65,14 @@ class Site_Builder_Articles_Setup {
         // Save pointer for the page importer to read
         update_option('site_builder_current_articles_id', $articles_id);
 
+        // Assign the configured page template (e.g. 'articles.php'). The theme may or may
+        // not ship this file; if it doesn't, WordPress silently falls back to default.
+        // We always (re-)apply it so re-imports recover from manual changes in the editor.
+        $template = Site_Builder_Helpers::get_articles_template();
+        if ($template !== '') {
+            update_post_meta($articles_id, '_wp_page_template', $template);
+        }
+
         // Ensure the page is in the main nav menu
         $menu_item_id = 0;
         if ($this->menu_id) {

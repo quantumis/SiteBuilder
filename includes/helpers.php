@@ -59,6 +59,17 @@ class Site_Builder_Helpers {
     }
 
     /**
+     * Page template assigned to the Articles page, relative to the active theme.
+     * If the file doesn't exist in the theme, WordPress falls back to the default
+     * template — no errors, but the page won't have the custom layout until the
+     * theme actually ships the file. Return '' to skip the template assignment.
+     * == EDIT THIS TO USE A DIFFERENT TEMPLATE FILE ==
+     */
+    public static function get_articles_template(): string {
+        return 'articles.php';
+    }
+
+    /**
      * Folders inside the archive to skip during scanning.
      */
     public static function get_excluded_folders(): array {
