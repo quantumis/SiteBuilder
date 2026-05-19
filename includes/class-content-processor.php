@@ -78,12 +78,32 @@ class Site_Builder_Content_Processor {
 
     /**
      * Process the HUB index.html: extract <main>, inject shortcodes, upload images.
+     * Also extracts the first image as a thumbnail candidate for the home page.
+     *
+     * Returns ['content' => string, 'thumbnail_id' => int|null].
      */
-    public function process_hub_main(string $html, string $hub_dir, array $shortcodes): string {
+    public function process_hub_main(string $html, string $hub_dir, array $shortcodes): array {
+        // Identify the first <img> before any other processing — it becomes the home thumbnail.
+        $thumbnail_id = null;
+        if (preg_match('/<img[^>]+src=["\']([^"\'>]+)["\'][^>]*>/i', $html, $first_img)) {
+            $src = $first_img[1];
+            $alt = '';
+            if (preg_match('/alt=["\']([^"\']*)["\']/i', $first_img[0], $alt_m)) {
+                $alt = $alt_m[1];
+            }
+            $local_path = $this->resolve_image_path($src, $hub_dir);
+            if ($local_path) {
+                $attach_id = $this->media->upload_image($local_path, $alt);
+                if ($attach_id) {
+                    $thumbnail_id = $attach_id;
+                }
+            }
+        }
+
         $html = $this->rewrite_inline_images($html, $hub_dir);
 
         if (!preg_match('/<main[^>]*>(.*?)<\/main>/is', $html, $main_m)) {
-            return '';
+            return ['content' => '', 'thumbnail_id' => $thumbnail_id];
         }
         $content = trim($main_m[1]);
 
@@ -102,7 +122,7 @@ class Site_Builder_Content_Processor {
             $content = $shortcode_block . $content;
         }
 
-        return $content;
+        return ['content' => $content, 'thumbnail_id' => $thumbnail_id];
     }
 
     /**

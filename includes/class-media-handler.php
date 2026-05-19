@@ -29,29 +29,43 @@ class Site_Builder_Media_Handler {
 
     /**
      * Upload an image to the media library. Returns attachment ID or null.
+     *
+     * Deduplication is by content hash (md5_file), not filename — this is critical
+     * because archives commonly contain many files named "hero.webp" with completely
+     * different content (one per page folder). Slug-based dedup would treat them as
+     * the same image and assign the wrong thumbnail to every page.
      */
     public function upload_image(string $image_path, string $alt_text = ''): ?int {
         if (!file_exists($image_path) || !is_readable($image_path)) {
             return null;
         }
 
+        $hash = md5_file($image_path);
+
+        // 1. Look up by content hash among previously-uploaded attachments
+        if ($hash) {
+            global $wpdb;
+            $existing_id = (int)$wpdb->get_var($wpdb->prepare(
+                "SELECT post_id FROM {$wpdb->postmeta}
+                 WHERE meta_key = '_sb_file_hash' AND meta_value = %s
+                 LIMIT 1",
+                $hash
+            ));
+            if ($existing_id) {
+                $post = get_post($existing_id);
+                if ($post && $post->post_type === 'attachment') {
+                    if ($alt_text) {
+                        update_post_meta($existing_id, '_wp_attachment_image_alt', $alt_text);
+                    }
+                    return $existing_id;
+                }
+            }
+        }
+
+        // 2. Upload as a new attachment. WordPress will auto-suffix the filename
+        //    if one with the same name already exists in /uploads/ (e.g. hero-1.webp).
         $filename = basename($image_path);
         $name_no_ext = pathinfo($filename, PATHINFO_FILENAME);
-
-        $existing = get_posts([
-            'post_type'      => 'attachment',
-            'name'           => sanitize_title($name_no_ext),
-            'posts_per_page' => 1,
-            'post_status'    => 'inherit',
-        ]);
-
-        if (!empty($existing)) {
-            $attach_id = (int)$existing[0]->ID;
-            if ($alt_text) {
-                update_post_meta($attach_id, '_wp_attachment_image_alt', $alt_text);
-            }
-            return $attach_id;
-        }
 
         $contents = @file_get_contents($image_path);
         if ($contents === false) return null;
@@ -76,6 +90,9 @@ class Site_Builder_Media_Handler {
 
         if ($alt_text) {
             update_post_meta($attach_id, '_wp_attachment_image_alt', $alt_text);
+        }
+        if ($hash) {
+            update_post_meta($attach_id, '_sb_file_hash', $hash);
         }
 
         $this->tracker->track_item($this->import_id, 'attachment', (int)$attach_id);

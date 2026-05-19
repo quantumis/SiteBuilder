@@ -104,7 +104,30 @@ class Site_Builder_Page_Importer {
             'post_date_gmt' => get_gmt_from_date($schedule['date']),
         ];
 
-        // Bypass kses filtering to preserve all HTML (per project requirement)
+        // Bypass kses filtering to preserve all HTML (per project requirement).
+        // Also: add a filter that prevents WordPress from renaming our page slug
+        // because of a slug collision with an attachment of the same name.
+        // (E.g. hub/images/kryptomeny.webp creates an attachment with slug "kryptomeny",
+        //  and without this filter our page "kryptomeny" would be renamed to "kryptomeny-2".)
+        $slug_filter = function($slug, $post_id, $post_status, $post_type, $post_parent, $original_slug) {
+            if ($post_type !== 'page') return $slug;
+            if ($slug === $original_slug) return $slug;
+
+            // Check whether the conflict is with another page (legit) or just attachment.
+            global $wpdb;
+            $page_conflict = $wpdb->get_var($wpdb->prepare(
+                "SELECT post_name FROM {$wpdb->posts}
+                 WHERE post_name = %s AND post_type = 'page' AND post_parent = %d AND ID != %d
+                   AND post_status NOT IN ('trash', 'auto-draft')
+                 LIMIT 1",
+                $original_slug, (int)$post_parent, (int)$post_id
+            ));
+            if ($page_conflict) return $slug; // Real page-page conflict — let WP handle it.
+
+            return $original_slug; // Attachment-only conflict — keep our slug.
+        };
+        add_filter('wp_unique_post_slug', $slug_filter, 10, 6);
+
         kses_remove_filters();
         try {
             if ($existing_id) {
@@ -120,6 +143,7 @@ class Site_Builder_Page_Importer {
             }
         } finally {
             kses_init_filters();
+            remove_filter('wp_unique_post_slug', $slug_filter, 10);
         }
 
         if (!$page_id) {

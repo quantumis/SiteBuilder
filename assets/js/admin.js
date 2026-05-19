@@ -17,6 +17,7 @@
     var $progressTitle = $('#sb-progress-title');
     var $scheduleMode = $('#sb-schedule-mode');
     var $daysRow = $('#sb-days-row');
+    var $immediateRow = $('#sb-immediate-count-row');
     var $resultTitle = $('#sb-result-title');
     var $resultMessage = $('#sb-result-message');
 
@@ -29,10 +30,16 @@
     };
 
     function updateScheduleVisibility() {
-        if ($scheduleMode.val() === 'period') {
+        var mode = $scheduleMode.val();
+        if (mode === 'period') {
             $daysRow.show();
         } else {
             $daysRow.hide();
+        }
+        if (mode === 'instant') {
+            $immediateRow.hide();
+        } else {
+            $immediateRow.show();
         }
     }
     $scheduleMode.on('change', updateScheduleVisibility);

@@ -48,11 +48,11 @@ $existing_pages = Site_Builder_Helpers::count_existing_pages();
                     <p class="description">Применяется только при выборе «Растянуть на N дней». По умолчанию — 60.</p>
                 </td>
             </tr>
-            <tr>
+            <tr id="sb-immediate-count-row">
                 <th scope="row"><label for="sb-immediate-count">Вложенных страниц сразу</label></th>
                 <td>
                     <input type="number" id="sb-immediate-count" min="0" max="1000" value="10" class="small-text" />
-                    <p class="description">Сколько вложенных страниц опубликовать мгновенно дополнительно к корневым.</p>
+                    <p class="description">Сколько вложенных страниц опубликовать мгновенно дополнительно к корневым. Не применяется в режиме «Опубликовать всё сразу».</p>
                 </td>
             </tr>
         </table>

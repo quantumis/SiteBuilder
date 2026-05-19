@@ -67,7 +67,9 @@ class Site_Builder_Hub_Importer {
 
         $meta = $this->processor->extract_meta($raw_html);
         $shortcodes = Site_Builder_Helpers::get_home_shortcodes();
-        $main_content = $this->processor->process_hub_main($raw_html, $hub_dir, $shortcodes);
+        $hub_main = $this->processor->process_hub_main($raw_html, $hub_dir, $shortcodes);
+        $main_content = $hub_main['content'];
+        $home_thumbnail_id = $hub_main['thumbnail_id'];
         $footer_html = $this->processor->process_hub_footer($raw_html, $hub_dir);
 
         // 3. Snapshot and update front-page.php
@@ -89,6 +91,21 @@ class Site_Builder_Hub_Importer {
         // 5. Set up home page
         $front_id = (int)get_option('page_on_front');
         if (!$front_id || !get_post($front_id)) {
+            // Same slug-collision protection as in page importer
+            $slug_filter = function($slug, $post_id, $post_status, $post_type, $post_parent, $original_slug) {
+                if ($post_type !== 'page') return $slug;
+                if ($slug === $original_slug) return $slug;
+                global $wpdb;
+                $page_conflict = $wpdb->get_var($wpdb->prepare(
+                    "SELECT post_name FROM {$wpdb->posts}
+                     WHERE post_name = %s AND post_type = 'page' AND post_parent = %d AND ID != %d
+                       AND post_status NOT IN ('trash', 'auto-draft')
+                     LIMIT 1",
+                    $original_slug, (int)$post_parent, (int)$post_id
+                ));
+                return $page_conflict ? $slug : $original_slug;
+            };
+            add_filter('wp_unique_post_slug', $slug_filter, 10, 6);
             kses_remove_filters();
             try {
                 $front_id = wp_insert_post([
@@ -99,6 +116,7 @@ class Site_Builder_Hub_Importer {
                 ]);
             } finally {
                 kses_init_filters();
+                remove_filter('wp_unique_post_slug', $slug_filter, 10);
             }
             if ($front_id && !is_wp_error($front_id)) {
                 $this->tracker->track_item($this->import_id, 'page', (int)$front_id);
@@ -116,6 +134,9 @@ class Site_Builder_Hub_Importer {
         if ($front_id && get_post($front_id)) {
             update_post_meta((int)$front_id, 'meta_title', $meta['title']);
             update_post_meta((int)$front_id, 'meta_description', $meta['desc']);
+            if ($home_thumbnail_id) {
+                set_post_thumbnail((int)$front_id, (int)$home_thumbnail_id);
+            }
         }
 
         return ['ok' => true, 'message' => implode('; ', $messages) ?: 'HUB настроен'];
