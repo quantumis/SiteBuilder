@@ -55,6 +55,16 @@ $existing_pages = Site_Builder_Helpers::count_existing_pages();
                     <p class="description">Сколько вложенных страниц опубликовать мгновенно дополнительно к корневым. Не применяется в режиме «Опубликовать всё сразу».</p>
                 </td>
             </tr>
+            <tr id="sb-wait-week-row">
+                <th scope="row">Пауза перед остальными</th>
+                <td>
+                    <label>
+                        <input type="checkbox" id="sb-wait-week" />
+                        Ждать 1 неделю перед публикацией отложенных страниц
+                    </label>
+                    <p class="description">Если включено, все страницы, не публикуемые мгновенно, сдвигаются на 7 дней вперёд. Полезно для SEO-«прогрева» сайта первыми страницами.</p>
+                </td>
+            </tr>
         </table>
 
         <p class="submit">

@@ -109,6 +109,8 @@ class Site_Builder_Task_Builder {
      *       'instant'  -> all immediate
      *       'one_day'  -> 1 page per day (delay_days = idx)
      *       'period'   -> stretched over $days days
+     *   - If wait_week is true, every delayed page is shifted forward by 7 days.
+     *     Instant publications are not affected.
      *
      * Returns an array of ['status' => ..., 'date' => 'Y-m-d H:i:s'] matching tasks index.
      */
@@ -117,6 +119,7 @@ class Site_Builder_Task_Builder {
         $mode = $settings['schedule_mode'] ?? 'instant';
         $days = max(1, (int)($settings['days'] ?? 60));
         $immediate_count = max(0, (int)($settings['immediate_count'] ?? 10));
+        $wait_week_offset = !empty($settings['wait_week']) ? 7 * 86400 : 0;
 
         // Count nested pages eligible for delay
         $nested_total = 0;
@@ -153,6 +156,9 @@ class Site_Builder_Task_Builder {
             } else { // period
                 $delay_seconds = ($delayed_index + 1) * $interval_seconds;
             }
+
+            // Apply optional one-week offset for "warmup before delayed publications"
+            $delay_seconds += $wait_week_offset;
 
             $date = date('Y-m-d H:i:s', strtotime($now) + $delay_seconds);
             $schedule[$idx] = ['status' => 'future', 'date' => $date];

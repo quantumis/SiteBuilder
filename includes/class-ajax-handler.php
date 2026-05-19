@@ -63,6 +63,7 @@ class Site_Builder_Ajax_Handler {
         }
         $days            = isset($_POST['days']) ? max(1, (int)$_POST['days']) : 60;
         $immediate_count = isset($_POST['immediate_count']) ? max(0, (int)$_POST['immediate_count']) : 10;
+        $wait_week       = !empty($_POST['wait_week']);
         $confirmation    = isset($_POST['confirmation']) ? sanitize_text_field(wp_unslash($_POST['confirmation'])) : '';
         $wipe_first      = ($confirmation === 'УДАЛИТЬ');
 
@@ -85,6 +86,7 @@ class Site_Builder_Ajax_Handler {
             'schedule_mode'   => $schedule_mode,
             'days'            => $days,
             'immediate_count' => $immediate_count,
+            'wait_week'       => $wait_week,
             'wipe_first'      => $wipe_first,
         ];
 

@@ -18,6 +18,7 @@
     var $scheduleMode = $('#sb-schedule-mode');
     var $daysRow = $('#sb-days-row');
     var $immediateRow = $('#sb-immediate-count-row');
+    var $waitWeekRow = $('#sb-wait-week-row');
     var $resultTitle = $('#sb-result-title');
     var $resultMessage = $('#sb-result-message');
 
@@ -38,8 +39,10 @@
         }
         if (mode === 'instant') {
             $immediateRow.hide();
+            $waitWeekRow.hide();
         } else {
             $immediateRow.show();
+            $waitWeekRow.show();
         }
     }
     $scheduleMode.on('change', updateScheduleVisibility);
@@ -146,6 +149,7 @@
             schedule_mode: $scheduleMode.val(),
             days: $('#sb-days').val(),
             immediate_count: $('#sb-immediate-count').val(),
+            wait_week: $('#sb-wait-week').is(':checked') ? 1 : 0,
             confirmation: $confirmInput.val()
         };
 
