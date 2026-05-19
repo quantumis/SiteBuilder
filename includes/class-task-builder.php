@@ -55,6 +55,132 @@ class Site_Builder_Task_Builder {
     }
 
     /**
+     * Build an ADD-mode queue.
+     *
+     * Auto-detects archive format: if there are subfolders with HTML files, treats
+     * them as page folders (with images). If only flat .html files in the root, treats
+     * them as flat pages (no images).
+     *
+     * Queue structure:
+     *   [
+     *     ['phase' => 'articles', 'kind' => 'articles_setup'],
+     *     ['phase' => 'pages',    'kind' => 'add_page', 'data' => [...], 'schedule' => [...]],
+     *     ...
+     *   ]
+     */
+    public function build_add_queue(string $source_dir, array $settings): array {
+        $queue = [
+            ['phase' => 'articles', 'kind' => 'articles_setup'],
+        ];
+
+        $format = $this->detect_add_format($source_dir);
+        if ($format === 'folders') {
+            $page_tasks = $this->collect_add_folders($source_dir);
+        } elseif ($format === 'flat') {
+            $page_tasks = $this->collect_add_flat($source_dir);
+        } else {
+            return $queue; // nothing to add
+        }
+
+        // All ADD pages are conceptually "level 1" (under Articles) — gives compute_schedule
+        // the same treatment of immediate_count / mode that nested pages get in CREATE.
+        foreach ($page_tasks as &$t) {
+            $t['data']['level'] = 1;
+        }
+        unset($t);
+
+        $schedule = $this->compute_schedule($page_tasks, $settings);
+
+        foreach ($page_tasks as $idx => $task) {
+            $task['phase']    = 'pages';
+            $task['kind']     = 'add_page';
+            $task['schedule'] = $schedule[$idx];
+            $queue[] = $task;
+        }
+
+        return $queue;
+    }
+
+    /**
+     * Detect ADD archive format. Subfolders win over flat files if both are present.
+     */
+    private function detect_add_format(string $source_dir): string {
+        $exclude = Site_Builder_Helpers::get_excluded_folders();
+        $has_subfolders = false;
+        $has_html_files = false;
+
+        $items = @scandir($source_dir);
+        if (!$items) return 'unknown';
+
+        foreach ($items as $item) {
+            if (in_array($item, $exclude, true)) continue;
+            $full = $source_dir . '/' . $item;
+            if (is_dir($full)) {
+                // Only count subfolders that actually contain HTML files
+                if (glob($full . '/*.html')) {
+                    $has_subfolders = true;
+                }
+            } elseif (preg_match('/\.html?$/i', $item) && is_file($full)) {
+                $has_html_files = true;
+            }
+        }
+
+        if ($has_subfolders) return 'folders';
+        if ($has_html_files) return 'flat';
+        return 'unknown';
+    }
+
+    /**
+     * Collect immediate-child folders (single level deep) for ADD with images.
+     */
+    private function collect_add_folders(string $source_dir): array {
+        $exclude = Site_Builder_Helpers::get_excluded_folders();
+        $tasks = [];
+        $items = @scandir($source_dir);
+        if (!$items) return $tasks;
+
+        foreach ($items as $item) {
+            if (in_array($item, $exclude, true)) continue;
+            $full = $source_dir . '/' . $item;
+            if (!is_dir($full)) continue;
+            if (!glob($full . '/*.html')) continue;
+
+            $tasks[] = [
+                'data' => [
+                    'full_path' => $full,
+                    'slug'      => $item,
+                    'mode'      => 'folder',
+                ],
+            ];
+        }
+        return $tasks;
+    }
+
+    /**
+     * Collect flat .html files (no images) for ADD without images.
+     */
+    private function collect_add_flat(string $source_dir): array {
+        $tasks = [];
+        $files = glob($source_dir . '/*.html') ?: [];
+        foreach ($files as $file) {
+            if (!is_file($file)) continue;
+            $basename = basename($file);
+            $slug = preg_replace('/\.html?$/i', '', $basename);
+            $slug = sanitize_title($slug);
+            if (!$slug) continue;
+
+            $tasks[] = [
+                'data' => [
+                    'full_path' => $file,
+                    'slug'      => $slug,
+                    'mode'      => 'flat',
+                ],
+            ];
+        }
+        return $tasks;
+    }
+
+    /**
      * Collect all existing pages (excluding trash/auto-draft) for the WIPE phase.
      */
     private function collect_existing_pages(): array {

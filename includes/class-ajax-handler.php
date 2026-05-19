@@ -14,6 +14,7 @@ class Site_Builder_Ajax_Handler {
 
     public function __construct() {
         add_action('wp_ajax_site_builder_create_start',     [$this, 'create_start']);
+        add_action('wp_ajax_site_builder_add_start',        [$this, 'add_start']);
         add_action('wp_ajax_site_builder_process_batch',    [$this, 'process_batch']);
         add_action('wp_ajax_site_builder_cancel',           [$this, 'cancel']);
         add_action('wp_ajax_site_builder_check_pages',      [$this, 'check_pages']);
@@ -136,6 +137,92 @@ class Site_Builder_Ajax_Handler {
     }
 
     /**
+     * Endpoint: start an ADD import. Builds task queue for adding pages under Articles.
+     */
+    public function add_start(): void {
+        $this->authorize();
+
+        $folder_raw = isset($_POST['folder']) ? sanitize_text_field(wp_unslash($_POST['folder'])) : '';
+        $folder = Site_Builder_Helpers::sanitize_folder_name($folder_raw);
+        if (!$folder) {
+            wp_send_json_error(['message' => 'Некорректное имя папки']);
+        }
+
+        $source_dir = ABSPATH . $folder;
+        if (!is_dir($source_dir)) {
+            wp_send_json_error(['message' => 'Папка "' . esc_html($folder) . '" не найдена в корне сайта']);
+        }
+
+        $schedule_mode = isset($_POST['schedule_mode']) ? sanitize_key(wp_unslash($_POST['schedule_mode'])) : 'instant';
+        if (!in_array($schedule_mode, ['instant', 'one_day', 'period'], true)) {
+            $schedule_mode = 'instant';
+        }
+        $days            = isset($_POST['days']) ? max(1, (int)$_POST['days']) : 60;
+        $immediate_count = isset($_POST['immediate_count']) ? max(0, (int)$_POST['immediate_count']) : 10;
+        $wait_week       = !empty($_POST['wait_week']);
+
+        $tracker = new Site_Builder_Import_Tracker();
+        if ($tracker->get_lock() !== null) {
+            wp_send_json_error(['message' => 'Уже выполняется другой импорт. Дождитесь его завершения или нажмите "Отменить" в активной сессии.']);
+        }
+
+        $settings = [
+            'schedule_mode'   => $schedule_mode,
+            'days'            => $days,
+            'immediate_count' => $immediate_count,
+            'wait_week'       => $wait_week,
+        ];
+
+        $import_id = $tracker->create_import('add', $folder, $settings, get_current_user_id());
+        if (!$tracker->acquire_lock($import_id, get_current_user_id())) {
+            $tracker->delete_import($import_id);
+            wp_send_json_error(['message' => 'Не удалось захватить блокировку импорта']);
+        }
+
+        try {
+            $builder = new Site_Builder_Task_Builder();
+            $queue = $builder->build_add_queue($source_dir, $settings);
+        } catch (Throwable $e) {
+            $tracker->release_lock();
+            $tracker->mark_finished($import_id, 'failed');
+            wp_send_json_error(['message' => 'Ошибка построения очереди: ' . $e->getMessage()]);
+        }
+
+        if (count($queue) <= 1) {
+            // Only the articles_setup task — no pages found
+            $tracker->release_lock();
+            $tracker->mark_finished($import_id, 'failed');
+            wp_send_json_error(['message' => 'В папке "' . esc_html($folder) . '" не найдены HTML-файлы или подпапки с index.html']);
+        }
+
+        // Reuse existing "Main Auto Menu" if present, otherwise create one
+        $existing_menu = wp_get_nav_menu_object(SITE_BUILDER_MENU_NAME);
+        $menu_id = 0;
+        if ($existing_menu) {
+            $menu_id = (int)$existing_menu->term_id;
+        } else {
+            $new_menu = wp_create_nav_menu(SITE_BUILDER_MENU_NAME);
+            if (!is_wp_error($new_menu)) {
+                $menu_id = (int)$new_menu;
+                $tracker->track_item($import_id, 'nav_menu', $menu_id);
+            }
+        }
+        $settings['menu_id'] = $menu_id;
+
+        $tracker->update_import($import_id, [
+            'status'   => 'running',
+            'settings' => wp_json_encode($settings),
+        ]);
+        $tracker->set_queue($import_id, $queue);
+
+        wp_send_json_success([
+            'import_id'  => $import_id,
+            'total'      => count($queue),
+            'batch_size' => SITE_BUILDER_BATCH_SIZE,
+        ]);
+    }
+
+    /**
      * Endpoint: process the next batch of tasks for an in-progress import.
      */
     public function process_batch(): void {
@@ -175,6 +262,7 @@ class Site_Builder_Ajax_Handler {
         $page_importer = new Site_Builder_Page_Importer($tracker, $processor, $import_id, $menu_id, $source_dir);
         $hub_importer = new Site_Builder_Hub_Importer($tracker, $processor, $media, $import_id);
         $wipe = new Site_Builder_Wipe_Handler();
+        $articles_setup = new Site_Builder_Articles_Setup($tracker, $import_id, $menu_id);
 
         $current_label = '';
         $processed_in_batch = 0;
@@ -199,8 +287,20 @@ class Site_Builder_Ajax_Handler {
                         $current_label = 'HUB: ' . ($result['message'] ?? '');
                         break;
 
+                    case 'articles_setup':
+                        $result = $articles_setup->ensure();
+                        $current_label = $result['created']
+                            ? 'Создана страница Articles'
+                            : 'Используется существующая страница Articles';
+                        break;
+
                     case 'page':
                         $result = $page_importer->import($task);
+                        $current_label = ($result['title'] ?? '') . ' — ' . ($result['message'] ?? '');
+                        break;
+
+                    case 'add_page':
+                        $result = $page_importer->import_add($task);
                         $current_label = ($result['title'] ?? '') . ' — ' . ($result['message'] ?? '');
                         break;
 

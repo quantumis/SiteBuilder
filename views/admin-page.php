@@ -5,7 +5,7 @@
         <span class="sb-version">v<?php echo esc_html(SITE_BUILDER_VERSION); ?></span>
     </h1>
 
-    <p class="sb-intro">Инструмент массового импорта контента. Этап 2 из 5: режим CREATE.</p>
+    <p class="sb-intro">Инструмент массового импорта контента. Этап 3 из 5: режим ADD.</p>
 
     <nav class="nav-tab-wrapper sb-tabs">
         <?php foreach ($tabs as $slug => $tab): ?>

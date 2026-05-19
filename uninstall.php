@@ -16,3 +16,4 @@ delete_option('site_builder_db_version');
 delete_option('site_builder_active_import');
 delete_option('site_builder_activated_at');
 delete_option('site_builder_pristine_theme_files');
+delete_option('site_builder_current_articles_id');

@@ -85,8 +85,21 @@
 
 /* === Вкладка "Создание сайта" === */
 
-.sb-create-tab {
+.sb-create-tab,
+.sb-add-tab {
     max-width: 820px;
+}
+
+.sb-info-box {
+    background: #f0f6fc;
+    border-left: 4px solid #2271b1;
+    padding: 12px 18px;
+    margin-bottom: 20px;
+    border-radius: 2px;
+}
+
+.sb-info-box p {
+    margin: 6px 0;
 }
 
 .sb-warning-box {

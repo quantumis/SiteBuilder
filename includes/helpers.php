@@ -47,6 +47,18 @@ class Site_Builder_Helpers {
     }
 
     /**
+     * Title and slug of the parent page created by the ADD mode.
+     * All ADD-imported pages become children of this page.
+     * == EDIT THESE TO CHANGE THE ARTICLES PAGE ==
+     */
+    public static function get_articles_title(): string {
+        return 'Articles';
+    }
+    public static function get_articles_slug(): string {
+        return 'articles';
+    }
+
+    /**
      * Folders inside the archive to skip during scanning.
      */
     public static function get_excluded_folders(): array {
