@@ -3,6 +3,62 @@
 
     if (typeof SiteBuilderData === 'undefined') return;
 
+    // ---- Module-level state for cross-cutting concerns ----
+    // anyRunning is shared by both forms so navigation handlers can see "is any import live".
+    var anyRunning = false;
+
+    // ---- Tab navigation & unload protection ----
+    // Intercept clicks on other tabs while an import is running. If user confirms,
+    // best-effort cancel via sendBeacon, then let the navigation happen.
+    $('.nav-tab-wrapper.sb-tabs .nav-tab').not('.nav-tab-active').on('click', function (e) {
+        if (!anyRunning) return;
+        if (!confirm(SiteBuilderData.strings.confirmNav)) {
+            e.preventDefault();
+            return;
+        }
+        sendBeaconCancel();
+    });
+
+    // beforeunload: warn user that closing/reloading kills the import.
+    // Modern browsers show a generic dialog; the returnValue string is mostly symbolic.
+    $(window).on('beforeunload', function (e) {
+        if (!anyRunning) return;
+        sendBeaconCancel();
+        e.returnValue = SiteBuilderData.strings.confirmUnload;
+        return SiteBuilderData.strings.confirmUnload;
+    });
+
+    function sendBeaconCancel() {
+        // sendBeacon is fire-and-forget — works during unload where regular AJAX fails.
+        if (!navigator.sendBeacon || !currentRunningState) return;
+        var fd = new FormData();
+        fd.append('action', 'site_builder_cancel');
+        fd.append('nonce', SiteBuilderData.nonce);
+        fd.append('import_id', currentRunningState.importId);
+        try { navigator.sendBeacon(SiteBuilderData.ajaxUrl, fd); } catch (err) {}
+    }
+
+    // Pointer to the running state object (only ever one importer runs at a time)
+    var currentRunningState = null;
+
+    // ---- Clear-lock button (shown only when activeImport exists) ----
+    $('#sb-clear-lock-btn').on('click', function () {
+        var $btn = $(this);
+        if (!confirm('Прервать активный импорт и сбросить блокировку?')) return;
+        $btn.prop('disabled', true).find('.dashicons').removeClass('dashicons-no-alt').addClass('dashicons-update');
+        $.post(SiteBuilderData.ajaxUrl, {
+            action: 'site_builder_clear_lock',
+            nonce: SiteBuilderData.nonce
+        }).done(function () {
+            // Reload so the active-import card disappears and forms unlock.
+            anyRunning = false; // suppress beforeunload from this handler's reload
+            location.reload();
+        }).fail(function () {
+            alert('Не удалось сбросить блокировку. Попробуйте ещё раз или обновите страницу через 5 минут (lock протухнет автоматически).');
+            $btn.prop('disabled', false).find('.dashicons').removeClass('dashicons-update').addClass('dashicons-no-alt');
+        });
+    });
+
     /**
      * Generic importer wiring. Each tab (create, add) instantiates this with its own
      * element selectors and AJAX action name.
@@ -119,6 +175,8 @@
             $cancelBtn.hide();
             $startBtn.prop('disabled', false).find('.dashicons').removeClass('dashicons-update').addClass('dashicons-controls-play');
             state.running = false;
+            anyRunning = false;
+            currentRunningState = null;
         }
 
         function processBatch() {
@@ -180,6 +238,8 @@
                 state.importId = resp.data.import_id;
                 state.offset = 0;
                 state.total = resp.data.total || 0;
+                anyRunning = true;
+                currentRunningState = state;
                 $progressTitle.text(SiteBuilderData.strings.inProgress);
                 updateProgress(0, state.total, '');
                 processBatch();
@@ -200,6 +260,13 @@
                 showResult('cancelled', 'Импорт прерван пользователем. Уже созданные страницы остаются — используйте «Откат» для отмены.');
             });
         });
+
+        // If the server reports an active import from elsewhere (another tab, a previous
+        // session that was abandoned), disable this form's start button.
+        if (SiteBuilderData.activeImport) {
+            $startBtn.prop('disabled', true)
+                     .attr('title', SiteBuilderData.strings.lockBlocked);
+        }
     }
 
     // === CREATE tab ===

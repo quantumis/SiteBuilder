@@ -52,6 +52,7 @@ class Site_Builder_Admin {
             'wipeKeyword'    => 'УДАЛИТЬ',
             'batchSize'      => SITE_BUILDER_BATCH_SIZE,
             'existingPages'  => Site_Builder_Helpers::count_existing_pages(),
+            'activeImport'   => $this->get_active_import_info(),
             'strings'        => [
                 'starting'         => 'Запуск импорта…',
                 'inProgress'       => 'Импорт идёт',
@@ -60,11 +61,43 @@ class Site_Builder_Admin {
                 'failed'           => 'Импорт упал с ошибкой',
                 'genericError'     => 'Произошла ошибка',
                 'confirmCancel'    => 'Прервать текущий импорт?',
+                'confirmNav'       => 'Импорт ещё идёт. Переключение вкладки прервёт его. Прервать и переключиться?',
+                'confirmUnload'    => 'Импорт идёт. Если закрыть или перезагрузить страницу, импорт прервётся.',
+                'lockBlocked'      => 'Уже выполняется другой импорт. Завершите его или нажмите «Прервать и сбросить».',
                 'wipeWarningTitle' => 'Внимание: на сайте уже есть страницы',
                 'wipeWarningText'  => 'CREATE-импорт полностью удалит все существующие страницы сайта. Это действие необратимо. Чтобы подтвердить, введите слово УДАЛИТЬ заглавными буквами.',
                 'wipeMismatch'     => 'Введите слово УДАЛИТЬ ровно так, как показано.',
             ],
         ]);
+    }
+
+    /**
+     * Information about an in-progress import, for display in the admin UI.
+     * Returns null if no import is active.
+     */
+    public function get_active_import_info(): ?array {
+        $tracker = new Site_Builder_Import_Tracker();
+        $lock = $tracker->get_lock();
+        if (!$lock || empty($lock['import_id'])) return null;
+
+        $import = $tracker->get_import((int)$lock['import_id']);
+        if (!$import) return null;
+
+        $heartbeat_ts = !empty($lock['heartbeat']) ? strtotime($lock['heartbeat']) : 0;
+        $seconds_since_heartbeat = $heartbeat_ts ? max(0, time() - $heartbeat_ts) : null;
+
+        return [
+            'id'                       => (int)$import->id,
+            'type'                     => (string)$import->type,
+            'folder'                   => (string)$import->folder_name,
+            'started_at'               => (string)$import->started_at,
+            'heartbeat'                => $lock['heartbeat'] ?? null,
+            'seconds_since_heartbeat'  => $seconds_since_heartbeat,
+            'processed'                => (int)$import->processed_count,
+            'total'                    => (int)$import->total_count,
+            'user_id'                  => (int)$import->user_id,
+            'is_current_user'          => ((int)$import->user_id === get_current_user_id()),
+        ];
     }
 
     public function render_page(): void {
@@ -83,6 +116,8 @@ class Site_Builder_Admin {
         if (!isset($tabs[$current_tab])) {
             $current_tab = 'create';
         }
+
+        $active_import = $this->get_active_import_info();
 
         include SITE_BUILDER_PATH . 'views/admin-page.php';
     }

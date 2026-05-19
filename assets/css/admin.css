@@ -271,3 +271,57 @@
 .sb-result-card h2 {
     margin: 0 0 8px;
 }
+
+/* === Карточка активного импорта (показывается над вкладками) === */
+
+.sb-active-import {
+    background: #f0f6fc;
+    border: 1px solid #72aee6;
+    border-left: 6px solid #2271b1;
+    padding: 14px 20px;
+    margin-bottom: 16px;
+    border-radius: 2px;
+}
+
+.sb-active-import.sb-active-import-stale {
+    background: #fcf9e8;
+    border-color: #dba617;
+    border-left-color: #dba617;
+}
+
+.sb-active-import h3 {
+    margin: 0 0 8px;
+    font-size: 15px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.sb-active-import h3 .dashicons {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+}
+
+.sb-active-import p {
+    margin: 6px 0;
+    font-size: 13px;
+}
+
+.sb-active-import code {
+    background: rgba(255, 255, 255, 0.6);
+    padding: 1px 6px;
+    border-radius: 2px;
+}
+
+.sb-active-import-warning {
+    color: #996b00;
+    font-weight: 500;
+}
+
+.sb-active-import-warning .dashicons {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+    vertical-align: -3px;
+}

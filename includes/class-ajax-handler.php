@@ -17,6 +17,7 @@ class Site_Builder_Ajax_Handler {
         add_action('wp_ajax_site_builder_add_start',        [$this, 'add_start']);
         add_action('wp_ajax_site_builder_process_batch',    [$this, 'process_batch']);
         add_action('wp_ajax_site_builder_cancel',           [$this, 'cancel']);
+        add_action('wp_ajax_site_builder_clear_lock',       [$this, 'clear_lock']);
         add_action('wp_ajax_site_builder_check_pages',      [$this, 'check_pages']);
     }
 
@@ -346,5 +347,23 @@ class Site_Builder_Ajax_Handler {
         }
         $tracker->release_lock();
         wp_send_json_success(['message' => 'Импорт отменён']);
+    }
+
+    /**
+     * Endpoint: forcibly clear the active-import lock and mark whatever import is in it
+     * as cancelled. Used when the previous import's tab was closed and the lock remains.
+     */
+    public function clear_lock(): void {
+        $this->authorize();
+        $tracker = new Site_Builder_Import_Tracker();
+        $lock = $tracker->get_lock();
+        if ($lock && !empty($lock['import_id'])) {
+            $import = $tracker->get_import((int)$lock['import_id']);
+            if ($import && $import->status === 'running') {
+                $tracker->mark_finished((int)$lock['import_id'], 'cancelled');
+            }
+        }
+        $tracker->release_lock();
+        wp_send_json_success(['message' => 'Блокировка сброшена']);
     }
 }
