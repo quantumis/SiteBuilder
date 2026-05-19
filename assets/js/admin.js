@@ -19,13 +19,22 @@
         sendBeaconCancel();
     });
 
-    // beforeunload: warn user that closing/reloading kills the import.
-    // Modern browsers show a generic dialog; the returnValue string is mostly symbolic.
+    // beforeunload: just shows the browser's "Leave page?" dialog. Crucially we do NOT
+    // send the cancel here — beforeunload fires before the user picks "Cancel"/"Leave",
+    // so an unconditional cancel would kill the import even if they choose to stay.
     $(window).on('beforeunload', function (e) {
         if (!anyRunning) return;
-        sendBeaconCancel();
         e.returnValue = SiteBuilderData.strings.confirmUnload;
         return SiteBuilderData.strings.confirmUnload;
+    });
+
+    // pagehide/unload: fires only when the page is actually being unloaded (the user
+    // confirmed they want to leave, or the tab is being closed). Safe place to cancel.
+    // We listen to both because pagehide is the modern standard but some browsers/contexts
+    // still rely on unload.
+    $(window).on('pagehide unload', function () {
+        if (!anyRunning) return;
+        sendBeaconCancel();
     });
 
     function sendBeaconCancel() {
