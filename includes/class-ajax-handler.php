@@ -15,6 +15,7 @@ class Site_Builder_Ajax_Handler {
     public function __construct() {
         add_action('wp_ajax_site_builder_create_start',     [$this, 'create_start']);
         add_action('wp_ajax_site_builder_add_start',        [$this, 'add_start']);
+        add_action('wp_ajax_site_builder_rollback_start',   [$this, 'rollback_start']);
         add_action('wp_ajax_site_builder_process_batch',    [$this, 'process_batch']);
         add_action('wp_ajax_site_builder_cancel',           [$this, 'cancel']);
         add_action('wp_ajax_site_builder_clear_lock',       [$this, 'clear_lock']);
@@ -224,6 +225,59 @@ class Site_Builder_Ajax_Handler {
     }
 
     /**
+     * Endpoint: start a rollback for the last completed CREATE or ADD import.
+     */
+    public function rollback_start(): void {
+        $this->authorize();
+
+        $tracker = new Site_Builder_Import_Tracker();
+
+        if ($tracker->get_lock() !== null) {
+            wp_send_json_error(['message' => 'Уже выполняется другой импорт. Дождитесь его завершения или нажмите "Прервать и сбросить".']);
+        }
+
+        $target = $tracker->get_last_rollbackable_import();
+        if (!$target) {
+            wp_send_json_error(['message' => 'Нет импортов, доступных для отката']);
+        }
+
+        $settings = [
+            'target_import_id'   => (int)$target->id,
+            'target_import_type' => (string)$target->type,
+            'target_folder'      => (string)$target->folder_name,
+        ];
+
+        // Create a new "rollback" import record. Its folder_name carries the target
+        // folder for readability in logs/UI.
+        $import_id = $tracker->create_import('rollback', (string)$target->folder_name, $settings, get_current_user_id());
+        if (!$tracker->acquire_lock($import_id, get_current_user_id())) {
+            $tracker->delete_import($import_id);
+            wp_send_json_error(['message' => 'Не удалось захватить блокировку']);
+        }
+
+        try {
+            $handler = new Site_Builder_Rollback_Handler();
+            $queue = $handler->build_queue((int)$target->id, $tracker);
+        } catch (Throwable $e) {
+            $tracker->release_lock();
+            $tracker->mark_finished($import_id, 'failed');
+            wp_send_json_error(['message' => 'Ошибка построения плана отката: ' . $e->getMessage()]);
+        }
+
+        $tracker->update_import($import_id, [
+            'status'   => 'running',
+            'settings' => wp_json_encode($settings),
+        ]);
+        $tracker->set_queue($import_id, $queue);
+
+        wp_send_json_success([
+            'import_id'  => $import_id,
+            'total'      => count($queue),
+            'batch_size' => SITE_BUILDER_BATCH_SIZE,
+        ]);
+    }
+
+    /**
      * Endpoint: process the next batch of tasks for an in-progress import.
      */
     public function process_batch(): void {
@@ -264,6 +318,7 @@ class Site_Builder_Ajax_Handler {
         $hub_importer = new Site_Builder_Hub_Importer($tracker, $processor, $media, $import_id);
         $wipe = new Site_Builder_Wipe_Handler();
         $articles_setup = new Site_Builder_Articles_Setup($tracker, $import_id, $menu_id);
+        $rollback = new Site_Builder_Rollback_Handler();
 
         $current_label = '';
         $processed_in_batch = 0;
@@ -303,6 +358,18 @@ class Site_Builder_Ajax_Handler {
                     case 'add_page':
                         $result = $page_importer->import_add($task);
                         $current_label = ($result['title'] ?? '') . ' — ' . ($result['message'] ?? '');
+                        break;
+
+                    case 'rollback_menu_item':
+                    case 'rollback_page':
+                    case 'rollback_attachment':
+                    case 'rollback_css_file':
+                    case 'rollback_theme_file':
+                    case 'rollback_option':
+                    case 'rollback_nav_menu':
+                    case 'rollback_finalize':
+                        $result = $rollback->execute_task($task, $tracker);
+                        $current_label = $result['message'] ?? '';
                         break;
 
                     default:

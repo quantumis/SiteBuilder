@@ -34,6 +34,7 @@ class Site_Builder {
         require_once $base . 'class-hub-importer.php';
         require_once $base . 'class-wipe-handler.php';
         require_once $base . 'class-articles-setup.php';
+        require_once $base . 'class-rollback-handler.php';
         require_once $base . 'class-ajax-handler.php';
         require_once $base . 'class-frontend.php';
         require_once $base . 'class-admin.php';

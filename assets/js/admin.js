@@ -337,4 +337,113 @@
         confirmation: null
     });
 
+    // === ROLLBACK tab ===
+    // Standalone wiring (no schedule, no form fields, no confirmation token —
+    // just one button that fires the rollback_start AJAX and tracks progress).
+    (function () {
+        var $startBtn = $('#sb-rollback-start-btn');
+        if (!$startBtn.length) return;
+
+        var $progressCard  = $('#sb-rollback-progress-card');
+        var $resultCard    = $('#sb-rollback-result-card');
+        var $progressBar   = $('#sb-rollback-progress-bar');
+        var $progressCount = $('#sb-rollback-progress-count');
+        var $progressTotal = $('#sb-rollback-progress-total');
+        var $progressLabel = $('#sb-rollback-progress-current-label');
+        var $progressTitle = $('#sb-rollback-progress-title');
+        var $resultTitle   = $('#sb-rollback-result-title');
+        var $resultMessage = $('#sb-rollback-result-message');
+        var $formCard      = $('#sb-rollback-form-card');
+
+        var state = { running: false, importId: 0, offset: 0, total: 0 };
+
+        if (SiteBuilderData.activeImport) {
+            $startBtn.prop('disabled', true)
+                     .attr('title', SiteBuilderData.strings.lockBlocked);
+        }
+
+        function updateProgress(processed, total, label) {
+            var pct = total > 0 ? Math.round((processed / total) * 100) : 0;
+            $progressBar.css('width', pct + '%');
+            $progressCount.text(processed);
+            $progressTotal.text(total);
+            if (label) $progressLabel.text(label);
+        }
+
+        function showResult(status, message) {
+            $progressCard.hide();
+            $resultCard.removeClass('sb-result-failed sb-result-cancelled');
+            if (status === 'completed') {
+                $resultTitle.text('Откат завершён');
+            } else {
+                $resultTitle.text('Откат упал с ошибкой');
+                $resultCard.addClass('sb-result-failed');
+            }
+            $resultMessage.text(message || '');
+            $resultCard.show();
+            $formCard.hide();
+            state.running = false;
+            anyRunning = false;
+            currentRunningState = null;
+        }
+
+        function processBatch() {
+            $.post(SiteBuilderData.ajaxUrl, {
+                action: 'site_builder_process_batch',
+                nonce: SiteBuilderData.nonce,
+                import_id: state.importId,
+                offset: state.offset
+            }).done(function (resp) {
+                if (!resp || !resp.success) {
+                    var msg = (resp && resp.data && resp.data.message) || SiteBuilderData.strings.genericError;
+                    showResult('failed', msg);
+                    return;
+                }
+                var data = resp.data;
+                state.offset = (typeof data.next_offset !== 'undefined') ? data.next_offset : (data.processed || state.offset);
+                state.total = data.total || state.total;
+                updateProgress(data.processed, state.total, data.current_label || '');
+                if (data.done) {
+                    showResult('completed', 'Обработано задач: ' + data.processed + ' из ' + state.total);
+                    return;
+                }
+                setTimeout(processBatch, 100);
+            }).fail(function (xhr) {
+                showResult('failed', 'Сетевая ошибка: HTTP ' + xhr.status);
+            });
+        }
+
+        $startBtn.on('click', function () {
+            if (state.running) return;
+            if (!confirm('Откатить последний импорт? Это удалит созданные плагином страницы и картинки, восстановит файлы темы. Действие необратимо.')) return;
+
+            $resultCard.hide();
+            $progressCard.show();
+            $progressTitle.text('Откат запускается…');
+            $startBtn.prop('disabled', true).find('.dashicons').removeClass('dashicons-undo').addClass('dashicons-update');
+
+            $.post(SiteBuilderData.ajaxUrl, {
+                action: 'site_builder_rollback_start',
+                nonce: SiteBuilderData.nonce
+            }).done(function (resp) {
+                if (!resp || !resp.success) {
+                    var msg = (resp && resp.data && resp.data.message) || SiteBuilderData.strings.genericError;
+                    showResult('failed', msg);
+                    return;
+                }
+                state.running = true;
+                state.importId = resp.data.import_id;
+                state.offset = 0;
+                state.total = resp.data.total || 0;
+                anyRunning = true;
+                currentRunningState = state;
+                $progressTitle.text('Откат идёт');
+                updateProgress(0, state.total, '');
+                processBatch();
+            }).fail(function (xhr) {
+                showResult('failed', 'Сетевая ошибка при запуске: HTTP ' + xhr.status);
+            });
+        });
+    })();
+
 })(jQuery);

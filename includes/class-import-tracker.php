@@ -48,6 +48,20 @@ class Site_Builder_Import_Tracker {
         return $row ?: null;
     }
 
+    /**
+     * Returns the most recent CREATE or ADD import that finished successfully and has
+     * not been rolled back yet. Used by the Rollback tab to decide what to offer.
+     */
+    public function get_last_rollbackable_import(): ?object {
+        global $wpdb;
+        $row = $wpdb->get_row(
+            "SELECT * FROM {$this->imports_table}
+             WHERE status = 'completed' AND type IN ('create', 'add')
+             ORDER BY id DESC LIMIT 1"
+        );
+        return $row ?: null;
+    }
+
     public function update_import(int $import_id, array $data): void {
         global $wpdb;
         $data['updated_at'] = current_time('mysql');
