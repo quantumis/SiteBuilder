@@ -143,8 +143,9 @@ class Site_Builder_Task_Builder {
             if (in_array($item, $exclude, true)) continue;
             $full = $source_dir . '/' . $item;
             if (!is_dir($full)) continue;
-            if (!glob($full . '/*.html')) continue;
 
+            // Add the folder even if it has no HTML — the importer will report
+            // the missing file in the journal instead of silently dropping it.
             $tasks[] = [
                 'data' => [
                     'full_path' => $full,

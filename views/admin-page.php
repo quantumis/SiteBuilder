@@ -5,7 +5,7 @@
         <span class="sb-version">v<?php echo esc_html(SITE_BUILDER_VERSION); ?></span>
     </h1>
 
-    <p class="sb-intro">Инструмент массового импорта контента. Этап 4 из 5: режим Rollback.</p>
+    <p class="sb-intro">Инструмент массового импорта контента: создание сайта из архива, добавление страниц, откат и отчёт.</p>
 
     <?php if (!empty($active_import)):
         $type_label = $active_import['type'] === 'create' ? 'Создание сайта' : 'Добавление страниц';
