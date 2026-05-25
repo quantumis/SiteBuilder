@@ -353,11 +353,25 @@ class Site_Builder_Ajax_Handler {
                     case 'page':
                         $result = $page_importer->import($task);
                         $current_label = ($result['title'] ?? '') . ' — ' . ($result['message'] ?? '');
+                        if (empty($result['ok'])) {
+                            $tracker->append_error($import_id, $result['message'] ?? 'Импорт страницы не удался', [
+                                'title' => $result['title'] ?? '',
+                                'slug'  => $task['data']['slug'] ?? '',
+                                'kind'  => 'page',
+                            ]);
+                        }
                         break;
 
                     case 'add_page':
                         $result = $page_importer->import_add($task);
                         $current_label = ($result['title'] ?? '') . ' — ' . ($result['message'] ?? '');
+                        if (empty($result['ok'])) {
+                            $tracker->append_error($import_id, $result['message'] ?? 'Импорт страницы не удался', [
+                                'title' => $result['title'] ?? '',
+                                'slug'  => $task['data']['slug'] ?? '',
+                                'kind'  => 'add_page',
+                            ]);
+                        }
                         break;
 
                     case 'rollback_menu_item':

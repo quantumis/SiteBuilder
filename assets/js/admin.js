@@ -68,6 +68,62 @@
         });
     });
 
+    // ---- "Copy as table" buttons on the Report tab ----
+    // Builds TSV (tab-separated) text, which Excel and Google Sheets paste correctly
+    // as a proper grid. Falls back to plain selection if clipboard API is unavailable.
+    $('.sb-copy-table').on('click', function () {
+        var $btn = $(this);
+        var tableId = $btn.data('target');
+        var $table = $('#' + tableId);
+        if (!$table.length) return;
+
+        var tsv = [];
+        $table.find('tr').each(function () {
+            var row = [];
+            $(this).find('th, td').each(function () {
+                // Strip action-button cells (just icons)
+                var $cell = $(this).clone();
+                $cell.find('.button').remove();
+                var text = $cell.text().trim().replace(/\s+/g, ' ');
+                row.push(text);
+            });
+            // Skip empty rows (the action column collapsing)
+            if (row.some(function (c) { return c !== ''; })) {
+                tsv.push(row.join('\t'));
+            }
+        });
+
+        var text = tsv.join('\n');
+        var originalText = $btn.html();
+
+        function flashOk() {
+            $btn.html('<span class="dashicons dashicons-yes"></span> Скопировано');
+            setTimeout(function () { $btn.html(originalText); }, 1500);
+        }
+        function flashFail() {
+            $btn.html('<span class="dashicons dashicons-no"></span> Ошибка');
+            setTimeout(function () { $btn.html(originalText); }, 2000);
+        }
+
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).then(flashOk).catch(flashFail);
+        } else {
+            // Fallback: temporary textarea + execCommand('copy')
+            var $tmp = $('<textarea></textarea>')
+                .val(text)
+                .css({ position: 'fixed', top: 0, left: 0, opacity: 0 })
+                .appendTo('body');
+            $tmp[0].select();
+            try {
+                document.execCommand('copy');
+                flashOk();
+            } catch (e) {
+                flashFail();
+            }
+            $tmp.remove();
+        }
+    });
+
     /**
      * Generic importer wiring. Each tab (create, add) instantiates this with its own
      * element selectors and AJAX action name.
@@ -179,7 +235,19 @@
                 $resultTitle.text(SiteBuilderData.strings.failed);
                 $resultCard.addClass('sb-result-failed');
             }
-            $resultMessage.text(message || '');
+            $resultMessage.html(''); // clear
+            if (message) {
+                $resultMessage.append(document.createTextNode(message + ' '));
+            }
+            // For any non-failure terminal status, link to the Report tab. (Failures are still
+            // worth investigating, so we show it for them too.)
+            if (status !== 'cancelled') {
+                var reportUrl = SiteBuilderData.reportUrl;
+                var link = $('<a></a>')
+                    .attr('href', reportUrl)
+                    .text('Посмотреть отчёт →');
+                $resultMessage.append(link);
+            }
             $resultCard.show();
             $cancelBtn.hide();
             $startBtn.prop('disabled', false).find('.dashicons').removeClass('dashicons-update').addClass('dashicons-controls-play');

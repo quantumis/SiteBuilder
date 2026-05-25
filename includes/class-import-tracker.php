@@ -62,6 +62,23 @@ class Site_Builder_Import_Tracker {
         return $row ?: null;
     }
 
+    /**
+     * Find the most recent import for the Report tab.
+     * Includes any terminal status (completed/cancelled/failed/rolled_back) but excludes
+     * 'running' imports — those are shown in the active-import card instead.
+     * Excludes rollback-type imports (the report shows the original import, not its rollback).
+     */
+    public function get_latest_import_for_report(): ?object {
+        global $wpdb;
+        $row = $wpdb->get_row(
+            "SELECT * FROM {$this->imports_table}
+             WHERE status IN ('completed', 'cancelled', 'failed', 'rolled_back')
+               AND type IN ('create', 'add')
+             ORDER BY id DESC LIMIT 1"
+        );
+        return $row ?: null;
+    }
+
     public function update_import(int $import_id, array $data): void {
         global $wpdb;
         $data['updated_at'] = current_time('mysql');

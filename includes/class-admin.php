@@ -53,6 +53,7 @@ class Site_Builder_Admin {
             'batchSize'      => SITE_BUILDER_BATCH_SIZE,
             'existingPages'  => Site_Builder_Helpers::count_existing_pages(),
             'activeImport'   => $this->get_active_import_info(),
+            'reportUrl'      => admin_url('admin.php?page=site-builder&tab=report'),
             'strings'        => [
                 'starting'         => 'Запуск импорта…',
                 'inProgress'       => 'Импорт идёт',
