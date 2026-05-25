@@ -43,8 +43,12 @@ class Site_Builder_Content_Processor {
     public function process_page(string $html, string $current_dir, string $fallback_image_dir = ''): array {
         $thumbnail_id = null;
 
-        // First image becomes featured/thumbnail and is removed from content
-        if (preg_match('/<img[^>]+src=["\']([^"\'>]+)["\'][^>]*>/i', $html, $img_match)) {
+        // Reduce to <main> first (if present) — otherwise we'd pick the site logo
+        // from <header> as the page thumbnail in modern full-page archives.
+        $content = $this->extract_body($html);
+
+        // First image in the content becomes featured/thumbnail and is removed.
+        if (preg_match('/<img[^>]+src=["\']([^"\'>]+)["\'][^>]*>/i', $content, $img_match)) {
             $full_tag = $img_match[0];
             $src = $img_match[1];
             $alt = '';
@@ -57,18 +61,16 @@ class Site_Builder_Content_Processor {
                 $attach_id = $this->media->upload_image($local_path, $alt);
                 if ($attach_id) {
                     $thumbnail_id = $attach_id;
-                    $html = str_replace($full_tag, '', $html);
+                    $content = str_replace($full_tag, '', $content);
                 }
             }
         }
 
         // Replace first <h1> with <h2> for SEO
-        $html = preg_replace('/<h1([^>]*)>(.*?)<\/h1>/is', '<h2$1>$2</h2>', $html, 1);
+        $content = preg_replace('/<h1([^>]*)>(.*?)<\/h1>/is', '<h2$1>$2</h2>', $content, 1);
 
         // Rewrite remaining inline images
-        $html = $this->rewrite_inline_images($html, $current_dir, $fallback_image_dir);
-
-        $content = $this->extract_body($html);
+        $content = $this->rewrite_inline_images($content, $current_dir, $fallback_image_dir);
 
         return [
             'content'      => $content,
@@ -177,7 +179,19 @@ class Site_Builder_Content_Processor {
         return null;
     }
 
+    /**
+     * Extract the meaningful content portion from an HTML document.
+     *
+     * Priority chain (preserves backward compatibility with old "fragment"-style archives):
+     *   1. <main>...</main>     — modern full-page archives where headers/footers are siblings
+     *                             of <main> and would otherwise duplicate the WordPress theme.
+     *   2. <body>...</body>     — older archives whose body contained only the content fragment.
+     *   3. Whole document       — minimal/fragment HTML with no body wrapper at all.
+     */
     private function extract_body(string $html): string {
+        if (preg_match('/<main[^>]*>(.*?)<\/main>/is', $html, $main_m)) {
+            return trim($main_m[1]);
+        }
         if (preg_match('/<body[^>]*>(.*?)<\/body>/is', $html, $body_m)) {
             return trim($body_m[1]);
         }

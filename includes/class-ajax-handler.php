@@ -103,6 +103,11 @@ class Site_Builder_Ajax_Handler {
         try {
             $builder = new Site_Builder_Task_Builder();
             $queue = $builder->build_create_queue($source_dir, $settings, $wipe_first);
+            // Persist the resolved content root (may differ from source_dir if archive
+            // had wrapper folders). All downstream batches need this real path.
+            if ($builder->resolved_root !== '') {
+                $settings['resolved_root'] = $builder->resolved_root;
+            }
         } catch (Throwable $e) {
             $tracker->release_lock();
             $tracker->mark_finished($import_id, 'failed');
@@ -185,6 +190,9 @@ class Site_Builder_Ajax_Handler {
         try {
             $builder = new Site_Builder_Task_Builder();
             $queue = $builder->build_add_queue($source_dir, $settings);
+            if ($builder->resolved_root !== '') {
+                $settings['resolved_root'] = $builder->resolved_root;
+            }
         } catch (Throwable $e) {
             $tracker->release_lock();
             $tracker->mark_finished($import_id, 'failed');
@@ -316,7 +324,11 @@ class Site_Builder_Ajax_Handler {
         $menu_id = (int)($settings['menu_id'] ?? 0);
         $batch_size = (int)($settings['batch_size'] ?? 15);
         if ($batch_size < 1 || $batch_size > 500) $batch_size = 15;
-        $source_dir = ABSPATH . $import->folder_name;
+        // Use the resolved content root (skips wrapper folders) when available;
+        // fall back to the raw folder name for backward compatibility.
+        $source_dir = !empty($settings['resolved_root'])
+            ? (string)$settings['resolved_root']
+            : (ABSPATH . $import->folder_name);
 
         $batch = array_slice($queue, $offset, $batch_size);
         if (empty($batch)) {

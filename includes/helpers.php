@@ -85,6 +85,47 @@ class Site_Builder_Helpers {
         return $input;
     }
 
+    /**
+     * Find the "main" HTML file in a directory.
+     *
+     * Newer archives from the content team name page files like index2.html,
+     * index15.html, index22.html etc. — apparently from an aggregator that
+     * numbers files. Older archives use plain index.html. This helper handles
+     * both, with preference order:
+     *   1. exact index.html             (legacy & most common)
+     *   2. any index*.html              (e.g. index2.html, index22.html)
+     *   3. first *.html alphabetically  (last-resort fallback)
+     *
+     * Returns the full path, or null if no HTML file exists in the directory.
+     */
+    public static function find_index_html(string $dir): ?string {
+        if (!is_dir($dir)) return null;
+
+        $exact = $dir . '/index.html';
+        if (is_file($exact)) return $exact;
+
+        $candidates = glob($dir . '/index*.html') ?: [];
+        if (!empty($candidates)) {
+            sort($candidates);
+            return $candidates[0];
+        }
+
+        $any = glob($dir . '/*.html') ?: [];
+        if (!empty($any)) {
+            sort($any);
+            return $any[0];
+        }
+
+        return null;
+    }
+
+    /**
+     * Check whether a directory has at least one HTML file (any name).
+     */
+    public static function has_html_file(string $dir): bool {
+        return self::find_index_html($dir) !== null;
+    }
+
     /** Count existing non-trashed pages on the site. */
     public static function count_existing_pages(): int {
         $counts = wp_count_posts('page');

@@ -54,15 +54,15 @@ class Site_Builder_Hub_Importer {
             }
         }
 
-        // 2. Process hub index.html
-        $hub_html_file = $hub_dir . '/index.html';
-        if (!file_exists($hub_html_file)) {
-            return ['ok' => true, 'message' => implode('; ', $messages) . '; index.html не найден'];
+        // 2. Process hub index.html (or index*.html for newer archives)
+        $hub_html_file = Site_Builder_Helpers::find_index_html($hub_dir);
+        if (!$hub_html_file) {
+            return ['ok' => true, 'message' => implode('; ', $messages) . '; HTML-файл в hub не найден'];
         }
 
         $raw_html = (string)@file_get_contents($hub_html_file);
         if ($raw_html === '') {
-            return ['ok' => false, 'message' => 'HUB index.html пустой'];
+            return ['ok' => false, 'message' => 'HUB HTML-файл пустой'];
         }
 
         $meta = $this->processor->extract_meta($raw_html);

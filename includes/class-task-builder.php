@@ -10,6 +10,12 @@ if (!defined('ABSPATH')) {
 class Site_Builder_Task_Builder {
 
     /**
+     * After build_create_queue / build_add_queue, holds the resolved content root.
+     * The AJAX layer reads it to persist the real path in import settings.
+     */
+    public string $resolved_root = '';
+
+    /**
      * Build a CREATE-mode queue.
      *
      * Queue structure:
@@ -35,11 +41,16 @@ class Site_Builder_Task_Builder {
             $queue[] = ['phase' => 'wipe', 'kind' => 'wipe_finalize'];
         }
 
-        if (is_dir($source_dir . '/hub')) {
-            $queue[] = ['phase' => 'hub', 'kind' => 'hub_setup'];
+        // Newer archives may have wrapper folders (e.g. archive/inner1/domain.com/<real content>).
+        // Find the actual content root before scanning.
+        $real_root = $this->find_real_root($source_dir, 'create');
+        $this->resolved_root = $real_root;
+
+        if (is_dir($real_root . '/hub')) {
+            $queue[] = ['phase' => 'hub', 'kind' => 'hub_setup', 'data' => ['source_dir' => $real_root]];
         }
 
-        $page_tasks = $this->collect_page_folders($source_dir);
+        $page_tasks = $this->collect_page_folders($real_root);
         // Sort by level so parents come first
         usort($page_tasks, fn($a, $b) => $a['level'] <=> $b['level']);
 
@@ -73,11 +84,15 @@ class Site_Builder_Task_Builder {
             ['phase' => 'articles', 'kind' => 'articles_setup'],
         ];
 
-        $format = $this->detect_add_format($source_dir);
+        // Newer archives may have wrapper folders — descend until we find content.
+        $real_root = $this->find_real_root($source_dir, 'add');
+        $this->resolved_root = $real_root;
+
+        $format = $this->detect_add_format($real_root);
         if ($format === 'folders') {
-            $page_tasks = $this->collect_add_folders($source_dir);
+            $page_tasks = $this->collect_add_folders($real_root);
         } elseif ($format === 'flat') {
-            $page_tasks = $this->collect_add_flat($source_dir);
+            $page_tasks = $this->collect_add_flat($real_root);
         } else {
             return $queue; // nothing to add
         }
@@ -179,6 +194,91 @@ class Site_Builder_Task_Builder {
             ];
         }
         return $tasks;
+    }
+
+    /**
+     * Auto-detect the actual content root of an archive.
+     *
+     * Newer archives ship inside one or more wrapper folders, e.g.
+     *   {given}/wrapper-A/wrapper-B/domain.com/<real content>
+     * This walks down those wrappers until it finds a folder that looks like the real root.
+     *
+     * Definition of "real root":
+     *   - CREATE: has a 'hub' subfolder, OR has ≥2 subfolders that contain HTML files.
+     *   - ADD: has any HTML file in itself, OR ≥1 subfolder with HTML files.
+     *
+     * Wrapper detection: a folder is a wrapper if it contains exactly one significant
+     * sub-item (a folder, not counting .md/.docx/loose files) and that sub-item doesn't
+     * itself satisfy the real-root predicate. We descend through wrappers up to 5 levels.
+     *
+     * Returns the original $source_dir if no descent is needed or possible (backward
+     * compatibility with archives that are already in the right shape).
+     */
+    private function find_real_root(string $source_dir, string $mode): string {
+        $current = rtrim($source_dir, '/');
+        $exclude = Site_Builder_Helpers::get_excluded_folders();
+
+        for ($i = 0; $i < 5; $i++) {
+            if ($this->looks_like_real_root($current, $mode)) {
+                return $current;
+            }
+            // Find the single "significant" subfolder, if any
+            $items = @scandir($current);
+            if (!$items) return $current;
+
+            $candidate = null;
+            $candidate_count = 0;
+            foreach ($items as $item) {
+                if (in_array($item, $exclude, true)) continue;
+                $full = $current . '/' . $item;
+                if (!is_dir($full)) continue;
+                $candidate = $full;
+                $candidate_count++;
+            }
+            // Only descend if there's exactly one subfolder to descend into.
+            // Multiple subfolders means we're already at the root (or no clear path).
+            if ($candidate_count !== 1) {
+                return $current;
+            }
+            $current = $candidate;
+        }
+        return $current;
+    }
+
+    /**
+     * Whether the given folder satisfies the "real root" predicate for the given mode.
+     */
+    private function looks_like_real_root(string $dir, string $mode): bool {
+        $exclude = Site_Builder_Helpers::get_excluded_folders();
+        $items = @scandir($dir);
+        if (!$items) return false;
+
+        if ($mode === 'create') {
+            // CREATE: 'hub' subfolder is the strongest signal
+            if (is_dir($dir . '/hub')) return true;
+            // Or ≥2 subfolders that contain HTML
+            $subfolders_with_html = 0;
+            foreach ($items as $item) {
+                if (in_array($item, $exclude, true)) continue;
+                $full = $dir . '/' . $item;
+                if (!is_dir($full)) continue;
+                if (Site_Builder_Helpers::has_html_file($full)) {
+                    $subfolders_with_html++;
+                    if ($subfolders_with_html >= 2) return true;
+                }
+            }
+            return false;
+        }
+
+        // ADD: HTML in current dir, or ≥1 subfolder with HTML
+        if (Site_Builder_Helpers::has_html_file($dir)) return true;
+        foreach ($items as $item) {
+            if (in_array($item, $exclude, true)) continue;
+            $full = $dir . '/' . $item;
+            if (!is_dir($full)) continue;
+            if (Site_Builder_Helpers::has_html_file($full)) return true;
+        }
+        return false;
     }
 
     /**
