@@ -24,6 +24,7 @@ class Site_Builder {
 
     private function load_dependencies(): void {
         $base = SITE_BUILDER_PATH . 'includes/';
+        require_once $base . 'class-settings.php';
         require_once $base . 'helpers.php';
         require_once $base . 'class-installer.php';
         require_once $base . 'class-import-tracker.php';

@@ -87,7 +87,6 @@ if (!defined('ABSPATH')) {
     <div class="sb-result-card" id="sb-add-result-card" style="display:none;">
         <h2 id="sb-add-result-title"></h2>
         <p id="sb-add-result-message"></p>
-        <p>Полный отчёт по импорту появится во вкладке «Отчёт» (будет реализовано на этапе&nbsp;5).</p>
     </div>
 
 </div>

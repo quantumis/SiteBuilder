@@ -91,6 +91,7 @@ class Site_Builder_Ajax_Handler {
             'immediate_count' => $immediate_count,
             'wait_week'       => $wait_week,
             'wipe_first'      => $wipe_first,
+            'batch_size'      => Site_Builder_Settings::batch_create(),
         ];
 
         $import_id = $tracker->create_import('create', $folder, $settings, get_current_user_id());
@@ -134,7 +135,7 @@ class Site_Builder_Ajax_Handler {
         wp_send_json_success([
             'import_id'   => $import_id,
             'total'       => count($queue),
-            'batch_size'  => SITE_BUILDER_BATCH_SIZE,
+            'batch_size'  => (int)$settings['batch_size'],
         ]);
     }
 
@@ -197,6 +198,20 @@ class Site_Builder_Ajax_Handler {
             wp_send_json_error(['message' => 'В папке "' . esc_html($folder) . '" не найдены HTML-файлы или подпапки с index.html']);
         }
 
+        // Pick batch size based on detected format (flat is light, folders may have images).
+        // We inspect the first page task in the queue.
+        $batch_size = Site_Builder_Settings::batch_add_folders();
+        foreach ($queue as $task) {
+            if (($task['kind'] ?? '') === 'add_page') {
+                $mode = $task['data']['mode'] ?? 'folder';
+                $batch_size = ($mode === 'flat')
+                    ? Site_Builder_Settings::batch_add_flat()
+                    : Site_Builder_Settings::batch_add_folders();
+                break;
+            }
+        }
+        $settings['batch_size'] = $batch_size;
+
         // Reuse existing "Main Auto Menu" if present, otherwise create one
         $existing_menu = wp_get_nav_menu_object(SITE_BUILDER_MENU_NAME);
         $menu_id = 0;
@@ -220,7 +235,7 @@ class Site_Builder_Ajax_Handler {
         wp_send_json_success([
             'import_id'  => $import_id,
             'total'      => count($queue),
-            'batch_size' => SITE_BUILDER_BATCH_SIZE,
+            'batch_size' => (int)$settings['batch_size'],
         ]);
     }
 
@@ -264,6 +279,8 @@ class Site_Builder_Ajax_Handler {
             wp_send_json_error(['message' => 'Ошибка построения плана отката: ' . $e->getMessage()]);
         }
 
+        $settings['batch_size'] = Site_Builder_Settings::batch_add_flat();
+
         $tracker->update_import($import_id, [
             'status'   => 'running',
             'settings' => wp_json_encode($settings),
@@ -273,7 +290,7 @@ class Site_Builder_Ajax_Handler {
         wp_send_json_success([
             'import_id'  => $import_id,
             'total'      => count($queue),
-            'batch_size' => SITE_BUILDER_BATCH_SIZE,
+            'batch_size' => (int)$settings['batch_size'],
         ]);
     }
 
@@ -297,9 +314,11 @@ class Site_Builder_Ajax_Handler {
         $total = count($queue);
         $settings = json_decode($import->settings ?: '{}', true) ?: [];
         $menu_id = (int)($settings['menu_id'] ?? 0);
+        $batch_size = (int)($settings['batch_size'] ?? 15);
+        if ($batch_size < 1 || $batch_size > 500) $batch_size = 15;
         $source_dir = ABSPATH . $import->folder_name;
 
-        $batch = array_slice($queue, $offset, SITE_BUILDER_BATCH_SIZE);
+        $batch = array_slice($queue, $offset, $batch_size);
         if (empty($batch)) {
             $tracker->mark_finished($import_id, 'completed');
             $tracker->release_lock();

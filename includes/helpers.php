@@ -6,74 +6,49 @@ if (!defined('ABSPATH')) {
 /**
  * Static helpers shared across the plugin.
  *
- * == HOW TO EDIT THIS FILE ==
+ * Most values are now editable from the admin UI on the «Настройки» tab. The defaults
+ * below are used only when nothing is saved in the database. Edits via this file are
+ * still respected, but they only matter as long as the user hasn't saved their own
+ * value on the Settings tab (the saved value takes precedence).
  *
- * 1) ABBREVIATIONS — see get_abbreviations() below.
- *    Add new entries (uppercase) to keep them uppercase in page titles.
- *    Example: "nba-finals" -> "NBA Finals" if 'NBA' is in the list.
- *
- * 2) HOME PAGE SHORTCODES — see get_home_shortcodes() below.
- *    These shortcodes are injected into the home page during HUB setup.
- *    Add new entries (without brackets) to extend.
- *
- * 3) EXCLUDED FOLDERS — see get_excluded_folders() below.
- *    Folder names skipped when scanning archives.
+ * For things NOT exposed in the UI (home page shortcodes, menu name, theme CSS folder),
+ * the methods here are the only place to edit. Look for comments marked «EDIT» below.
  */
 class Site_Builder_Helpers {
 
     /**
      * Abbreviations to preserve in uppercase when formatting page titles.
-     * == EDIT THIS LIST TO ADD NEW ABBREVIATIONS ==
+     * Editable from Settings tab; fallback list lives in Site_Builder_Settings::DEFAULTS.
      */
     public static function get_abbreviations(): array {
-        return [
-            'NBA', 'NFL', 'NHL', 'MLB', 'WNBA', 'NCAA', 'MMA', 'UFC',
-            'EPL', 'UEFA', 'FIFA', 'MLS', 'PGA', 'LPGA', 'NASCAR',
-            'USA', 'UK', 'EU', 'NYC', 'LA', 'DC',
-            'CEO', 'CFO', 'CTO', 'COO',
-            'GDP', 'IPO', 'ROI', 'KPI',
-            'AI', 'API', 'URL', 'HTML', 'CSS', 'PDF', 'JS',
-            'TV', 'DVD', 'GPS', 'USB',
-            'FAQ', 'DIY',
-        ];
+        return Site_Builder_Settings::abbreviations();
     }
 
     /**
      * Default shortcodes for the home page.
-     * == EDIT THIS LIST TO CHANGE DEFAULT SHORTCODES ==
+     * == EDIT THIS LIST IN CODE TO CHANGE DEFAULT SHORTCODES ==
+     * (Not exposed in the Settings UI by design.)
      */
     public static function get_home_shortcodes(): array {
         return ['sports_predictions', 'geo_info'];
     }
 
-    /**
-     * Title and slug of the parent page created by the ADD mode.
-     * All ADD-imported pages become children of this page.
-     * == EDIT THESE TO CHANGE THE ARTICLES PAGE ==
-     */
+    /** Title and slug of the parent page created by ADD mode. Editable in Settings. */
     public static function get_articles_title(): string {
-        return 'Articles';
+        return Site_Builder_Settings::articles_title();
     }
     public static function get_articles_slug(): string {
-        return 'articles';
+        return Site_Builder_Settings::articles_slug();
     }
 
-    /**
-     * Page template assigned to the Articles page, relative to the active theme.
-     * If the file doesn't exist in the theme, WordPress falls back to the default
-     * template — no errors, but the page won't have the custom layout until the
-     * theme actually ships the file. Return '' to skip the template assignment.
-     * == EDIT THIS TO USE A DIFFERENT TEMPLATE FILE ==
-     */
+    /** Page template assigned to Articles. Editable in Settings. */
     public static function get_articles_template(): string {
-        return 'articles.php';
+        return Site_Builder_Settings::articles_template();
     }
 
-    /**
-     * Folders inside the archive to skip during scanning.
-     */
+    /** Folder names skipped when scanning archives. Editable in Settings. */
     public static function get_excluded_folders(): array {
-        return ['.', '..', 'hub', 'images', 'prompts', '.DS_Store', '.git', 'node_modules', '__MACOSX'];
+        return Site_Builder_Settings::excluded_folders();
     }
 
     /**
@@ -100,9 +75,7 @@ class Site_Builder_Helpers {
         return implode(' ', $words);
     }
 
-    /**
-     * Validate folder name input from form. Returns trimmed name or null if unsafe.
-     */
+    /** Validate folder name input from form. Returns trimmed name or null if unsafe. */
     public static function sanitize_folder_name(string $input): ?string {
         $input = trim($input);
         if ($input === '') return null;
@@ -112,9 +85,7 @@ class Site_Builder_Helpers {
         return $input;
     }
 
-    /**
-     * Count existing non-trashed pages on the site.
-     */
+    /** Count existing non-trashed pages on the site. */
     public static function count_existing_pages(): int {
         $counts = wp_count_posts('page');
         $total = 0;

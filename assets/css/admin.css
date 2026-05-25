@@ -421,3 +421,38 @@
     width: 14px;
     height: 14px;
 }
+
+/* === Вкладка Настройки === */
+.sb-settings-tab {
+    max-width: 900px;
+}
+
+.sb-settings-tab .sb-form-card {
+    margin-bottom: 16px;
+}
+
+.sb-settings-tab .form-table th {
+    width: 220px;
+}
+
+.sb-settings-tab textarea.code {
+    font-family: Menlo, Consolas, monospace;
+    font-size: 12px;
+}
+
+.sb-settings-tab .description code {
+    background: #f0f0f1;
+    padding: 1px 5px;
+    border-radius: 2px;
+    font-size: 12px;
+}
+
+.sb-reset-form {
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid #ddd;
+}
+
+.sb-reset-form button {
+    color: #b32d2e;
+}

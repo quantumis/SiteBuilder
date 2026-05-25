@@ -96,7 +96,6 @@ $existing_pages = Site_Builder_Helpers::count_existing_pages();
     <div class="sb-result-card" id="sb-result-card" style="display:none;">
         <h2 id="sb-result-title"></h2>
         <p id="sb-result-message"></p>
-        <p>Полный отчёт по импорту появится во вкладке «Отчёт» (будет реализовано на этапе&nbsp;5).</p>
     </div>
 
 </div>

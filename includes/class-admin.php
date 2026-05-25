@@ -14,6 +14,48 @@ class Site_Builder_Admin {
     public function __construct() {
         add_action('admin_menu', [$this, 'register_menu']);
         add_action('admin_enqueue_scripts', [$this, 'enqueue_assets']);
+        add_action('admin_post_site_builder_save_settings', [$this, 'handle_save_settings']);
+        add_action('admin_post_site_builder_reset_settings', [$this, 'handle_reset_settings']);
+    }
+
+    /**
+     * Handle Settings tab form submission. Validates input, saves via Site_Builder_Settings,
+     * then redirects back to the tab with a success/error flag in the URL.
+     */
+    public function handle_save_settings(): void {
+        if (!current_user_can(self::CAPABILITY)) {
+            wp_die(esc_html__('Недостаточно прав', 'site-builder'));
+        }
+        check_admin_referer('site_builder_save_settings');
+
+        $input = $_POST['sb_settings'] ?? [];
+        if (!is_array($input)) $input = [];
+        $input = wp_unslash($input);
+
+        $errors = Site_Builder_Settings::save($input);
+
+        $args = ['page' => 'site-builder', 'tab' => 'settings'];
+        if ($errors) {
+            $args['sb_settings_errors'] = rawurlencode(wp_json_encode($errors));
+        } else {
+            $args['sb_settings_saved'] = '1';
+        }
+        wp_safe_redirect(add_query_arg($args, admin_url('admin.php')));
+        exit;
+    }
+
+    public function handle_reset_settings(): void {
+        if (!current_user_can(self::CAPABILITY)) {
+            wp_die(esc_html__('Недостаточно прав', 'site-builder'));
+        }
+        check_admin_referer('site_builder_reset_settings');
+        Site_Builder_Settings::reset();
+        wp_safe_redirect(add_query_arg([
+            'page' => 'site-builder',
+            'tab' => 'settings',
+            'sb_settings_reset' => '1',
+        ], admin_url('admin.php')));
+        exit;
     }
 
     public function register_menu(): void {
@@ -50,7 +92,7 @@ class Site_Builder_Admin {
             'ajaxUrl'        => admin_url('admin-ajax.php'),
             'nonce'          => Site_Builder_Ajax_Handler::nonce(),
             'wipeKeyword'    => 'УДАЛИТЬ',
-            'batchSize'      => SITE_BUILDER_BATCH_SIZE,
+            'batchSize'      => Site_Builder_Settings::batch_create(),
             'existingPages'  => Site_Builder_Helpers::count_existing_pages(),
             'activeImport'   => $this->get_active_import_info(),
             'reportUrl'      => admin_url('admin.php?page=site-builder&tab=report'),
@@ -111,6 +153,7 @@ class Site_Builder_Admin {
             'add'      => ['label' => 'Добавление страниц', 'icon' => 'plus-alt2'],
             'rollback' => ['label' => 'Откат',              'icon' => 'undo'],
             'report'   => ['label' => 'Отчёт',              'icon' => 'clipboard'],
+            'settings' => ['label' => 'Настройки',          'icon' => 'admin-settings'],
         ];
 
         $current_tab = isset($_GET['tab']) ? sanitize_key(wp_unslash($_GET['tab'])) : 'create';
