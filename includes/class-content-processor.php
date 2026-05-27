@@ -337,13 +337,26 @@ class Site_Builder_Content_Processor {
     /**
      * Extract the meaningful content portion from an HTML document.
      *
-     * Priority chain (preserves backward compatibility with old "fragment"-style archives):
-     *   1. <main>...</main>     — modern full-page archives where headers/footers are siblings
+     * Priority chain (preserves backward compatibility with all archive formats seen so far):
+     *   1. Single <article>     — the article element semantically marks "this is the article".
+     *                             It correctly captures hero images sitting in <article>'s
+     *                             own <header>, even when <main> is nested deeper inside
+     *                             the article and would exclude that header.
+     *                             Only used when there's exactly one <article> — multiple
+     *                             would mean blog-card-style layout where we shouldn't pick
+     *                             the first one arbitrarily.
+     *   2. <main>...</main>     — modern full-page archives where headers/footers are siblings
      *                             of <main> and would otherwise duplicate the WordPress theme.
-     *   2. <body>...</body>     — older archives whose body contained only the content fragment.
-     *   3. Whole document       — minimal/fragment HTML with no body wrapper at all.
+     *   3. <body>...</body>     — older archives whose body contained only the content fragment.
+     *   4. Whole document       — minimal/fragment HTML with no body wrapper at all.
      */
     private function extract_body(string $html): string {
+        // Count <article> tags. Use exactly-one rule because multiple articles
+        // typically signal a listing page where picking arbitrarily is wrong.
+        if (preg_match_all('/<article\b/i', $html) === 1
+            && preg_match('/<article[^>]*>(.*?)<\/article>/is', $html, $art_m)) {
+            return trim($art_m[1]);
+        }
         if (preg_match('/<main[^>]*>(.*?)<\/main>/is', $html, $main_m)) {
             return trim($main_m[1]);
         }
