@@ -43,8 +43,9 @@ class Site_Builder_Content_Processor {
     public function process_page(string $html, string $current_dir, string $fallback_image_dir = ''): array {
         $thumbnail_id = null;
 
-        // Reduce to <main> first (if present) — otherwise we'd pick the site logo
-        // from <header> as the page thumbnail in modern full-page archives.
+        // Reduce full HTML pages to just the article content (strips <head>, site
+        // navigation, footers, and the site-chrome header — but keeps the article's
+        // own header with its H1 and hero image). See extract_body() for details.
         $content = $this->extract_body($html);
 
         // First image in the content becomes featured/thumbnail and is removed.
@@ -337,35 +338,44 @@ class Site_Builder_Content_Processor {
     /**
      * Extract the meaningful content portion from an HTML document.
      *
-     * Priority chain (preserves backward compatibility with all archive formats seen so far):
-     *   1. Single <article>     — the article element semantically marks "this is the article".
-     *                             It correctly captures hero images sitting in <article>'s
-     *                             own <header>, even when <main> is nested deeper inside
-     *                             the article and would exclude that header.
-     *                             Only used when there's exactly one <article> — multiple
-     *                             would mean blog-card-style layout where we shouldn't pick
-     *                             the first one arbitrarily.
-     *   2. <main>...</main>     — modern full-page archives where headers/footers are siblings
-     *                             of <main> and would otherwise duplicate the WordPress theme.
-     *   3. <body>...</body>     — older archives whose body contained only the content fragment.
-     *   4. Whole document       — minimal/fragment HTML with no body wrapper at all.
+     * Strategy: "take <body>, then strip the chrome". This handles every page layout
+     * the content team has produced, because the hero image and H1 may live in a
+     * variety of places (inside <main>, inside <article>, or in a sibling <header>
+     * that sits directly under <body>). Selecting a single container (<main> or
+     * <article>) inevitably dropped the hero in one layout or another.
+     *
+     * Steps:
+     *   1. Take the contents of <body> (or, for bare fragments, the whole document
+     *      minus <head>).
+     *   2. Remove every <nav>…</nav> — the WordPress theme renders its own navigation
+     *      and breadcrumbs; archive navs also often contain {{SITE_DOMAIN}} placeholders.
+     *   3. Remove every <footer>…</footer> — same reason.
+     *   4. Remove "site headers": a <header> that does NOT contain an <h1>. The article's
+     *      own header (with the H1 title and hero image) is kept; the site chrome header
+     *      (logo + menu, no H1) is dropped.
+     *
+     * Backward compatible with old fragment-style archives (no <body>/<nav>/<footer>):
+     * such content passes through essentially unchanged.
      */
     private function extract_body(string $html): string {
-        // Count <article> tags. Use exactly-one rule because multiple articles
-        // typically signal a listing page where picking arbitrarily is wrong.
-        if (preg_match_all('/<article\b/i', $html) === 1
-            && preg_match('/<article[^>]*>(.*?)<\/article>/is', $html, $art_m)) {
-            return trim($art_m[1]);
-        }
-        if (preg_match('/<main[^>]*>(.*?)<\/main>/is', $html, $main_m)) {
-            return trim($main_m[1]);
-        }
         if (preg_match('/<body[^>]*>(.*?)<\/body>/is', $html, $body_m)) {
-            return trim($body_m[1]);
+            $content = $body_m[1];
+        } else {
+            $content = preg_replace('/<!DOCTYPE[^>]*>/i', '', $html);
+            $content = preg_replace('/<html[^>]*>|<\/html>/i', '', $content);
+            $content = preg_replace('/<head\b.*?<\/head>/is', '', $content);
         }
-        $html = preg_replace('/<!DOCTYPE[^>]*>/i', '', $html);
-        $html = preg_replace('/<html[^>]*>|<\/html>/i', '', $html);
-        $html = preg_replace('/<head>.*?<\/head>/is', '', $html);
-        return trim($html);
+
+        // Strip navigation and footers entirely.
+        $content = preg_replace('/<nav\b[^>]*>.*?<\/nav>/is', '', $content);
+        $content = preg_replace('/<footer\b[^>]*>.*?<\/footer>/is', '', $content);
+
+        // Strip "site header" blocks — a <header> with no <h1> is site chrome (logo/menu),
+        // not the article's own header. Keep headers that contain the article's H1.
+        $content = preg_replace_callback('/<header\b[^>]*>(.*?)<\/header>/is', function ($m) {
+            return preg_match('/<h1\b/i', $m[1]) ? $m[0] : '';
+        }, $content);
+
+        return trim($content);
     }
 }
