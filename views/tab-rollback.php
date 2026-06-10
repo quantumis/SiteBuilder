@@ -27,7 +27,8 @@ $rb_target  = $rb_tracker->get_last_rollbackable_import();
         foreach ($rb_items as $rb_item) {
             $rb_counts[$rb_item->item_type] = ($rb_counts[$rb_item->item_type] ?? 0) + 1;
         }
-        $rb_type_label = $rb_target->type === 'create' ? 'Создание сайта' : 'Добавление страниц';
+        $rb_type_label = ($rb_target->type === 'create') ? 'Создание сайта'
+            : (($rb_target->type === 'md_restore') ? 'MD Restore' : 'Добавление страниц');
         $rb_label_map = [
             'page'                => 'Страниц',
             'attachment'          => 'Картинок',

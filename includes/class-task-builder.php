@@ -16,6 +16,90 @@ class Site_Builder_Task_Builder {
     public string $resolved_root = '';
 
     /**
+     * Build a MD-RESTORE-mode queue.
+     *
+     * Scans $source_dir recursively for .md files, parses each one's header to extract
+     * the URL, and arranges them into a queue sorted by URL depth. The root URL (path = '/')
+     * is processed first; then top-level paths; then their children, and so on. This
+     * ordering guarantees that parent pages exist by the time their children are processed.
+     */
+    public function build_md_queue(string $source_dir): array {
+        $md_files = [];
+        $rii = new RecursiveIteratorIterator(
+            new RecursiveDirectoryIterator($source_dir, RecursiveDirectoryIterator::SKIP_DOTS)
+        );
+        foreach ($rii as $f) {
+            if ($f->isFile() && strtolower($f->getExtension()) === 'md') {
+                $md_files[] = $f->getPathname();
+            }
+        }
+        sort($md_files);
+
+        $tasks = [];
+        foreach ($md_files as $path) {
+            $meta = $this->parse_md_header($path);
+            if (!$meta || empty($meta['url'])) continue;
+
+            $url_path = trim((string)parse_url($meta['url'], PHP_URL_PATH), '/');
+            $segments = $url_path === '' ? [] : array_values(array_filter(explode('/', $url_path)));
+            $is_root  = empty($segments);
+
+            $tasks[] = [
+                'phase' => 'md',
+                'kind'  => 'md_page',
+                'data'  => [
+                    'md_path'     => $path,
+                    'url'         => $meta['url'],
+                    'title'       => $meta['title'] ?? '',
+                    'description' => $meta['description'] ?? '',
+                    'is_root'     => $is_root,
+                    'segments'    => $segments,
+                    'depth'       => count($segments),
+                ],
+            ];
+        }
+
+        // Sort: root first, then by depth, then by URL for deterministic order
+        usort($tasks, function ($a, $b) {
+            $da = $a['data']['depth'];
+            $db = $b['data']['depth'];
+            if ($da !== $db) return $da <=> $db;
+            return strcmp($a['data']['url'], $b['data']['url']);
+        });
+
+        return $tasks;
+    }
+
+    /**
+     * Read the first ~30 lines of a .md and extract # URL / # Title / # Description.
+     * Returns null if the file can't be read or has no URL line.
+     */
+    private function parse_md_header(string $path): ?array {
+        $fp = @fopen($path, 'r');
+        if (!$fp) return null;
+        $header = '';
+        $lines_read = 0;
+        while ($lines_read < 30 && ($line = fgets($fp)) !== false) {
+            $header .= $line;
+            $lines_read++;
+            if (preg_match('/^-{10,}\s*$/', trim($line))) break;
+        }
+        fclose($fp);
+
+        $meta = ['url' => null, 'title' => null, 'description' => null];
+        if (preg_match_all('/^#\s*([^:\n]+):\s*(.*)$/mu', $header, $m, PREG_SET_ORDER)) {
+            foreach ($m as $row) {
+                $key = strtolower(trim($row[1]));
+                $val = trim($row[2]);
+                if ($key === 'url') $meta['url'] = $val;
+                elseif ($key === 'title') $meta['title'] = $val;
+                elseif ($key === 'description') $meta['description'] = $val;
+            }
+        }
+        return $meta['url'] ? $meta : null;
+    }
+
+    /**
      * Build a CREATE-mode queue.
      *
      * Queue structure:

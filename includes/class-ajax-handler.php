@@ -15,6 +15,7 @@ class Site_Builder_Ajax_Handler {
     public function __construct() {
         add_action('wp_ajax_site_builder_create_start',     [$this, 'create_start']);
         add_action('wp_ajax_site_builder_add_start',        [$this, 'add_start']);
+        add_action('wp_ajax_site_builder_md_start',         [$this, 'md_start']);
         add_action('wp_ajax_site_builder_rollback_start',   [$this, 'rollback_start']);
         add_action('wp_ajax_site_builder_process_batch',    [$this, 'process_batch']);
         add_action('wp_ajax_site_builder_cancel',           [$this, 'cancel']);
@@ -303,6 +304,73 @@ class Site_Builder_Ajax_Handler {
     }
 
     /**
+     * Endpoint: start a MD-restore import.
+     *
+     * MD-restore is a separate mode for rebuilding sites from a content/ folder of
+     * .md files. Unlike CREATE/ADD it doesn't touch the theme, doesn't manage a menu,
+     * and doesn't deal with images — the .md files are pure text content. Page
+     * hierarchy is reconstructed from each file's "# URL:" header.
+     */
+    public function md_start(): void {
+        $this->authorize();
+
+        $folder_raw = isset($_POST['folder']) ? sanitize_text_field(wp_unslash($_POST['folder'])) : '';
+        $folder = Site_Builder_Helpers::sanitize_folder_name($folder_raw);
+        if (!$folder) {
+            wp_send_json_error(['message' => 'Некорректное имя папки']);
+        }
+
+        $source_dir = ABSPATH . $folder;
+        if (!is_dir($source_dir)) {
+            wp_send_json_error(['message' => 'Папка "' . esc_html($folder) . '" не найдена в корне сайта']);
+        }
+
+        $tracker = new Site_Builder_Import_Tracker();
+        if ($tracker->get_lock() !== null) {
+            wp_send_json_error(['message' => 'Уже выполняется другой импорт. Дождитесь его завершения или нажмите "Прервать и сбросить".']);
+        }
+
+        $settings = [];
+        $import_id = $tracker->create_import('md_restore', $folder, $settings, get_current_user_id());
+        if (!$tracker->acquire_lock($import_id, get_current_user_id())) {
+            $tracker->delete_import($import_id);
+            wp_send_json_error(['message' => 'Не удалось захватить блокировку импорта']);
+        }
+
+        try {
+            $builder = new Site_Builder_Task_Builder();
+            $queue = $builder->build_md_queue($source_dir);
+        } catch (Throwable $e) {
+            $tracker->release_lock();
+            $tracker->mark_finished($import_id, 'failed');
+            wp_send_json_error(['message' => 'Ошибка построения очереди: ' . $e->getMessage()]);
+        }
+
+        if (empty($queue)) {
+            $tracker->release_lock();
+            $tracker->mark_finished($import_id, 'failed');
+            wp_send_json_error(['message' => 'В папке "' . esc_html($folder) . '" не найдены .md-файлы с заголовком "# URL:"']);
+        }
+
+        // MD-restore tasks are lightweight (no image processing), so we use the larger
+        // flat-ADD batch size.
+        $settings['batch_size']    = Site_Builder_Settings::batch_add_flat();
+        $settings['resolved_root'] = $source_dir;
+
+        $tracker->update_import($import_id, [
+            'status'   => 'running',
+            'settings' => wp_json_encode($settings),
+        ]);
+        $tracker->set_queue($import_id, $queue);
+
+        wp_send_json_success([
+            'import_id'  => $import_id,
+            'total'      => count($queue),
+            'batch_size' => (int)$settings['batch_size'],
+        ]);
+    }
+
+    /**
      * Endpoint: process the next batch of tasks for an in-progress import.
      */
     public function process_batch(): void {
@@ -350,6 +418,7 @@ class Site_Builder_Ajax_Handler {
         $wipe = new Site_Builder_Wipe_Handler();
         $articles_setup = new Site_Builder_Articles_Setup($tracker, $import_id, $menu_id);
         $rollback = new Site_Builder_Rollback_Handler();
+        $md_restore = new Site_Builder_MD_Restore($tracker, $import_id);
 
         $current_label = '';
         $processed_in_batch = 0;
@@ -401,6 +470,18 @@ class Site_Builder_Ajax_Handler {
                                 'title' => $result['title'] ?? '',
                                 'slug'  => $task['data']['slug'] ?? '',
                                 'kind'  => 'add_page',
+                            ]);
+                        }
+                        break;
+
+                    case 'md_page':
+                        $result = $md_restore->import_page($task);
+                        $current_label = ($result['title'] ?? '') . ' — ' . ($result['message'] ?? '');
+                        if (empty($result['ok'])) {
+                            $tracker->append_error($import_id, $result['message'] ?? 'MD-импорт не удался', [
+                                'title' => $result['title'] ?? '',
+                                'url'   => $task['data']['url'] ?? '',
+                                'kind'  => 'md_page',
                             ]);
                         }
                         break;

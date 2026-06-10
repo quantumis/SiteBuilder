@@ -30,9 +30,10 @@ $rep_import  = $rep_tracker->get_latest_import_for_report();
         if (!is_array($rep_errors)) $rep_errors = [];
 
         $rep_type_labels = [
-            'create'   => 'Создание сайта',
-            'add'      => 'Добавление страниц',
-            'rollback' => 'Откат',
+            'create'     => 'Создание сайта',
+            'add'        => 'Добавление страниц',
+            'md_restore' => 'MD Restore',
+            'rollback'   => 'Откат',
         ];
         $rep_type_label = $rep_type_labels[$rep_import->type] ?? $rep_import->type;
 

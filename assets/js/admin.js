@@ -405,6 +405,36 @@
         confirmation: null
     });
 
+    // === MD RESTORE tab ===
+    // Uses the same wireImporter as CREATE/ADD. The schedule-related field IDs point
+    // to elements that don't exist on this tab — jQuery treats those gracefully and
+    // the backend (md_start) ignores the schedule parameters entirely.
+    wireImporter({
+        action: 'site_builder_md_start',
+        ids: {
+            startBtn:       'sb-md-start-btn',
+            cancelBtn:      'sb-md-cancel-btn',
+            progressCard:   'sb-md-progress-card',
+            progressBar:    'sb-md-progress-bar',
+            progressCount:  'sb-md-progress-count',
+            progressTotal:  'sb-md-progress-total',
+            progressLabel:  'sb-md-progress-current-label',
+            progressTitle:  'sb-md-progress-title',
+            resultCard:     'sb-md-result-card',
+            resultTitle:    'sb-md-result-title',
+            resultMessage:  'sb-md-result-message',
+            scheduleMode:   'sb-md-no-such-id',
+            daysRow:        'sb-md-no-such-id',
+            immediateRow:   'sb-md-no-such-id',
+            waitWeekRow:    'sb-md-no-such-id',
+            folder:         'sb-md-folder',
+            days:           'sb-md-no-such-id',
+            immediate:      'sb-md-no-such-id',
+            waitWeek:       'sb-md-no-such-id'
+        },
+        confirmation: null
+    });
+
     // === ROLLBACK tab ===
     // Standalone wiring (no schedule, no form fields, no confirmation token —
     // just one button that fires the rollback_start AJAX and tracks progress).

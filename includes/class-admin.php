@@ -151,6 +151,7 @@ class Site_Builder_Admin {
         $tabs = [
             'create'   => ['label' => 'Создание сайта',     'icon' => 'plus'],
             'add'      => ['label' => 'Добавление страниц', 'icon' => 'plus-alt2'],
+            'md'       => ['label' => 'MD Restore',         'icon' => 'media-text'],
             'rollback' => ['label' => 'Откат',              'icon' => 'undo'],
             'report'   => ['label' => 'Отчёт',              'icon' => 'clipboard'],
             'settings' => ['label' => 'Настройки',          'icon' => 'admin-settings'],

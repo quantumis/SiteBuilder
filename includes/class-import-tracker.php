@@ -56,7 +56,7 @@ class Site_Builder_Import_Tracker {
         global $wpdb;
         $row = $wpdb->get_row(
             "SELECT * FROM {$this->imports_table}
-             WHERE status = 'completed' AND type IN ('create', 'add')
+             WHERE status = 'completed' AND type IN ('create', 'add', 'md_restore')
              ORDER BY id DESC LIMIT 1"
         );
         return $row ?: null;
@@ -73,7 +73,7 @@ class Site_Builder_Import_Tracker {
         $row = $wpdb->get_row(
             "SELECT * FROM {$this->imports_table}
              WHERE status IN ('completed', 'cancelled', 'failed', 'rolled_back')
-               AND type IN ('create', 'add')
+               AND type IN ('create', 'add', 'md_restore')
              ORDER BY id DESC LIMIT 1"
         );
         return $row ?: null;
