@@ -4,7 +4,7 @@ Tags: import, content, automation
 Requires at least: 6.0
 Tested up to: 6.6
 Requires PHP: 8.0
-Stable tag: 0.7.4aus
+Stable tag: 0.7.4aus2
 
 Внутренний инструмент массового импорта контента в WordPress.
 
@@ -27,6 +27,10 @@ Site Builder — это плагин для автоматического ра�
 4. В сайдбаре админки появится пункт меню «Site Builder».
 
 == Changelog ==
+
+= 0.7.4aus2 =
+* Корневая MD-страница теперь правильно становится главной страницей сайта (URL `/`), а не `/home/`. Технически: корневая страница создаётся с `post_parent = 0` и назначается через стандартные опции WordPress `show_on_front = 'page'` + `page_on_front = <id корневой>`. Все top-level страницы (раньше дети `/home/`) тоже теперь имеют `post_parent = 0` — значит их URL становятся `/online-casinos/`, `/about/`, и т.д. без лишнего `/home/` префикса. Дети сохраняют свою иерархию: `/online-casinos/5-gringos-casino/` остаётся вложенной правильно.
+* Старые опции `show_on_front` и `page_on_front` сохраняются в snapshot перед изменением — откат восстановит их прежние значения (как уже делает CREATE-режим).
 
 = 0.7.4aus =
 * Отдельная ветка для срочного восстановления сайтов из .md-снимков. Добавлен режим **MD Restore** — третий рядом с CREATE и ADD.

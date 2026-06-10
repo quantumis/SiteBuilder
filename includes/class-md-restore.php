@@ -22,9 +22,6 @@ class Site_Builder_MD_Restore {
     private Site_Builder_Import_Tracker $tracker;
     private int $import_id;
 
-    /** Resolved post_id for the root MD page ("home"), needed as parent for top-level pages. */
-    private ?int $root_post_id = null;
-
     public function __construct(Site_Builder_Import_Tracker $tracker, int $import_id) {
         $this->tracker = $tracker;
         $this->import_id = $import_id;
@@ -133,27 +130,34 @@ class Site_Builder_MD_Restore {
 
         $this->tracker->track_item($this->import_id, 'page', (int)$post_id);
 
-        // Remember the root post id so subsequent root-children can use it.
+        // The root MD page becomes the WordPress front page so that visiting "/"
+        // shows its content, while its URL slug ("home") effectively disappears.
+        // Crucially, this means top-level pages (depth=1) live at /slug/ rather than
+        // /home/slug/ — see resolve_parent_id() which returns 0 for empty segments.
         if ($is_root) {
-            $this->root_post_id = (int)$post_id;
-            update_option('site_builder_md_root_id_' . $this->import_id, (int)$post_id);
+            // Snapshot original options before changing — rollback restores them.
+            $this->tracker->track_item($this->import_id, 'option_snapshot', null, null, [
+                'show_on_front' => get_option('show_on_front'),
+                'page_on_front' => get_option('page_on_front'),
+            ]);
+            update_option('show_on_front', 'page');
+            update_option('page_on_front', (int)$post_id);
         }
 
         return ['ok' => true, 'title' => $title, 'message' => 'Создана', 'post_id' => (int)$post_id];
     }
 
     /**
-     * Walk the segment chain from the root and create any missing intermediate pages
+     * Walk the segment chain from the site root and create any missing intermediate pages
      * as empty placeholders. Each placeholder is tracked like a real page so rollback
      * removes it cleanly.
      *
-     * Returns the post_id of the deepest segment, or null if even the root MD page
-     * itself is missing (in which case nothing can be done).
+     * Returns the post_id of the deepest segment, or null if the chain is empty.
      */
     private function autocreate_missing_chain(array $segments): ?int {
-        $parent_id = $this->root_post_id ?? (int)get_option('site_builder_md_root_id_' . $this->import_id, 0);
-        if (!$parent_id) return null;
+        if (empty($segments)) return 0;
 
+        $parent_id = 0;
         foreach ($segments as $segment) {
             $found = get_posts([
                 'post_type'      => 'page',
@@ -193,23 +197,23 @@ class Site_Builder_MD_Restore {
      *
      * Returns null if any link in the chain cannot be found (caller treats as error).
      */
+    /**
+     * Resolve the WP post_id of the deepest ancestor described by $segments.
+     * E.g. for segments=['slots', 'pokies'] returns id of the "pokies" page under "slots".
+     * Empty segments → returns 0 (top-level pages have post_parent = 0; the root MD page
+     * lives as a sibling, designated as the WP front page via show_on_front/page_on_front).
+     *
+     * Returns null if any link in the chain cannot be found (caller treats as error).
+     */
     private function resolve_parent_id(array $segments): ?int {
-        // Top-level children → parented to the root MD page
         if (empty($segments)) {
-            if ($this->root_post_id) return $this->root_post_id;
-            // Within the same batch the root may have been created and we lost the in-memory
-            // reference (e.g. across batches in the same import).
-            $stored = (int)get_option('site_builder_md_root_id_' . $this->import_id, 0);
-            if ($stored) {
-                $this->root_post_id = $stored;
-                return $stored;
-            }
-            return null;
+            // Top-level pages live at the site root. The root MD page is NOT their parent
+            // (otherwise their URLs would carry a /home/ prefix); it's their sibling,
+            // distinguished only by being the WP front page.
+            return 0;
         }
 
-        $parent_id = $this->root_post_id ?? (int)get_option('site_builder_md_root_id_' . $this->import_id, 0);
-        if (!$parent_id) return null;
-
+        $parent_id = 0;
         foreach ($segments as $segment) {
             $found = get_posts([
                 'post_type'      => 'page',
@@ -511,11 +515,4 @@ class Site_Builder_MD_Restore {
         return array_map('trim', explode('|', $line));
     }
 
-    /**
-     * Cleanup hook called once per import when md_restore finishes —
-     * removes the temporary option that tracked the root post id.
-     */
-    public static function cleanup_after_import(int $import_id): void {
-        delete_option('site_builder_md_root_id_' . $import_id);
-    }
 }
