@@ -15,6 +15,10 @@ class Site_Builder_Ajax_Handler {
     public function __construct() {
         add_action('wp_ajax_site_builder_create_start',     [$this, 'create_start']);
         add_action('wp_ajax_site_builder_add_start',        [$this, 'add_start']);
+        add_action('wp_ajax_site_builder_md_start',         [$this, 'md_start']);
+        add_action('wp_ajax_site_builder_fsr_start',        [$this, 'fsr_start']);
+        add_action('wp_ajax_site_builder_fsr_save_mapping', [$this, 'fsr_save_mapping']);
+        add_action('wp_ajax_site_builder_fsr_get_mapping',  [$this, 'fsr_get_mapping']);
         add_action('wp_ajax_site_builder_rollback_start',   [$this, 'rollback_start']);
         add_action('wp_ajax_site_builder_process_batch',    [$this, 'process_batch']);
         add_action('wp_ajax_site_builder_cancel',           [$this, 'cancel']);
@@ -303,6 +307,214 @@ class Site_Builder_Ajax_Handler {
     }
 
     /**
+     * Endpoint: start a MD-restore import.
+     *
+     * MD-restore is a separate mode for rebuilding sites from a content/ folder of
+     * .md files. Unlike CREATE/ADD it doesn't touch the theme, doesn't manage a menu,
+     * and doesn't deal with images — the .md files are pure text content. Page
+     * hierarchy is reconstructed from each file's "# URL:" header.
+     */
+    public function md_start(): void {
+        $this->authorize();
+
+        $folder_raw = isset($_POST['folder']) ? sanitize_text_field(wp_unslash($_POST['folder'])) : '';
+        $folder = Site_Builder_Helpers::sanitize_folder_name($folder_raw);
+        if (!$folder) {
+            wp_send_json_error(['message' => 'Некорректное имя папки']);
+        }
+
+        $source_dir = ABSPATH . $folder;
+        if (!is_dir($source_dir)) {
+            wp_send_json_error(['message' => 'Папка "' . esc_html($folder) . '" не найдена в корне сайта']);
+        }
+
+        $tracker = new Site_Builder_Import_Tracker();
+        if ($tracker->get_lock() !== null) {
+            wp_send_json_error(['message' => 'Уже выполняется другой импорт. Дождитесь его завершения или нажмите "Прервать и сбросить".']);
+        }
+
+        $settings = [];
+        $import_id = $tracker->create_import('md_restore', $folder, $settings, get_current_user_id());
+        if (!$tracker->acquire_lock($import_id, get_current_user_id())) {
+            $tracker->delete_import($import_id);
+            wp_send_json_error(['message' => 'Не удалось захватить блокировку импорта']);
+        }
+
+        try {
+            $builder = new Site_Builder_Task_Builder();
+            $queue = $builder->build_md_queue($source_dir);
+        } catch (Throwable $e) {
+            $tracker->release_lock();
+            $tracker->mark_finished($import_id, 'failed');
+            wp_send_json_error(['message' => 'Ошибка построения очереди: ' . $e->getMessage()]);
+        }
+
+        if (empty($queue)) {
+            $tracker->release_lock();
+            $tracker->mark_finished($import_id, 'failed');
+            wp_send_json_error(['message' => 'В папке "' . esc_html($folder) . '" не найдены .md-файлы с заголовком "# URL:"']);
+        }
+
+        // MD-restore tasks are lightweight (no image processing), so we use the larger
+        // flat-ADD batch size.
+        $settings['batch_size']    = Site_Builder_Settings::batch_add_flat();
+        $settings['resolved_root'] = $source_dir;
+
+        $tracker->update_import($import_id, [
+            'status'   => 'running',
+            'settings' => wp_json_encode($settings),
+        ]);
+        $tracker->set_queue($import_id, $queue);
+
+        wp_send_json_success([
+            'import_id'  => $import_id,
+            'total'      => count($queue),
+            'batch_size' => (int)$settings['batch_size'],
+        ]);
+    }
+
+    /**
+     * Endpoint: start an FSR (File System Routing) import.
+     *
+     * FSR is the canonical archive format for v1.0.0: a Next.js-like folder tree
+     * where each folder is one page (with flags in its name), and content lives
+     * in index.md or index.html. Pre-validation runs first — global slug
+     * uniqueness violations abort; year-in-slug and unknown flags only warn.
+     */
+    public function fsr_start(): void {
+        $this->authorize();
+
+        $folder_raw = isset($_POST['folder']) ? sanitize_text_field(wp_unslash($_POST['folder'])) : '';
+        $folder = Site_Builder_Helpers::sanitize_folder_name($folder_raw);
+        if (!$folder) {
+            wp_send_json_error(['message' => 'Некорректное имя папки']);
+        }
+
+        $source_dir = ABSPATH . $folder;
+        if (!is_dir($source_dir)) {
+            wp_send_json_error(['message' => 'Папка "' . esc_html($folder) . '" не найдена в корне сайта']);
+        }
+
+        $tracker = new Site_Builder_Import_Tracker();
+        if ($tracker->get_lock() !== null) {
+            wp_send_json_error(['message' => 'Уже выполняется другой импорт. Дождитесь его завершения или нажмите "Прервать и сбросить".']);
+        }
+
+        $settings = [];
+        $import_id = $tracker->create_import('fsr', $folder, $settings, get_current_user_id());
+        if (!$tracker->acquire_lock($import_id, get_current_user_id())) {
+            $tracker->delete_import($import_id);
+            wp_send_json_error(['message' => 'Не удалось захватить блокировку импорта']);
+        }
+
+        try {
+            $builder = new Site_Builder_Task_Builder();
+            $queue = $builder->build_fsr_queue($source_dir);
+        } catch (Throwable $e) {
+            $tracker->release_lock();
+            $tracker->mark_finished($import_id, 'failed');
+            wp_send_json_error(['message' => 'Ошибка построения очереди: ' . $e->getMessage()]);
+        }
+
+        // Blocking errors abort before any pages get created
+        if (!empty($builder->fsr_errors)) {
+            $tracker->release_lock();
+            $tracker->mark_finished($import_id, 'failed');
+            wp_send_json_error([
+                'message' => 'Архив не прошёл валидацию',
+                'errors'  => $builder->fsr_errors,
+            ]);
+        }
+
+        if (empty($queue)) {
+            $tracker->release_lock();
+            $tracker->mark_finished($import_id, 'failed');
+            wp_send_json_error(['message' => 'В папке "' . esc_html($folder) . '" не найдены страницы (index.md или index.html)']);
+        }
+
+        // Pre-log warnings into the import journal so they show up in the report
+        foreach ($builder->fsr_warnings as $w) {
+            $tracker->append_error($import_id, $w, ['kind' => 'fsr_warning']);
+        }
+
+        $settings['batch_size']    = Site_Builder_Settings::batch_add_flat();
+        $settings['resolved_root'] = $source_dir;
+
+        $tracker->update_import($import_id, [
+            'status'   => 'running',
+            'settings' => wp_json_encode($settings),
+        ]);
+        $tracker->set_queue($import_id, $queue);
+
+        wp_send_json_success([
+            'import_id'  => $import_id,
+            'total'      => count($queue),
+            'batch_size' => (int)$settings['batch_size'],
+            'warnings'   => $builder->fsr_warnings,
+        ]);
+    }
+
+    /**
+     * Endpoint: return the current SEO field mapping plus the full option list
+     * per slot (KNOWN_KEYS + DB keys, deduplicated). Used to render step 1.
+     *
+     * The option list is independent of DB contents: even on a brand-new site
+     * with empty wp_postmeta, the user sees Yoast/Rank Math/AIOSEO/etc. as
+     * choices. Keys that don't yet exist in the DB are simply created when
+     * the first FSR import writes to them.
+     */
+    public function fsr_get_mapping(): void {
+        $this->authorize();
+
+        $db_keys = Site_Builder_Field_Mapping::get_all_meta_keys(true);
+        $current = Site_Builder_Field_Mapping::get_mapping();
+
+        $slots = [];
+        foreach (Site_Builder_Field_Mapping::slot_labels() as $slot_key => $info) {
+            $selected = $current[$slot_key] ?? [];
+            $options  = Site_Builder_Field_Mapping::build_options_for_slot($slot_key, $db_keys, $selected);
+            $slots[] = [
+                'slot'     => $slot_key,
+                'label'    => $info['label'],
+                'hint'     => $info['hint'],
+                'selected' => $selected,
+                'options'  => $options,
+            ];
+        }
+
+        wp_send_json_success([
+            'slots'      => $slots,
+            'configured' => Site_Builder_Field_Mapping::has_been_configured(),
+        ]);
+    }
+
+    /**
+     * Endpoint: save the user's SEO field mapping. Body shape:
+     *   mapping[seo_title][]=_yoast_wpseo_title&mapping[seo_title][]=rank_math_title
+     *   mapping[meta_description][]=_yoast_wpseo_metadesc
+     *   ...
+     */
+    public function fsr_save_mapping(): void {
+        $this->authorize();
+
+        $raw = $_POST['mapping'] ?? [];
+        if (!is_array($raw)) $raw = [];
+
+        // Sanitize each value before passing to the storage layer (which does
+        // its own regex check, but defence in depth)
+        $clean = [];
+        foreach ($raw as $slot => $keys) {
+            if (!is_array($keys)) continue;
+            $clean[(string)$slot] = array_map(function ($v) {
+                return sanitize_text_field(wp_unslash((string)$v));
+            }, $keys);
+        }
+        Site_Builder_Field_Mapping::save_mapping($clean);
+
+        wp_send_json_success(['mapping' => Site_Builder_Field_Mapping::get_mapping()]);
+    }
+
+    /**
      * Endpoint: process the next batch of tasks for an in-progress import.
      */
     public function process_batch(): void {
@@ -350,6 +562,8 @@ class Site_Builder_Ajax_Handler {
         $wipe = new Site_Builder_Wipe_Handler();
         $articles_setup = new Site_Builder_Articles_Setup($tracker, $import_id, $menu_id);
         $rollback = new Site_Builder_Rollback_Handler();
+        $md_restore = new Site_Builder_MD_Restore($tracker, $import_id);
+        $fsr_importer = new Site_Builder_FSR_Importer($tracker, $import_id);
 
         $current_label = '';
         $processed_in_batch = 0;
@@ -401,6 +615,31 @@ class Site_Builder_Ajax_Handler {
                                 'title' => $result['title'] ?? '',
                                 'slug'  => $task['data']['slug'] ?? '',
                                 'kind'  => 'add_page',
+                            ]);
+                        }
+                        break;
+
+                    case 'md_page':
+                        $result = $md_restore->import_page($task);
+                        $current_label = ($result['title'] ?? '') . ' — ' . ($result['message'] ?? '');
+                        if (empty($result['ok'])) {
+                            $tracker->append_error($import_id, $result['message'] ?? 'MD-импорт не удался', [
+                                'title' => $result['title'] ?? '',
+                                'url'   => $task['data']['url'] ?? '',
+                                'kind'  => 'md_page',
+                            ]);
+                        }
+                        break;
+
+                    case 'fsr_page':
+                        $result = $fsr_importer->import_page($task);
+                        $current_label = ($result['title'] ?? '') . ' — ' . ($result['message'] ?? '');
+                        if (empty($result['ok'])) {
+                            $tracker->append_error($import_id, $result['message'] ?? 'FSR-импорт не удался', [
+                                'title' => $result['title'] ?? '',
+                                'slug'  => $task['data']['slug'] ?? '',
+                                'path'  => '/' . implode('/', $task['data']['segments'] ?? []),
+                                'kind'  => 'fsr_page',
                             ]);
                         }
                         break;

@@ -456,3 +456,196 @@
 .sb-reset-form button {
     color: #b32d2e;
 }
+
+/* ===========================================================
+   FSR Import tab — step indicator + field mapping wizard
+   =========================================================== */
+
+.sb-fsr-steps {
+    display: flex;
+    margin: 16px 0 20px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    overflow: hidden;
+    background: #fff;
+}
+.sb-fsr-step {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 18px;
+    background: #fafafa;
+    color: #777;
+    font-size: 13px;
+    border-right: 1px solid #ddd;
+}
+.sb-fsr-step:last-child { border-right: none; }
+.sb-fsr-step-active { background: #2271b1; color: #fff; }
+.sb-fsr-step-done   { background: #eaf5ea; color: #2e7d32; }
+.sb-fsr-step-num {
+    width: 24px; height: 24px;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, .08);
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 12px;
+    flex-shrink: 0;
+}
+.sb-fsr-step-active .sb-fsr-step-num { background: rgba(255, 255, 255, .25); }
+.sb-fsr-step-done .sb-fsr-step-num { background: #2e7d32; color: #fff; }
+.sb-fsr-step-done .sb-fsr-step-num::before { content: "✓"; }
+
+.sb-fsr-mapping-controls { margin: 14px 0 18px; }
+.sb-fsr-mapping-controls code {
+    background: #f0f0f1;
+    padding: 1px 5px;
+    border-radius: 2px;
+    font-size: 12px;
+}
+.sb-fsr-mapping-loading {
+    padding: 30px;
+    text-align: center;
+    color: #777;
+    font-style: italic;
+}
+
+.sb-fsr-mapping-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    margin-bottom: 16px;
+}
+.sb-fsr-mapping-row {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    gap: 24px;
+    align-items: start;
+    padding: 18px 0;
+    border-bottom: 1px solid #f0f0f0;
+}
+.sb-fsr-mapping-row:last-child { border-bottom: none; }
+
+.sb-fsr-fixed-field { padding-top: 4px; }
+.sb-fsr-fixed-field strong {
+    display: block;
+    margin-bottom: 4px;
+    font-size: 14px;
+}
+.sb-fsr-fixed-field .description {
+    font-size: 12px;
+    color: #666;
+    margin: 0 0 4px;
+    line-height: 1.4;
+}
+.sb-fsr-fixed-field code {
+    background: #f0f0f1;
+    padding: 1px 5px;
+    border-radius: 2px;
+    font-size: 11px;
+}
+.sb-fsr-auto-badge {
+    display: inline-block;
+    background: #eaf5ea; color: #2e7d32;
+    font-size: 11px;
+    padding: 1px 7px;
+    border-radius: 3px;
+    margin-top: 4px;
+}
+.sb-fsr-selected-count {
+    display: block;
+    font-size: 12px;
+    color: #888;
+    margin-top: 4px;
+}
+
+.sb-fsr-field-picker {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+.sb-fsr-filter-input {
+    width: 100%;
+    padding: 6px 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 13px;
+}
+.sb-fsr-keys-list {
+    max-height: 190px;
+    overflow-y: auto;
+    border: 1px solid #e2e8f0;
+    border-radius: 4px;
+    padding: 6px;
+    background: #fafafa;
+}
+.sb-fsr-key-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 6px;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 13px;
+}
+.sb-fsr-key-item:hover { background: #f0f0f1; }
+.sb-fsr-key-item code {
+    background: transparent;
+    padding: 0;
+    font-size: 12px;
+    color: #333;
+}
+.sb-fsr-key-item.sb-fsr-private code { color: #999; }
+.sb-fsr-empty-list {
+    padding: 18px;
+    text-align: center;
+    color: #999;
+    font-style: italic;
+    margin: 0;
+}
+
+.sb-fsr-save-status {
+    margin-left: 12px;
+    font-size: 13px;
+    color: #2e7d32;
+}
+.sb-fsr-save-status.sb-fsr-error { color: #b32d2e; }
+
+.sb-fsr-back-link {
+    text-decoration: none;
+    color: #2271b1;
+}
+.sb-fsr-mapping-summary {
+    margin-left: 12px;
+    font-size: 13px;
+    color: #666;
+}
+
+/* Badges for key items: existing in DB / known SEO plugin / custom */
+.sb-fsr-key-badge {
+    display: inline-block;
+    margin-left: 8px;
+    font-size: 10px;
+    padding: 1px 6px;
+    border-radius: 2px;
+    text-transform: uppercase;
+    letter-spacing: .3px;
+}
+.sb-fsr-badge-existing { background: #eaf5ea; color: #2e7d32; }
+.sb-fsr-badge-known    { background: #f0f6fc; color: #2271b1; }
+.sb-fsr-badge-custom   { background: #fcf9e8; color: #8a6d3b; }
+
+/* Custom-key input row */
+.sb-fsr-custom-key {
+    margin-top: 8px;
+    display: flex;
+    gap: 6px;
+    align-items: center;
+}
+.sb-fsr-custom-key-input {
+    flex: 1;
+    padding: 4px 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 12px;
+    font-family: Menlo, Consolas, monospace;
+}

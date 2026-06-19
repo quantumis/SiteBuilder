@@ -149,16 +149,18 @@ class Site_Builder_Admin {
         }
 
         $tabs = [
-            'create'   => ['label' => 'Создание сайта',     'icon' => 'plus'],
-            'add'      => ['label' => 'Добавление страниц', 'icon' => 'plus-alt2'],
-            'rollback' => ['label' => 'Откат',              'icon' => 'undo'],
-            'report'   => ['label' => 'Отчёт',              'icon' => 'clipboard'],
-            'settings' => ['label' => 'Настройки',          'icon' => 'admin-settings'],
+            'fsr'      => ['label' => 'FSR Import',          'icon' => 'category'],
+            'create'   => ['label' => 'Создание сайта',      'icon' => 'plus'],
+            'add'      => ['label' => 'Добавление страниц',  'icon' => 'plus-alt2'],
+            'md'       => ['label' => 'MD Restore',          'icon' => 'media-text'],
+            'rollback' => ['label' => 'Откат',               'icon' => 'undo'],
+            'report'   => ['label' => 'Отчёт',               'icon' => 'clipboard'],
+            'settings' => ['label' => 'Настройки',           'icon' => 'admin-settings'],
         ];
 
-        $current_tab = isset($_GET['tab']) ? sanitize_key(wp_unslash($_GET['tab'])) : 'create';
+        $current_tab = isset($_GET['tab']) ? sanitize_key(wp_unslash($_GET['tab'])) : 'fsr';
         if (!isset($tabs[$current_tab])) {
-            $current_tab = 'create';
+            $current_tab = 'fsr';
         }
 
         $active_import = $this->get_active_import_info();

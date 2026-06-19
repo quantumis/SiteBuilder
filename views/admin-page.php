@@ -8,7 +8,13 @@
     <p class="sb-intro">Инструмент массового импорта контента: создание сайта из архива, добавление страниц, откат и отчёт.</p>
 
     <?php if (!empty($active_import)):
-        $type_label = $active_import['type'] === 'create' ? 'Создание сайта' : 'Добавление страниц';
+        $type_label_map = [
+            'create'     => 'Создание сайта',
+            'add'        => 'Добавление страниц',
+            'md_restore' => 'MD Restore',
+            'fsr'        => 'FSR Import',
+        ];
+        $type_label = $type_label_map[$active_import['type']] ?? $active_import['type'];
         $progress = $active_import['total'] > 0
             ? round($active_import['processed'] / $active_import['total'] * 100)
             : 0;

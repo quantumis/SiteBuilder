@@ -16,6 +16,259 @@ class Site_Builder_Task_Builder {
     public string $resolved_root = '';
 
     /**
+     * After build_fsr_queue, holds warnings discovered during pre-scan
+     * (e.g. slug containing year, unknown flags). Each entry is a string.
+     */
+    public array $fsr_warnings = [];
+
+    /**
+     * After build_fsr_queue, holds blocking errors (e.g. duplicate slug across
+     * the whole tree, which violates the spec's global-uniqueness rule).
+     */
+    public array $fsr_errors = [];
+
+    /**
+     * Folders that the FSR scanner always skips. PROMTS and IMAGES are special
+     * archive folders (prompts are working material, images are referenced by
+     * path from md files but aren't themselves pages). The rest are common OS
+     * artefacts.
+     */
+    private const FSR_IGNORED_FOLDERS = [
+        'IMAGES', 'PROMTS', 'PROMPTS',
+        '.git', 'node_modules', '__MACOSX', '.DS_Store',
+    ];
+
+    /**
+     * Build an FSR-mode queue.
+     *
+     * Walks $source_dir recursively, treating each subfolder as a potential page:
+     *   - Folder name is parsed into slug + flags.
+     *   - If index.md or index.html exists in the folder, it becomes the page's
+     *     content; otherwise the folder is created as a container page (title
+     *     from menu label flag, or from slug).
+     *   - The archive's own index.md / index.html (the file directly in
+     *     $source_dir, no folder around it) is the root/front page.
+     *
+     * Pre-validation:
+     *   - GLOBAL slug uniqueness: spec says /articles/foo and /foo are "the same".
+     *     Any repeated slug at any depth is a blocking error.
+     *   - Slug containing a four-digit year (~~/my-slug-2026~~) is a warning,
+     *     not an error — real archives currently contain such slugs.
+     *   - Unknown flags are warnings.
+     *
+     * Sort order: depth ascending, then folder name. Guarantees parents exist
+     * before children.
+     */
+    public function build_fsr_queue(string $source_dir): array {
+        $this->fsr_warnings = [];
+        $this->fsr_errors   = [];
+        $this->resolved_root = $source_dir;
+
+        if (!is_dir($source_dir)) {
+            $this->fsr_errors[] = 'Папка архива не найдена: ' . $source_dir;
+            return [];
+        }
+
+        $tasks = [];
+
+        // 1. Root page — index.md or index.html directly in $source_dir.
+        $root_index = '';
+        foreach (['index.md', 'index.html'] as $candidate) {
+            $p = $source_dir . '/' . $candidate;
+            if (is_file($p)) { $root_index = $p; break; }
+        }
+        $tasks[] = [
+            'phase' => 'fsr',
+            'kind'  => 'fsr_page',
+            'data'  => [
+                'folder_path' => '',
+                'index_file'  => $root_index,
+                'slug'        => 'home',
+                'flags'       => Site_Builder_FSR_Importer::empty_flag_bag_public(),
+                'segments'    => [],
+                'is_root'     => true,
+                'depth'       => 0,
+            ],
+        ];
+
+        // 2. Walk subfolders.
+        $this->scan_fsr_folder($source_dir, [], $tasks);
+
+        // 3. Validate global slug uniqueness.
+        $slug_locations = [];
+        foreach ($tasks as $t) {
+            $slug = $t['data']['slug'];
+            $loc  = '/' . implode('/', $t['data']['segments']);
+            $slug_locations[$slug][] = $loc;
+        }
+        foreach ($slug_locations as $slug => $locations) {
+            if (count($locations) > 1) {
+                $this->fsr_errors[] = "Slug '{$slug}' встречается в нескольких местах (нарушает уникальность): "
+                    . implode(', ', $locations);
+            }
+        }
+
+        // 4. Sort by depth (parents first), then by slug for stable ordering.
+        usort($tasks, function ($a, $b) {
+            $da = (int)$a['data']['depth'];
+            $db = (int)$b['data']['depth'];
+            if ($da !== $db) return $da <=> $db;
+            return strcmp($a['data']['slug'], $b['data']['slug']);
+        });
+
+        return $tasks;
+    }
+
+    /**
+     * Recursive scanner for FSR mode. Pushes one task per page-folder into $tasks.
+     */
+    private function scan_fsr_folder(string $current_dir, array $parent_segments, array &$tasks): void {
+        $items = @scandir($current_dir);
+        if (!$items) return;
+
+        foreach ($items as $item) {
+            if ($item === '.' || $item === '..') continue;
+            $full = $current_dir . '/' . $item;
+            if (!is_dir($full)) continue;
+
+            // Skip ignored service folders. The check is case-insensitive on the
+            // first segment (so "IMAGES", "images", "Images" all match).
+            if (in_array($item, self::FSR_IGNORED_FOLDERS, true)
+                || in_array(strtoupper($item), self::FSR_IGNORED_FOLDERS, true)) {
+                continue;
+            }
+
+            $parsed = Site_Builder_FSR_Importer::parse_folder_name($item);
+            $slug   = $parsed['slug'];
+            $flags  = $parsed['flags'];
+
+            if ($slug === '') {
+                $this->fsr_warnings[] = "Папка без slug: '{$item}' — пропущена";
+                continue;
+            }
+
+            // Warning: slug contains a 4-digit year
+            if (preg_match('/(?<![0-9])(19|20)\d{2}(?![0-9])/u', $slug)) {
+                $this->fsr_warnings[] = "Slug '{$slug}' содержит год (рекомендуется убрать)";
+            }
+            // Warning: unknown flag tags
+            if (!empty($flags['raw_unknown'])) {
+                $this->fsr_warnings[] = "Папка '{$item}' содержит неизвестные флаги: "
+                    . implode(', ', $flags['raw_unknown']);
+            }
+
+            // Resolve index file (md or html) — empty string means container page
+            $index_file = '';
+            foreach (['index.md', 'index.html'] as $candidate) {
+                $p = $full . '/' . $candidate;
+                if (is_file($p)) { $index_file = $p; break; }
+            }
+
+            $segments = array_merge($parent_segments, [$slug]);
+            $tasks[] = [
+                'phase' => 'fsr',
+                'kind'  => 'fsr_page',
+                'data'  => [
+                    'folder_path' => $full,
+                    'index_file'  => $index_file,
+                    'slug'        => $slug,
+                    'flags'       => $flags,
+                    'segments'    => $segments,
+                    'is_root'     => false,
+                    'depth'       => count($segments),
+                ],
+            ];
+
+            // Recurse into children
+            $this->scan_fsr_folder($full, $segments, $tasks);
+        }
+    }
+
+    /**
+     * Build a MD-RESTORE-mode queue.
+     *
+     * Scans $source_dir recursively for .md files, parses each one's header to extract
+     * the URL, and arranges them into a queue sorted by URL depth. The root URL (path = '/')
+     * is processed first; then top-level paths; then their children, and so on. This
+     * ordering guarantees that parent pages exist by the time their children are processed.
+     */
+    public function build_md_queue(string $source_dir): array {
+        $md_files = [];
+        $rii = new RecursiveIteratorIterator(
+            new RecursiveDirectoryIterator($source_dir, RecursiveDirectoryIterator::SKIP_DOTS)
+        );
+        foreach ($rii as $f) {
+            if ($f->isFile() && strtolower($f->getExtension()) === 'md') {
+                $md_files[] = $f->getPathname();
+            }
+        }
+        sort($md_files);
+
+        $tasks = [];
+        foreach ($md_files as $path) {
+            $meta = $this->parse_md_header($path);
+            if (!$meta || empty($meta['url'])) continue;
+
+            $url_path = trim((string)parse_url($meta['url'], PHP_URL_PATH), '/');
+            $segments = $url_path === '' ? [] : array_values(array_filter(explode('/', $url_path)));
+            $is_root  = empty($segments);
+
+            $tasks[] = [
+                'phase' => 'md',
+                'kind'  => 'md_page',
+                'data'  => [
+                    'md_path'     => $path,
+                    'url'         => $meta['url'],
+                    'title'       => $meta['title'] ?? '',
+                    'description' => $meta['description'] ?? '',
+                    'is_root'     => $is_root,
+                    'segments'    => $segments,
+                    'depth'       => count($segments),
+                ],
+            ];
+        }
+
+        // Sort: root first, then by depth, then by URL for deterministic order
+        usort($tasks, function ($a, $b) {
+            $da = $a['data']['depth'];
+            $db = $b['data']['depth'];
+            if ($da !== $db) return $da <=> $db;
+            return strcmp($a['data']['url'], $b['data']['url']);
+        });
+
+        return $tasks;
+    }
+
+    /**
+     * Read the first ~30 lines of a .md and extract # URL / # Title / # Description.
+     * Returns null if the file can't be read or has no URL line.
+     */
+    private function parse_md_header(string $path): ?array {
+        $fp = @fopen($path, 'r');
+        if (!$fp) return null;
+        $header = '';
+        $lines_read = 0;
+        while ($lines_read < 30 && ($line = fgets($fp)) !== false) {
+            $header .= $line;
+            $lines_read++;
+            if (preg_match('/^-{10,}\s*$/', trim($line))) break;
+        }
+        fclose($fp);
+
+        $meta = ['url' => null, 'title' => null, 'description' => null];
+        if (preg_match_all('/^#\s*([^:\n]+):\s*(.*)$/mu', $header, $m, PREG_SET_ORDER)) {
+            foreach ($m as $row) {
+                $key = strtolower(trim($row[1]));
+                $val = trim($row[2]);
+                if ($key === 'url') $meta['url'] = $val;
+                elseif ($key === 'title') $meta['title'] = $val;
+                elseif ($key === 'description') $meta['description'] = $val;
+            }
+        }
+        return $meta['url'] ? $meta : null;
+    }
+
+    /**
      * Build a CREATE-mode queue.
      *
      * Queue structure:

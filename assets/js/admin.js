@@ -405,6 +405,324 @@
         confirmation: null
     });
 
+    // === MD RESTORE tab ===
+    // Uses the same wireImporter as CREATE/ADD. The schedule-related field IDs point
+    // to elements that don't exist on this tab — jQuery treats those gracefully and
+    // the backend (md_start) ignores the schedule parameters entirely.
+    wireImporter({
+        action: 'site_builder_md_start',
+        ids: {
+            startBtn:       'sb-md-start-btn',
+            cancelBtn:      'sb-md-cancel-btn',
+            progressCard:   'sb-md-progress-card',
+            progressBar:    'sb-md-progress-bar',
+            progressCount:  'sb-md-progress-count',
+            progressTotal:  'sb-md-progress-total',
+            progressLabel:  'sb-md-progress-current-label',
+            progressTitle:  'sb-md-progress-title',
+            resultCard:     'sb-md-result-card',
+            resultTitle:    'sb-md-result-title',
+            resultMessage:  'sb-md-result-message',
+            scheduleMode:   'sb-md-no-such-id',
+            daysRow:        'sb-md-no-such-id',
+            immediateRow:   'sb-md-no-such-id',
+            waitWeekRow:    'sb-md-no-such-id',
+            folder:         'sb-md-folder',
+            days:           'sb-md-no-such-id',
+            immediate:      'sb-md-no-such-id',
+            waitWeek:       'sb-md-no-such-id'
+        },
+        confirmation: null
+    });
+
+    // === FSR Import tab ===
+    // FSR is the canonical archive format for v1.0.0 (Next.js-like file system routing).
+    // The tab has two stages: (1) field mapping (sets up which meta_keys SEO data
+    // goes into), (2) import (folder name → Start). DOM-switching between them.
+
+    (function () {
+        var $grid = $('#sb-fsr-mapping-grid');
+        if (!$grid.length) return; // not on FSR tab
+
+        var $mappingStep    = $('#sb-fsr-mapping-step');
+        var $importStep     = $('#sb-fsr-import-step');
+        var $stepIndicators = $('.sb-fsr-step');
+        var $showPrivate    = $('#sb-fsr-show-private');
+        var $saveBtn        = $('#sb-fsr-save-mapping-btn');
+        var $saveStatus     = $('#sb-fsr-mapping-save-status');
+        var $backLink       = $('#sb-fsr-back-to-mapping');
+        var $summary        = $('#sb-fsr-mapping-summary');
+
+        var allKeys = [];
+        var slots = [];
+
+        function setStep(name) {
+            // 'mapping' or 'import'
+            if (name === 'import') {
+                $mappingStep.hide();
+                $importStep.show();
+                $stepIndicators.removeClass('sb-fsr-step-active');
+                $stepIndicators.filter('[data-step="mapping"]').addClass('sb-fsr-step-done');
+                $stepIndicators.filter('[data-step="import"]').addClass('sb-fsr-step-active');
+            } else {
+                $importStep.hide();
+                $mappingStep.show();
+                $stepIndicators.removeClass('sb-fsr-step-active sb-fsr-step-done');
+                $stepIndicators.filter('[data-step="mapping"]').addClass('sb-fsr-step-active');
+            }
+        }
+
+        function escHtml(s) {
+            return String(s).replace(/[&<>"']/g, function (c) {
+                return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+            });
+        }
+
+        function renderGrid(payload) {
+            slots = payload.slots || [];
+
+            if (slots.length === 0) {
+                $grid.html('<p class="sb-fsr-empty-list">Конфигурация слотов не загружена.</p>');
+                $saveBtn.prop('disabled', true);
+                return;
+            }
+
+            var html = '';
+            slots.forEach(function (slot) {
+                var selectedSet = {};
+                (slot.selected || []).forEach(function (k) { selectedSet[k] = true; });
+
+                html += '<div class="sb-fsr-mapping-row" data-slot="' + escHtml(slot.slot) + '">';
+                html +=   '<div class="sb-fsr-fixed-field">';
+                html +=     '<strong>' + escHtml(slot.label) + '</strong>';
+                html +=     '<p class="description">' + slot.hint + '</p>';
+                html +=     '<span class="sb-fsr-selected-count"></span>';
+                html +=   '</div>';
+                html +=   '<div class="sb-fsr-field-picker">';
+                html +=     '<input type="text" class="sb-fsr-filter-input" placeholder="Фильтр по имени поля…">';
+                html +=     '<div class="sb-fsr-keys-list">';
+
+                (slot.options || []).forEach(function (opt) {
+                    var key        = opt.key;
+                    var isPrivate  = key.charAt(0) === '_';
+                    var isSelected = !!selectedSet[key];
+                    var hide       = (isPrivate && !isSelected);
+
+                    var cls = 'sb-fsr-key-item';
+                    if (isPrivate) cls += ' sb-fsr-private';
+
+                    var badge = '';
+                    if (opt.in_db) {
+                        badge = '<span class="sb-fsr-key-badge sb-fsr-badge-existing" title="Поле уже есть в базе данных">есть в БД</span>';
+                    } else if (opt.recommended) {
+                        badge = '<span class="sb-fsr-key-badge sb-fsr-badge-known" title="Поле популярного SEO-плагина — будет создано при сохранении">будет создано</span>';
+                    } else {
+                        badge = '<span class="sb-fsr-key-badge sb-fsr-badge-custom" title="Пользовательский ключ">свой</span>';
+                    }
+
+                    html += '<label class="' + cls + '"' + (hide ? ' style="display:none"' : '') + '>';
+                    html +=   '<input type="checkbox" data-slot="' + escHtml(slot.slot) + '"';
+                    html +=          ' value="' + escHtml(key) + '"';
+                    html +=          (isSelected ? ' checked' : '') + '>';
+                    html +=   '<code>' + escHtml(key) + '</code>';
+                    html +=   badge;
+                    html += '</label>';
+                });
+
+                html +=     '</div>';
+                html +=     '<div class="sb-fsr-custom-key">';
+                html +=       '<input type="text" class="sb-fsr-custom-key-input"';
+                html +=              ' placeholder="Свой meta_key — например, _custom_seo_title" maxlength="255">';
+                html +=       '<button type="button" class="button sb-fsr-custom-key-add">Добавить</button>';
+                html +=     '</div>';
+                html +=   '</div>';
+                html += '</div>';
+            });
+
+            $grid.html(html);
+            wireGridInteractions();
+            updateSummary();
+        }
+
+        function wireGridInteractions() {
+            $grid.find('.sb-fsr-mapping-row').each(function () {
+                var $row = $(this);
+                var $filter = $row.find('.sb-fsr-filter-input');
+                var $count = $row.find('.sb-fsr-selected-count');
+                var slotName = $row.data('slot');
+
+                function updateCount() {
+                    var n = $row.find('input[type=checkbox]:checked').length;
+                    $count.text(n > 0 ? 'Выбрано: ' + n : 'Не выбрано');
+                }
+                updateCount();
+
+                $row.on('change', 'input[type=checkbox]', function () {
+                    updateCount();
+                    updateSummary();
+                });
+
+                $filter.on('input', function () {
+                    applyFilters($row);
+                });
+
+                // Add custom key: validate, prepend to keys list, check it
+                $row.find('.sb-fsr-custom-key-add').on('click', function () {
+                    var $input = $row.find('.sb-fsr-custom-key-input');
+                    var key = ($input.val() || '').trim();
+                    if (!/^[A-Za-z0-9_:\-]{1,255}$/.test(key)) {
+                        $input.css('border-color', '#b32d2e').focus();
+                        return;
+                    }
+                    $input.css('border-color', '');
+                    // Skip if already in the list
+                    var $existing = $row.find('.sb-fsr-keys-list input[value="' + key.replace(/"/g, '\\"') + '"]');
+                    if ($existing.length) {
+                        $existing.prop('checked', true).trigger('change');
+                        $input.val('');
+                        return;
+                    }
+                    var isPrivate = key.charAt(0) === '_';
+                    var cls = 'sb-fsr-key-item' + (isPrivate ? ' sb-fsr-private' : '');
+                    var html = '<label class="' + cls + '">';
+                    html +=     '<input type="checkbox" data-slot="' + escHtml(slotName) + '"';
+                    html +=            ' value="' + escHtml(key) + '" checked>';
+                    html +=     '<code>' + escHtml(key) + '</code>';
+                    html +=     '<span class="sb-fsr-key-badge sb-fsr-badge-custom" title="Пользовательский ключ">свой</span>';
+                    html += '</label>';
+                    $row.find('.sb-fsr-keys-list').prepend(html);
+                    $input.val('');
+                    updateCount();
+                    updateSummary();
+                });
+
+                // Allow Enter in the input to trigger Add
+                $row.find('.sb-fsr-custom-key-input').on('keydown', function (e) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        $row.find('.sb-fsr-custom-key-add').trigger('click');
+                    }
+                });
+            });
+        }
+
+        function applyFilters($row) {
+            var $filter = $row.find('.sb-fsr-filter-input');
+            var q = ($filter.val() || '').toLowerCase().trim();
+            var showPriv = $showPrivate.is(':checked');
+            $row.find('.sb-fsr-key-item').each(function () {
+                var $item = $(this);
+                var text = $item.find('code').text().toLowerCase();
+                var isPrivate = $item.hasClass('sb-fsr-private');
+                var isChecked = $item.find('input').is(':checked');
+                var matches = !q || text.indexOf(q) !== -1;
+                if (matches && (!isPrivate || showPriv || isChecked)) {
+                    $item.show();
+                } else {
+                    $item.hide();
+                }
+            });
+        }
+
+        function updateSummary() {
+            var total = $grid.find('input[type=checkbox]:checked').length;
+            $summary.text(total > 0 ? 'Маппинг сохранён: ' + total + ' полей выбрано' : '');
+        }
+
+        $showPrivate.on('change', function () {
+            $grid.find('.sb-fsr-mapping-row').each(function () {
+                applyFilters($(this));
+            });
+        });
+
+        $saveBtn.on('click', function () {
+            $saveStatus.removeClass('sb-fsr-error').text('Сохранение…');
+            $saveBtn.prop('disabled', true);
+
+            var mapping = {};
+            $grid.find('input[type=checkbox]:checked').each(function () {
+                var slot = $(this).data('slot');
+                var key = $(this).val();
+                if (!mapping[slot]) mapping[slot] = [];
+                mapping[slot].push(key);
+            });
+
+            $.ajax({
+                url: ajaxurl,
+                method: 'POST',
+                data: {
+                    action: 'site_builder_fsr_save_mapping',
+                    nonce: SiteBuilderData.nonce,
+                    mapping: mapping
+                }
+            }).done(function (resp) {
+                $saveBtn.prop('disabled', false);
+                if (resp && resp.success) {
+                    $saveStatus.text('✓ Сохранено').removeClass('sb-fsr-error');
+                    setStep('import');
+                } else {
+                    $saveStatus.addClass('sb-fsr-error')
+                        .text((resp && resp.data && resp.data.message) || 'Не удалось сохранить');
+                }
+            }).fail(function () {
+                $saveBtn.prop('disabled', false);
+                $saveStatus.addClass('sb-fsr-error').text('Ошибка сети — попробуйте ещё раз');
+            });
+        });
+
+        $backLink.on('click', function (e) {
+            e.preventDefault();
+            setStep('mapping');
+        });
+
+        // Initial load of the mapping
+        $.ajax({
+            url: ajaxurl,
+            method: 'POST',
+            data: {
+                action: 'site_builder_fsr_get_mapping',
+                nonce: SiteBuilderData.nonce
+            }
+        }).done(function (resp) {
+            if (resp && resp.success && resp.data) {
+                renderGrid(resp.data);
+            } else {
+                $grid.html('<p class="sb-fsr-empty-list">Не удалось загрузить список полей.</p>');
+            }
+        }).fail(function () {
+            $grid.html('<p class="sb-fsr-empty-list">Ошибка сети при загрузке списка полей.</p>');
+        });
+    })();
+
+    // Wire up the actual import button on step 2 (folder name → Start) using the
+    // standard importer plumbing. Schedule-related fields don't exist on this tab;
+    // backend ignores those parameters for FSR.
+    wireImporter({
+        action: 'site_builder_fsr_start',
+        ids: {
+            startBtn:       'sb-fsr-start-btn',
+            cancelBtn:      'sb-fsr-cancel-btn',
+            progressCard:   'sb-fsr-progress-card',
+            progressBar:    'sb-fsr-progress-bar',
+            progressCount:  'sb-fsr-progress-count',
+            progressTotal:  'sb-fsr-progress-total',
+            progressLabel:  'sb-fsr-progress-current-label',
+            progressTitle:  'sb-fsr-progress-title',
+            resultCard:     'sb-fsr-result-card',
+            resultTitle:    'sb-fsr-result-title',
+            resultMessage:  'sb-fsr-result-message',
+            scheduleMode:   'sb-fsr-no-such-id',
+            daysRow:        'sb-fsr-no-such-id',
+            immediateRow:   'sb-fsr-no-such-id',
+            waitWeekRow:    'sb-fsr-no-such-id',
+            folder:         'sb-fsr-folder',
+            days:           'sb-fsr-no-such-id',
+            immediate:      'sb-fsr-no-such-id',
+            waitWeek:       'sb-fsr-no-such-id'
+        },
+        confirmation: null
+    });
+
     // === ROLLBACK tab ===
     // Standalone wiring (no schedule, no form fields, no confirmation token —
     // just one button that fires the rollback_start AJAX and tracks progress).
