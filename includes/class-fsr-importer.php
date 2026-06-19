@@ -162,8 +162,14 @@ class Site_Builder_FSR_Importer {
         // (a) Save the raw flag bag for inspection. The keys do NOT start with '_'
         //     so they're visible in the standard Custom Fields panel (WordPress
         //     hides underscore-prefixed meta by default).
+        //
+        //     Note: WP Block Editor's Custom Fields panel only displays SCALAR
+        //     meta values, not arrays. fsr_flags is an array (serialized in DB),
+        //     so it shows up empty in the UI. To make flags visible at a glance
+        //     we additionally write fsr_flags_summary as a plain string.
         if (!empty($flags)) {
             update_post_meta($post_id, 'fsr_flags', $flags);
+            update_post_meta($post_id, 'fsr_flags_summary', self::flags_to_summary($flags));
         }
         if ($parsed['headline'] !== '') {
             update_post_meta($post_id, 'fsr_headline', $parsed['headline']);
@@ -353,6 +359,48 @@ class Site_Builder_FSR_Importer {
      */
     public static function empty_flag_bag_public(): array {
         return self::empty_flag_bag();
+    }
+
+    /**
+     * Return a one-line human-readable summary of a flag bag, suitable for
+     * display in Custom Fields or in the import report. Stable, terse format —
+     * lets a human verify at a glance which flags parsed and which didn't.
+     *
+     * Examples:
+     *   "M[order=6;label=Artículos] U A"
+     *   "F[label=Sobre Nosotros] U W"
+     *   "M[order=2] DLY"
+     *   "(нет флагов)"
+     */
+    public static function flags_to_summary(array $flags): string {
+        $parts = [];
+
+        if (!empty($flags['menu']['main'])) {
+            $sub = [];
+            if (isset($flags['menu']['order']))  $sub[] = 'order=' . $flags['menu']['order'];
+            if (isset($flags['menu']['depth']))  $sub[] = 'depth=' . $flags['menu']['depth'];
+            if (isset($flags['menu']['label']))  $sub[] = 'label=' . $flags['menu']['label'];
+            $parts[] = 'M' . ($sub ? '[' . implode(';', $sub) . ']' : '');
+        }
+        if (!empty($flags['footer']['enabled'])) {
+            $sub = [];
+            if (isset($flags['footer']['order'])) $sub[] = 'order=' . $flags['footer']['order'];
+            if (isset($flags['footer']['label'])) $sub[] = 'label=' . $flags['footer']['label'];
+            $parts[] = 'F' . ($sub ? '[' . implode(';', $sub) . ']' : '');
+        }
+        if (!empty($flags['utility']))  $parts[] = 'U';
+        if (!empty($flags['articles'])) $parts[] = 'A';
+        if (!empty($flags['about']))    $parts[] = 'W';
+        if (!empty($flags['news']))     $parts[] = 'N';
+        if (!empty($flags['events']))   $parts[] = 'E';
+        if (!empty($flags['dly'])) {
+            $parts[] = isset($flags['dly_date']) ? 'DLY=' . $flags['dly_date'] : 'DLY';
+        }
+        if (!empty($flags['raw_unknown'])) {
+            $parts[] = 'UNKNOWN(' . implode(',', $flags['raw_unknown']) . ')';
+        }
+
+        return empty($parts) ? '(нет флагов)' : implode(' ', $parts);
     }
 
     private function title_from_flags_or_slug(array $flags, string $slug): string {

@@ -143,12 +143,14 @@ $rep_import  = $rep_tracker->get_latest_import_for_report();
                         <span class="dashicons dashicons-clipboard"></span> Скопировать как таблицу
                     </button>
                 </h2>
+                <?php $rep_is_fsr = ($rep_import->type === 'fsr'); ?>
                 <div class="sb-table-scroll">
                     <table class="widefat striped" id="sb-pages-table">
                         <thead>
                             <tr>
                                 <th>Slug</th>
                                 <th>Заголовок</th>
+                                <?php if ($rep_is_fsr): ?><th>Флаги</th><?php endif; ?>
                                 <th>Статус</th>
                                 <th>Дата публикации</th>
                                 <th>Действия</th>
@@ -163,10 +165,24 @@ $rep_import  = $rep_tracker->get_latest_import_for_report();
                                     'pending' => 'На утверждении',
                                 ];
                                 $st = $status_labels[$rep_page->post_status] ?? $rep_page->post_status;
+                                $flags_summary = '';
+                                if ($rep_is_fsr) {
+                                    $flags_summary = (string)get_post_meta($rep_page->ID, 'fsr_flags_summary', true);
+                                    if ($flags_summary === '') {
+                                        // Fallback for pages imported before fsr_flags_summary was introduced
+                                        $raw = get_post_meta($rep_page->ID, 'fsr_flags', true);
+                                        if (is_array($raw)) {
+                                            $flags_summary = Site_Builder_FSR_Importer::flags_to_summary($raw);
+                                        }
+                                    }
+                                }
                             ?>
                                 <tr>
                                     <td><code><?php echo esc_html($rep_page->post_name); ?></code></td>
                                     <td><?php echo esc_html($rep_page->post_title); ?></td>
+                                    <?php if ($rep_is_fsr): ?>
+                                        <td><code class="sb-flags-summary"><?php echo esc_html($flags_summary); ?></code></td>
+                                    <?php endif; ?>
                                     <td>
                                         <span class="sb-page-status sb-page-status-<?php echo esc_attr($rep_page->post_status); ?>">
                                             <?php echo esc_html($st); ?>

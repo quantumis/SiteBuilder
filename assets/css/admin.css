@@ -649,3 +649,14 @@
     font-size: 12px;
     font-family: Menlo, Consolas, monospace;
 }
+
+/* Flags summary in FSR import report */
+.sb-flags-summary {
+    background: #f8f9fa;
+    border: 1px solid #e2e8f0;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 11px;
+    color: #333;
+    white-space: nowrap;
+}
