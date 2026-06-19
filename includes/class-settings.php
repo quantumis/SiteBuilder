@@ -31,6 +31,13 @@ class Site_Builder_Settings {
         // Stored as comma- or newline-separated strings; getters split them.
         'abbreviations'      => "NBA, NFL, NHL, MLB, WNBA, NCAA, MMA, UFC, EPL, UEFA, FIFA, MLS, PGA, LPGA, NASCAR, USA, UK, EU, NYC, LA, DC, CEO, CFO, CTO, COO, GDP, IPO, ROI, KPI, AI, API, URL, HTML, CSS, PDF, JS, TV, DVD, GPS, USB, FAQ, DIY",
         'excluded_folders'   => "hub, images, prompts, .DS_Store, .git, node_modules, __MACOSX",
+        // Visibility of legacy importers in the navigation. FSR is the canonical
+        // import method for v1.0.0+; CREATE/ADD/MD Restore remain available for
+        // edge cases (old archives, partial recovery) but are hidden by default
+        // to keep the UI focused.
+        'show_create_tab'    => 0,
+        'show_add_tab'       => 0,
+        'show_md_tab'        => 0,
     ];
 
     /** @var array|null In-process cache of the merged settings. */
@@ -153,6 +160,13 @@ class Site_Builder_Settings {
 
         if (isset($input['excluded_folders'])) {
             $new['excluded_folders'] = (string)$input['excluded_folders'];
+        }
+
+        // Legacy tab visibility. Unchecked checkboxes don't appear in $input at
+        // all (HTML standard), so we set 0 by default for each one and only
+        // flip to 1 when the key is present.
+        foreach (['show_create_tab', 'show_add_tab', 'show_md_tab'] as $k) {
+            $new[$k] = !empty($input[$k]) ? 1 : 0;
         }
 
         if (empty($errors)) {

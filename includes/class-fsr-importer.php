@@ -46,6 +46,18 @@ class Site_Builder_FSR_Importer {
     private int $menu_main_id;
     private int $menu_footer_id;
     private ?Site_Builder_FSR_Image_Resolver $image_resolver;
+    /**
+     * Schedule config for [DLY] pages. Shape:
+     *   ['mode' => 'instant'|'one_day'|'period', 'days' => int, 'wait_week' => bool, 'start_ts' => int]
+     * 'start_ts' is the unix timestamp used as t=0 for the delay calculation —
+     * passed in once at the start of the import so every page in the batch uses
+     * the same reference point.
+     */
+    private array $schedule = ['mode' => 'instant', 'days' => 60, 'wait_week' => false, 'start_ts' => 0];
+    /** Running counter of [DLY] pages encountered, used to stagger their dates. */
+    private int $dly_index = 0;
+    /** Total [DLY] pages in this import (set up-front so 'period' mode can divide correctly). */
+    private int $dly_total = 0;
 
     public function __construct(
         Site_Builder_Import_Tracker $tracker,
@@ -59,6 +71,18 @@ class Site_Builder_FSR_Importer {
         $this->menu_main_id = $menu_main_id;
         $this->menu_footer_id = $menu_footer_id;
         $this->image_resolver = $image_resolver;
+    }
+
+    /**
+     * Set the schedule configuration for DLY pages. Called once per import.
+     *
+     * @param array $schedule  ['mode' => 'instant'|'one_day'|'period', 'days' => int, 'wait_week' => bool, 'start_ts' => int]
+     * @param int   $dly_total Number of [DLY] pages in the entire import — used so 'period' mode can spread them evenly.
+     */
+    public function set_schedule(array $schedule, int $dly_total): void {
+        $this->schedule = array_merge($this->schedule, $schedule);
+        $this->dly_total = max(0, $dly_total);
+        $this->dly_index = 0;
     }
 
     /**
@@ -157,15 +181,48 @@ class Site_Builder_FSR_Importer {
         }
 
         // 5. Insert the page
-        $post_id = wp_insert_post([
+        // 5. Determine publication schedule for this page.
+        //
+        // [DLY] without date → use the import-wide schedule (staggered across days).
+        //                      The sequence index dly_seq is assigned by Task_Builder
+        //                      across the whole queue, so dates are deterministic
+        //                      regardless of which batch the page lands in.
+        // [DLY=YYYY-MM-DD]   → hard date, exactly that day at midnight local time.
+        // No DLY flag        → publish immediately (the normal case).
+        $post_status = 'publish';
+        $post_date   = '';
+        if (!empty($flags['dly'])) {
+            if (!empty($flags['dly_date'])) {
+                $dt = $flags['dly_date'] . ' 00:00:00';
+                if (strtotime($dt) > time()) {
+                    $post_status = 'future';
+                    $post_date   = $dt;
+                }
+            } else {
+                $dly_seq = (int)($data['dly_seq'] ?? 0);
+                $sched = $this->compute_dly_schedule($dly_seq);
+                if ($sched['date'] !== '' && strtotime($sched['date']) > time()) {
+                    $post_status = 'future';
+                    $post_date   = $sched['date'];
+                }
+            }
+        }
+
+        // 6. Insert the page.
+        $insert_args = [
             'post_title'   => $parsed['title'] !== '' ? $parsed['title'] : $slug,
             'post_name'    => $slug,
             'post_content' => $parsed['content'],
-            'post_status'  => 'publish',
+            'post_status'  => $post_status,
             'post_type'    => 'page',
             'post_parent'  => $parent_id,
             'menu_order'   => 0,
-        ], true);
+        ];
+        if ($post_status === 'future' && $post_date !== '') {
+            $insert_args['post_date']     = $post_date;
+            $insert_args['post_date_gmt'] = get_gmt_from_date($post_date);
+        }
+        $post_id = wp_insert_post($insert_args, true);
 
         if (is_wp_error($post_id) || !$post_id) {
             $err = is_wp_error($post_id) ? $post_id->get_error_message() : 'wp_insert_post вернул 0';
@@ -527,6 +584,46 @@ class Site_Builder_FSR_Importer {
      * Look for a branded asset file (logo or icon) in the archive's IMAGES/
      * folder, with PNG/JPG/SVG/ICO extensions tried in that order.
      */
+    /**
+     * Compute the publication date for the *current* DLY page (dly_seq-th one
+     * across the whole import) based on the import-wide schedule. Returns
+     * ['date' => 'Y-m-d H:i:s'].
+     *
+     * dly_seq is assigned by Task_Builder when the queue is built, so the date
+     * is deterministic regardless of which batch the page lands in.
+     *
+     * Modes:
+     *   - 'instant'  → empty date (caller will treat as publish-now)
+     *   - 'one_day'  → +1 day per DLY page: seq=0 → +1d, seq=1 → +2d, ...
+     *   - 'period'   → spread $dly_total pages evenly over $days days
+     *
+     * wait_week adds an upfront 7-day delay to every DLY publication.
+     */
+    private function compute_dly_schedule(int $dly_seq): array {
+        $mode      = (string)($this->schedule['mode']     ?? 'instant');
+        $days      = max(1, (int)($this->schedule['days'] ?? 60));
+        $wait_week = !empty($this->schedule['wait_week']);
+        $start_ts  = (int)($this->schedule['start_ts']    ?? 0);
+        if ($start_ts <= 0) $start_ts = time();
+
+        if ($mode === 'instant') {
+            return ['date' => ''];
+        }
+
+        $offset_seconds = 0;
+        if ($mode === 'one_day') {
+            $offset_seconds = ($dly_seq + 1) * 86400;
+        } elseif ($mode === 'period') {
+            $total = max(1, $this->dly_total);
+            $interval = (int)floor($days * 86400 / $total);
+            $offset_seconds = ($dly_seq + 1) * $interval;
+        }
+
+        if ($wait_week) $offset_seconds += 7 * 86400;
+
+        return ['date' => date('Y-m-d H:i:s', $start_ts + $offset_seconds)];
+    }
+
     private function find_branded_file(string $archive_root, string $stem): ?string {
         $dir = $archive_root . '/IMAGES';
         if (!is_dir($dir)) return null;

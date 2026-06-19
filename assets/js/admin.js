@@ -695,8 +695,7 @@
     })();
 
     // Wire up the actual import button on step 2 (folder name → Start) using the
-    // standard importer plumbing. Schedule-related fields don't exist on this tab;
-    // backend ignores those parameters for FSR.
+    // standard importer plumbing. FSR has a [DLY] schedule but no immediate-count.
     wireImporter({
         action: 'site_builder_fsr_start',
         ids: {
@@ -711,14 +710,14 @@
             resultCard:     'sb-fsr-result-card',
             resultTitle:    'sb-fsr-result-title',
             resultMessage:  'sb-fsr-result-message',
-            scheduleMode:   'sb-fsr-no-such-id',
-            daysRow:        'sb-fsr-no-such-id',
+            scheduleMode:   'sb-fsr-schedule-mode',
+            daysRow:        'sb-fsr-days-row',
             immediateRow:   'sb-fsr-no-such-id',
-            waitWeekRow:    'sb-fsr-no-such-id',
+            waitWeekRow:    'sb-fsr-wait-week-row',
             folder:         'sb-fsr-folder',
-            days:           'sb-fsr-no-such-id',
+            days:           'sb-fsr-days',
             immediate:      'sb-fsr-no-such-id',
-            waitWeek:       'sb-fsr-no-such-id'
+            waitWeek:       'sb-fsr-wait-week'
         },
         confirmation: null
     });

@@ -16,6 +16,20 @@ class Site_Builder_Admin {
         add_action('admin_enqueue_scripts', [$this, 'enqueue_assets']);
         add_action('admin_post_site_builder_save_settings', [$this, 'handle_save_settings']);
         add_action('admin_post_site_builder_reset_settings', [$this, 'handle_reset_settings']);
+        add_filter('update_footer', [$this, 'admin_footer_version'], 11);
+    }
+
+    /**
+     * Show the plugin version in the WordPress admin bottom-right corner —
+     * but only on Site Builder's own pages, so we don't override the WordPress
+     * version everywhere. Priority 11 ensures we run after core (priority 10).
+     */
+    public function admin_footer_version($content) {
+        $screen = function_exists('get_current_screen') ? get_current_screen() : null;
+        if (!$screen || strpos((string)$screen->id, self::MENU_SLUG) === false) {
+            return $content;
+        }
+        return 'Site Builder v' . SITE_BUILDER_VERSION;
     }
 
     /**
@@ -150,16 +164,29 @@ class Site_Builder_Admin {
 
         $tabs = [
             'fsr'      => ['label' => 'FSR Import',          'icon' => 'category'],
-            'create'   => ['label' => 'Создание сайта',      'icon' => 'plus'],
-            'add'      => ['label' => 'Добавление страниц',  'icon' => 'plus-alt2'],
-            'md'       => ['label' => 'MD Restore',          'icon' => 'media-text'],
-            'rollback' => ['label' => 'Откат',               'icon' => 'undo'],
-            'report'   => ['label' => 'Отчёт',               'icon' => 'clipboard'],
-            'settings' => ['label' => 'Настройки',           'icon' => 'admin-settings'],
         ];
+
+        // Legacy importers — visible only when the corresponding setting is on.
+        // Hidden by default so the v1.0.0+ UI stays focused on FSR.
+        $st = Site_Builder_Settings::all();
+        if (!empty($st['show_create_tab'])) {
+            $tabs['create'] = ['label' => 'Создание сайта',     'icon' => 'plus'];
+        }
+        if (!empty($st['show_add_tab'])) {
+            $tabs['add']    = ['label' => 'Добавление страниц', 'icon' => 'plus-alt2'];
+        }
+        if (!empty($st['show_md_tab'])) {
+            $tabs['md']     = ['label' => 'MD Restore',          'icon' => 'media-text'];
+        }
+
+        // These are always available.
+        $tabs['rollback'] = ['label' => 'Откат',     'icon' => 'undo'];
+        $tabs['report']   = ['label' => 'Отчёт',     'icon' => 'clipboard'];
+        $tabs['settings'] = ['label' => 'Настройки', 'icon' => 'admin-settings'];
 
         $current_tab = isset($_GET['tab']) ? sanitize_key(wp_unslash($_GET['tab'])) : 'fsr';
         if (!isset($tabs[$current_tab])) {
+            // Direct URL to a hidden legacy tab → bounce back to FSR
             $current_tab = 'fsr';
         }
 

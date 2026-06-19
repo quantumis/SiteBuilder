@@ -130,6 +130,20 @@ class Site_Builder_Task_Builder {
             return strcmp((string)($a['data']['slug'] ?? ''), (string)($b['data']['slug'] ?? ''));
         });
 
+        // 5. Assign a sequence index to every DLY page (without a hard date).
+        // The importer uses this to compute publication dates deterministically —
+        // independent of which batch a page lands in.
+        $dly_seq = 0;
+        foreach ($tasks as &$t) {
+            if (($t['kind'] ?? '') !== 'fsr_page') continue;
+            $flags = $t['data']['flags'] ?? [];
+            if (!empty($flags['dly']) && empty($flags['dly_date'])) {
+                $t['data']['dly_seq'] = $dly_seq;
+                $dly_seq++;
+            }
+        }
+        unset($t);
+
         return $tasks;
     }
 

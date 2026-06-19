@@ -64,6 +64,32 @@ if (!defined('ABSPATH')) {
                         <p class="description">Имя папки, лежащей в корне сайта рядом с <code>wp-config.php</code>. Только латинские буквы, цифры, дефис, подчёркивание и точка.</p>
                     </td>
                 </tr>
+                <tr>
+                    <th scope="row"><label for="sb-fsr-schedule-mode">Расписание для <code>[DLY]</code></label></th>
+                    <td>
+                        <select id="sb-fsr-schedule-mode">
+                            <option value="instant">Публиковать всё сразу (игнорировать DLY)</option>
+                            <option value="one_day">По одной DLY-странице в день</option>
+                            <option value="period">Растянуть по N дней</option>
+                        </select>
+                        <p class="description">Применяется только к страницам с флагом <code>[DLY]</code> без даты. Страницы с <code>[DLY=YYYY-MM-DD]</code> публикуются на указанную дату.</p>
+                    </td>
+                </tr>
+                <tr id="sb-fsr-days-row" style="display:none">
+                    <th scope="row"><label for="sb-fsr-days">Длительность растяжки</label></th>
+                    <td>
+                        <input type="number" id="sb-fsr-days" value="60" min="1" max="365" style="width:80px"> дней
+                    </td>
+                </tr>
+                <tr id="sb-fsr-wait-week-row" style="display:none">
+                    <th scope="row">Прогрев</th>
+                    <td>
+                        <label>
+                            <input type="checkbox" id="sb-fsr-wait-week">
+                            Отложить DLY-страницы ещё на неделю
+                        </label>
+                    </td>
+                </tr>
             </table>
 
             <p class="submit">

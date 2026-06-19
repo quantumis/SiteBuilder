@@ -136,6 +136,38 @@ if (!empty($_GET['sb_settings_errors'])) {
             <p class="description">Стандартные <code>.</code> и <code>..</code> добавляются автоматически.</p>
         </div>
 
+        <div class="sb-form-card">
+            <h2>Видимость legacy-режимов</h2>
+            <p class="description">
+                <strong>FSR Import</strong> — основной режим импорта для v1.0.0+.
+                Старые режимы (<strong>Создание сайта</strong>, <strong>Добавление страниц</strong>,
+                <strong>MD Restore</strong>) сохранены для совместимости со старыми архивами и аварийного восстановления,
+                но по умолчанию скрыты из навигации.
+                Включите чекбокс, если нужно работать с этими режимами.
+            </p>
+            <p>
+                <label>
+                    <input type="checkbox" name="sb_settings[show_create_tab]" value="1"
+                        <?php checked(!empty($st_settings['show_create_tab'])); ?>>
+                    Показывать вкладку <strong>«Создание сайта»</strong> (старый CREATE-режим)
+                </label>
+            </p>
+            <p>
+                <label>
+                    <input type="checkbox" name="sb_settings[show_add_tab]" value="1"
+                        <?php checked(!empty($st_settings['show_add_tab'])); ?>>
+                    Показывать вкладку <strong>«Добавление страниц»</strong> (старый ADD-режим)
+                </label>
+            </p>
+            <p>
+                <label>
+                    <input type="checkbox" name="sb_settings[show_md_tab]" value="1"
+                        <?php checked(!empty($st_settings['show_md_tab'])); ?>>
+                    Показывать вкладку <strong>«MD Restore»</strong> (аварийное восстановление из markdown-снапшотов)
+                </label>
+            </p>
+        </div>
+
         <p class="submit">
             <button type="submit" class="button button-primary button-large">
                 <span class="dashicons dashicons-yes"></span> Сохранить настройки
