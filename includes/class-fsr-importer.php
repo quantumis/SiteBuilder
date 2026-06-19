@@ -43,10 +43,14 @@ class Site_Builder_FSR_Importer {
 
     private Site_Builder_Import_Tracker $tracker;
     private int $import_id;
+    private int $menu_main_id;
+    private int $menu_footer_id;
 
-    public function __construct(Site_Builder_Import_Tracker $tracker, int $import_id) {
+    public function __construct(Site_Builder_Import_Tracker $tracker, int $import_id, int $menu_main_id = 0, int $menu_footer_id = 0) {
         $this->tracker = $tracker;
         $this->import_id = $import_id;
+        $this->menu_main_id = $menu_main_id;
+        $this->menu_footer_id = $menu_footer_id;
     }
 
     /**
@@ -153,10 +157,11 @@ class Site_Builder_FSR_Importer {
             }
         }
 
-        // 7. Stash the parsed flags + headline + headimg on the post for stage B/C
-        // to pick up without re-parsing the folder name and frontmatter. Keys do NOT
-        // start with '_' so they're visible in the standard Custom Fields panel
-        // (WordPress hides underscore-prefixed meta by default).
+        // 7. Apply flags.
+        //
+        // (a) Save the raw flag bag for inspection. The keys do NOT start with '_'
+        //     so they're visible in the standard Custom Fields panel (WordPress
+        //     hides underscore-prefixed meta by default).
         if (!empty($flags)) {
             update_post_meta($post_id, 'fsr_flags', $flags);
         }
@@ -165,6 +170,42 @@ class Site_Builder_FSR_Importer {
         }
         if ($parsed['headimg'] !== '') {
             update_post_meta($post_id, 'fsr_headimg', $parsed['headimg']);
+        }
+
+        // (b) Single-letter behaviour flags become individual post_meta entries
+        //     so themes can read them with simple get_post_meta($id, 'fsr_utility', true).
+        //     We always write 0/1, never delete — this way themes can rely on the key
+        //     being present and don't have to check existence separately.
+        update_post_meta($post_id, 'fsr_utility',        !empty($flags['utility'])  ? 1 : 0);
+        update_post_meta($post_id, 'fsr_articles_grid', !empty($flags['articles']) ? 1 : 0);
+        update_post_meta($post_id, 'fsr_about',          !empty($flags['about'])    ? 1 : 0);
+        update_post_meta($post_id, 'fsr_news_page',      !empty($flags['news'])     ? 1 : 0);
+        update_post_meta($post_id, 'fsr_events_page',    !empty($flags['events'])   ? 1 : 0);
+
+        // (c) Menu placement.
+        $menu_label = $parsed['title'] !== '' ? $parsed['title'] : $slug;
+        if (!empty($flags['menu']['main']) && $this->menu_main_id > 0) {
+            $this->add_to_menu(
+                $this->menu_main_id,
+                $post_id,
+                $flags['menu']['label'] ?? $menu_label,
+                $flags['menu']['order'] ?? null,
+                $segments,
+                'main'
+            );
+            if (isset($flags['menu']['depth'])) {
+                update_post_meta($post_id, 'fsr_menu_depth', (int)$flags['menu']['depth']);
+            }
+        }
+        if (!empty($flags['footer']['enabled']) && $this->menu_footer_id > 0) {
+            $this->add_to_menu(
+                $this->menu_footer_id,
+                $post_id,
+                $flags['footer']['label'] ?? $menu_label,
+                $flags['footer']['order'] ?? null,
+                $segments,
+                'footer'
+            );
         }
 
         $this->tracker->track_item($this->import_id, 'page', (int)$post_id);
@@ -695,5 +736,84 @@ class Site_Builder_FSR_Importer {
             $new_content = $original . "\n" . $replacement_html . "\n";
         }
         @file_put_contents($file_path, $new_content);
+    }
+
+    // -------------------------------------------------------------------------
+    // MENU PLACEMENT
+    // -------------------------------------------------------------------------
+
+    /**
+     * Add a page to one of the auto-created nav menus.
+     *
+     * Hierarchy: if a parent page (by URL segments) is already in the SAME menu,
+     * the new menu item is created as that parent's child. This means a Main menu
+     * tree like /articles → /articles/foo will be reproduced as a submenu IF both
+     * pages carry the [M] flag. Pages whose ancestors don't have [M] become
+     * top-level menu items.
+     *
+     * @param int    $menu_id   The nav-menu term id (main or footer).
+     * @param int    $post_id   The page being added.
+     * @param string $label     Display label (from [;label] in the flag, or page title).
+     * @param int|null $order   menu_order — explicit position (lower goes first), or null = auto.
+     * @param array  $segments  URL segments of the page being added.
+     * @param string $menu_kind 'main' or 'footer' — used to pick the right cache.
+     */
+    private function add_to_menu(int $menu_id, int $post_id, string $label, ?int $order, array $segments, string $menu_kind): void {
+        // Find the deepest ancestor that's already in this menu, walking upward.
+        $parent_menu_item_id = $this->find_menu_parent_for_segments($menu_id, $segments);
+
+        $args = [
+            'menu-item-title'     => $label,
+            'menu-item-object-id' => $post_id,
+            'menu-item-object'    => 'page',
+            'menu-item-type'      => 'post_type',
+            'menu-item-status'    => 'publish',
+            'menu-item-parent-id' => $parent_menu_item_id,
+        ];
+        if ($order !== null) {
+            $args['menu-item-position'] = $order;
+        }
+
+        $menu_item_id = wp_update_nav_menu_item($menu_id, 0, $args);
+        if (is_wp_error($menu_item_id) || !$menu_item_id) return;
+
+        $this->tracker->track_item($this->import_id, 'menu_item', (int)$menu_item_id);
+    }
+
+    /**
+     * Walk up the URL segment chain. For each ancestor, check whether a menu
+     * item for that page exists in $menu_id. Return the deepest match's
+     * menu_item_id, or 0 if no ancestor is in the menu (top-level placement).
+     */
+    private function find_menu_parent_for_segments(int $menu_id, array $segments): int {
+        // The page being added is at $segments; its potential parents are
+        // segments[0..n-2], segments[0..n-3], ..., segments[0..0].
+        // We want the DEEPEST match (longest prefix).
+        for ($len = count($segments) - 1; $len >= 1; $len--) {
+            $ancestor_segments = array_slice($segments, 0, $len);
+            $ancestor_id = $this->resolve_parent_id($ancestor_segments);
+            if (!$ancestor_id) continue;
+
+            // Find this page's menu item in the given menu
+            $menu_item_id = $this->find_menu_item_for_page($menu_id, $ancestor_id);
+            if ($menu_item_id) return $menu_item_id;
+        }
+        return 0;
+    }
+
+    /**
+     * Find the menu_item id (post_id of nav_menu_item) corresponding to a page,
+     * scoped to a specific menu. Returns 0 if no such item exists.
+     */
+    private function find_menu_item_for_page(int $menu_id, int $page_id): int {
+        $items = wp_get_nav_menu_items($menu_id);
+        if (!is_array($items)) return 0;
+        foreach ($items as $item) {
+            // For page-type menu items, object_id points to the page's post_id
+            if ((int)$item->object_id === $page_id && $item->object === 'page') {
+                return (int)$item->ID;
+            }
+        }
+        return 0;
     }
 }

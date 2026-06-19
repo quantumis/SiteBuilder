@@ -437,8 +437,27 @@ class Site_Builder_Ajax_Handler {
             $tracker->append_error($import_id, $w, ['kind' => 'fsr_warning']);
         }
 
-        $settings['batch_size']    = Site_Builder_Settings::batch_add_flat();
-        $settings['resolved_root'] = $source_dir;
+        // Create the two nav menus that [M] and [F] flags will populate.
+        // Delete any existing menu with the same name first (per-import isolation).
+        $menu_ids = [];
+        foreach (['main' => SITE_BUILDER_MENU_NAME, 'footer' => SITE_BUILDER_FOOTER_MENU_NAME] as $kind => $name) {
+            $existing = wp_get_nav_menu_object($name);
+            if ($existing) {
+                wp_delete_nav_menu($existing->term_id);
+            }
+            $new_id = wp_create_nav_menu($name);
+            if (!is_wp_error($new_id)) {
+                $menu_ids[$kind] = (int)$new_id;
+                $tracker->track_item($import_id, 'nav_menu', (int)$new_id);
+            } else {
+                $menu_ids[$kind] = 0;
+            }
+        }
+
+        $settings['batch_size']      = Site_Builder_Settings::batch_add_flat();
+        $settings['resolved_root']   = $source_dir;
+        $settings['menu_main_id']    = $menu_ids['main'];
+        $settings['menu_footer_id']  = $menu_ids['footer'];
 
         $tracker->update_import($import_id, [
             'status'   => 'running',
@@ -451,6 +470,10 @@ class Site_Builder_Ajax_Handler {
             'total'      => count($queue),
             'batch_size' => (int)$settings['batch_size'],
             'warnings'   => $builder->fsr_warnings,
+            'menus'      => [
+                'main'   => $menu_ids['main'],
+                'footer' => $menu_ids['footer'],
+            ],
         ]);
     }
 
@@ -563,7 +586,12 @@ class Site_Builder_Ajax_Handler {
         $articles_setup = new Site_Builder_Articles_Setup($tracker, $import_id, $menu_id);
         $rollback = new Site_Builder_Rollback_Handler();
         $md_restore = new Site_Builder_MD_Restore($tracker, $import_id);
-        $fsr_importer = new Site_Builder_FSR_Importer($tracker, $import_id);
+        $fsr_importer = new Site_Builder_FSR_Importer(
+            $tracker,
+            $import_id,
+            (int)($settings['menu_main_id'] ?? 0),
+            (int)($settings['menu_footer_id'] ?? 0)
+        );
 
         $current_label = '';
         $processed_in_batch = 0;
