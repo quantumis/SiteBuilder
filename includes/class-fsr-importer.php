@@ -721,7 +721,14 @@ class Site_Builder_FSR_Importer {
                 $payload = json_decode(base64_decode($m[1]), true);
                 if (is_array($payload)) {
                     $alt = esc_attr($payload['alt']);
-                    $src = esc_url($payload['src']);
+                    // NOT esc_url(): for relative paths like "IMAGES/foo.webp" or
+                    // "../../IMAGES/foo.webp" WordPress's esc_url() prepends "http://"
+                    // and turns the segment into a host — yielding the broken URL
+                    // "http://IMAGES/foo.webp". The image-resolver then sees a fully-
+                    // qualified URL and skips the file (its rule is "absolute = leave
+                    // alone"). esc_attr() is the correct escape for an HTML attribute
+                    // value and preserves the path verbatim.
+                    $src = esc_attr($payload['src']);
                     $cap = esc_html($payload['cap']);
                     $html .= "<figure><img src=\"{$src}\" alt=\"{$alt}\"><figcaption>{$cap}</figcaption></figure>\n";
                 }
@@ -732,7 +739,9 @@ class Site_Builder_FSR_Importer {
             // Standalone image (no caption)
             if (preg_match('/^!\[([^\]]*)\]\(([^)]+)\)\s*$/', $line, $m)) {
                 $alt = esc_attr($m[1]);
-                $src = esc_url($m[2]);
+                // Same reason as above — preserve the relative path so image-resolver
+                // can find the file on disk.
+                $src = esc_attr($m[2]);
                 $html .= "<p><img src=\"{$src}\" alt=\"{$alt}\"></p>\n";
                 $i++;
                 continue;
