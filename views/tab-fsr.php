@@ -92,16 +92,22 @@ if (!defined('ABSPATH')) {
                 </tr>
             </table>
 
-            <p class="submit">
-                <button type="button" class="button button-primary button-large" id="sb-fsr-start-btn">
-                    <span class="dashicons dashicons-controls-play"></span>
-                    Начать импорт
-                </button>
-                <button type="button" class="button" id="sb-fsr-cancel-btn" style="display:none;">
-                    <span class="dashicons dashicons-no-alt"></span>
-                    Отменить
-                </button>
-            </p>
+            <!-- Action buttons. Populated by JS depending on whether the site has
+                 existing pages: empty site → single "Создать сайт" button;
+                 non-empty → two buttons ("Создать заново" / "Добавить страницы")
+                 with a confirmation prompt for the destructive option. -->
+            <div id="sb-fsr-action-block">
+                <p class="sb-fsr-loading-action">Анализ текущего состояния сайта…</p>
+            </div>
+
+            <!-- Hidden bridge buttons that wireImporter binds its handlers to.
+                 The visible buttons (rendered by JS into #sb-fsr-action-block)
+                 trigger() these on click. They must exist in the DOM at page
+                 load time — jQuery .on() only attaches to existing elements. -->
+            <button type="button" id="sb-fsr-start-btn" style="display:none"></button>
+            <button type="button" id="sb-fsr-cancel-btn" class="button" style="display:none;">
+                <span class="dashicons dashicons-no-alt"></span> Отменить
+            </button>
         </div>
 
         <div class="sb-progress-card" id="sb-fsr-progress-card" style="display:none;">

@@ -40,6 +40,135 @@ class Site_Builder_Ajax_Handler {
     }
 
     /**
+     * Ensure a clean nav menu is ready for the FSR importer to populate. Returns
+     * the term_id, or 0 if everything failed.
+     *
+     * Lookup + creation can fail in surprising ways on long-lived sites:
+     *   - WordPress term cache may not refresh between wp_delete_nav_menu and
+     *     wp_create_nav_menu, so wp_create_nav_menu returns WP_Error('menu_exists')
+     *     even after a successful delete.
+     *   - Orphaned terms can exist (wp_terms row present but no matching
+     *     wp_term_taxonomy row for 'nav_menu') — wp_get_nav_menu_object returns
+     *     null, but wp_insert_term tries to reuse the existing wp_terms slug
+     *     and may fail.
+     *   - Other plugins may hook into 'wp_update_nav_menu' and block creation.
+     *
+     * Strategy is layered: each step records what it tried into the import
+     * journal as a debug message, so failures show up in the report rather
+     * than silently producing menu_id = 0.
+     */
+    private function ensure_menu_ready(string $name, string $mode, Site_Builder_Import_Tracker $tracker, int $import_id): int {
+        $log = function ($msg) use ($tracker, $import_id) {
+            $tracker->append_error($import_id, $msg, ['kind' => 'fsr_menu_debug']);
+        };
+
+        $existing = wp_get_nav_menu_object($name);
+
+        if ($mode === 'add' && $existing) {
+            $log(sprintf('Меню "%s" найдено (term_id=%d) — переиспользуем в режиме ADD', $name, (int)$existing->term_id));
+            return (int)$existing->term_id;
+        }
+
+        // CREATE mode: try delete + recreate. Log every step.
+        if ($existing) {
+            $log(sprintf('Меню "%s" найдено (term_id=%d), пробуем удалить перед пересозданием', $name, (int)$existing->term_id));
+            $deleted = wp_delete_nav_menu($existing->term_id);
+            clean_term_cache((int)$existing->term_id, 'nav_menu');
+            wp_cache_delete('last_changed', 'terms');
+
+            if (is_wp_error($deleted)) {
+                $log('wp_delete_nav_menu вернул ошибку: ' . $deleted->get_error_message());
+                $this->clear_menu_items((int)$existing->term_id);
+                $tracker->track_item($import_id, 'nav_menu', (int)$existing->term_id);
+                $log(sprintf('Переиспользуем существующее меню "%s" (term_id=%d), очистив его пункты', $name, (int)$existing->term_id));
+                return (int)$existing->term_id;
+            }
+            if ($deleted === false) {
+                $log('wp_delete_nav_menu вернул false — переиспользуем существующее меню');
+                $this->clear_menu_items((int)$existing->term_id);
+                $tracker->track_item($import_id, 'nav_menu', (int)$existing->term_id);
+                return (int)$existing->term_id;
+            }
+            $log('Меню удалено успешно');
+        } else {
+            $log(sprintf('Меню "%s" не существует, создаём новое', $name));
+        }
+
+        // Try wp_create_nav_menu first (the canonical way)
+        $new_id = wp_create_nav_menu($name);
+        if (!is_wp_error($new_id) && $new_id) {
+            $log(sprintf('Меню "%s" создано через wp_create_nav_menu (term_id=%d)', $name, (int)$new_id));
+            $tracker->track_item($import_id, 'nav_menu', (int)$new_id);
+            return (int)$new_id;
+        }
+        $err_msg = is_wp_error($new_id) ? $new_id->get_error_message() : 'не вернул ID';
+        $log(sprintf('wp_create_nav_menu провалился для "%s": %s. Пробуем альтернативные пути.', $name, $err_msg));
+
+        // Maybe the term reappeared between our delete and our create (cache lag).
+        // Look it up again.
+        $retry = wp_get_nav_menu_object($name);
+        if ($retry) {
+            $log(sprintf('Меню "%s" найдено повторно (term_id=%d) — переиспользуем', $name, (int)$retry->term_id));
+            $this->clear_menu_items((int)$retry->term_id);
+            $tracker->track_item($import_id, 'nav_menu', (int)$retry->term_id);
+            return (int)$retry->term_id;
+        }
+
+        // Try a slug lookup — maybe the menu exists by slug but with a corrupted state
+        $slug = sanitize_title($name);
+        $by_slug = get_term_by('slug', $slug, 'nav_menu');
+        if ($by_slug) {
+            $log(sprintf('Меню найдено по slug "%s" (term_id=%d) — переиспользуем', $slug, (int)$by_slug->term_id));
+            $this->clear_menu_items((int)$by_slug->term_id);
+            $tracker->track_item($import_id, 'nav_menu', (int)$by_slug->term_id);
+            return (int)$by_slug->term_id;
+        }
+
+        // Last-resort: bypass wp_create_nav_menu entirely and use wp_insert_term
+        // directly. This is what wp_create_nav_menu does internally but without
+        // its name-collision pre-check.
+        $inserted = wp_insert_term($name, 'nav_menu');
+        if (!is_wp_error($inserted) && isset($inserted['term_id'])) {
+            $log(sprintf('Меню "%s" создано через wp_insert_term (term_id=%d)', $name, (int)$inserted['term_id']));
+            $tracker->track_item($import_id, 'nav_menu', (int)$inserted['term_id']);
+            return (int)$inserted['term_id'];
+        }
+        $err2 = is_wp_error($inserted) ? $inserted->get_error_message() : 'не вернул term_id';
+        $log(sprintf('wp_insert_term тоже провалился: %s', $err2));
+
+        // If wp_insert_term returned WP_Error with a 'term_exists' code, the
+        // existing term_id is in the error data
+        if (is_wp_error($inserted) && $inserted->get_error_data('term_exists')) {
+            $existing_id = (int)$inserted->get_error_data('term_exists');
+            if ($existing_id > 0) {
+                $log(sprintf('wp_insert_term указал на существующий term_id=%d, проверяем его таксономию', $existing_id));
+                $term = get_term($existing_id, 'nav_menu');
+                if ($term && !is_wp_error($term)) {
+                    $this->clear_menu_items($existing_id);
+                    $tracker->track_item($import_id, 'nav_menu', $existing_id);
+                    return $existing_id;
+                }
+                $log('Этот term не относится к таксономии nav_menu — нужно ручное вмешательство в БД');
+            }
+        }
+
+        $log(sprintf('Все попытки получить меню "%s" провалились. Флаги [M]/[F] для него будут проигнорированы.', $name));
+        return 0;
+    }
+
+    /**
+     * Remove every item from a nav menu, leaving the menu itself intact.
+     * Used when we have to reuse an existing menu instead of recreating it.
+     */
+    private function clear_menu_items(int $menu_id): void {
+        $items = wp_get_nav_menu_items($menu_id);
+        if (!is_array($items)) return;
+        foreach ($items as $item) {
+            wp_delete_post((int)$item->ID, true);
+        }
+    }
+
+    /**
      * Endpoint: check if the site has existing pages (for the warning UI).
      */
     public function check_pages(): void {
@@ -390,6 +519,29 @@ class Site_Builder_Ajax_Handler {
             wp_send_json_error(['message' => 'Некорректное имя папки']);
         }
 
+        // Mode: 'create' (full site build from scratch — wipes existing) or
+        // 'add' (extend existing site, skip collisions and theme-wide assets).
+        $mode = isset($_POST['mode']) ? sanitize_key(wp_unslash($_POST['mode'])) : 'create';
+        if (!in_array($mode, ['create', 'add'], true)) {
+            $mode = 'create';
+        }
+
+        // Safety gate: 'create' on a non-empty site needs the destructive
+        // confirmation token. The user types "УДАЛИТЬ" into a confirmation box
+        // (same pattern as the legacy CREATE mode) to acknowledge that all
+        // existing pages and the front-page will be replaced.
+        $existing_pages = Site_Builder_Helpers::count_existing_pages();
+        if ($mode === 'create' && $existing_pages > 0) {
+            $confirmation = isset($_POST['confirmation']) ? trim((string)wp_unslash($_POST['confirmation'])) : '';
+            if ($confirmation !== 'УДАЛИТЬ') {
+                wp_send_json_error([
+                    'message' => 'На сайте уже есть страницы (' . $existing_pages . '). Чтобы создать сайт заново, нужно ввести подтверждение УДАЛИТЬ.',
+                    'needs_confirmation' => true,
+                    'existing_pages' => $existing_pages,
+                ]);
+            }
+        }
+
         // Schedule for [DLY] pages (no-flag pages always publish instantly)
         $schedule_mode = isset($_POST['schedule_mode']) ? sanitize_key(wp_unslash($_POST['schedule_mode'])) : 'instant';
         if (!in_array($schedule_mode, ['instant', 'one_day', 'period'], true)) {
@@ -417,7 +569,7 @@ class Site_Builder_Ajax_Handler {
 
         try {
             $builder = new Site_Builder_Task_Builder();
-            $queue = $builder->build_fsr_queue($source_dir);
+            $queue = $builder->build_fsr_queue($source_dir, $mode);
         } catch (Throwable $e) {
             $tracker->release_lock();
             $tracker->mark_finished($import_id, 'failed');
@@ -445,21 +597,20 @@ class Site_Builder_Ajax_Handler {
             $tracker->append_error($import_id, $w, ['kind' => 'fsr_warning']);
         }
 
-        // Create the two nav menus that [M] and [F] flags will populate.
-        // Delete any existing menu with the same name first (per-import isolation).
+        // Nav menus that [M] and [F] flags populate.
+        // CREATE mode: ideally delete the existing menu and create a fresh one.
+        //              In practice wp_delete_nav_menu + wp_create_nav_menu can
+        //              fail due to WordPress's term cache not refreshing between
+        //              the two calls — wp_create_nav_menu then returns WP_Error
+        //              'menu_exists' and we lose the menu_id entirely. To stay
+        //              robust, fall back to clearing items on the existing menu
+        //              and re-using its term_id.
+        // ADD mode:    re-use any existing menu; create only if missing.
+        //              Existing menu is NOT tracked for rollback in this case —
+        //              we don't want rollback to delete a menu the user already had.
         $menu_ids = [];
         foreach (['main' => SITE_BUILDER_MENU_NAME, 'footer' => SITE_BUILDER_FOOTER_MENU_NAME] as $kind => $name) {
-            $existing = wp_get_nav_menu_object($name);
-            if ($existing) {
-                wp_delete_nav_menu($existing->term_id);
-            }
-            $new_id = wp_create_nav_menu($name);
-            if (!is_wp_error($new_id)) {
-                $menu_ids[$kind] = (int)$new_id;
-                $tracker->track_item($import_id, 'nav_menu', (int)$new_id);
-            } else {
-                $menu_ids[$kind] = 0;
-            }
+            $menu_ids[$kind] = $this->ensure_menu_ready($name, $mode, $tracker, $import_id);
         }
 
         // Count [DLY] pages without explicit date — those are the ones subject
@@ -478,6 +629,7 @@ class Site_Builder_Ajax_Handler {
         $settings['resolved_root']   = $source_dir;
         $settings['menu_main_id']    = $menu_ids['main'];
         $settings['menu_footer_id']  = $menu_ids['footer'];
+        $settings['mode']            = $mode;
         $settings['schedule_mode']   = $schedule_mode;
         $settings['schedule_days']   = $schedule_days;
         $settings['schedule_wait_week'] = $schedule_wait_week;
@@ -636,6 +788,7 @@ class Site_Builder_Ajax_Handler {
         // mode resolves dates from start_ts which is fixed across the import.
         // For 'period' mode this means each page gets its date based on its position
         // *within the batch*, not the whole queue. Improvement to come if needed.
+        $fsr_importer->set_mode((string)($settings['mode'] ?? 'create'));
         $fsr_importer->set_schedule([
             'mode'      => (string)($settings['schedule_mode'] ?? 'instant'),
             'days'      => (int)($settings['schedule_days'] ?? 60),
@@ -657,7 +810,14 @@ class Site_Builder_Ajax_Handler {
                         break;
 
                     case 'wipe_finalize':
-                        $wipe->finalize_wipe($tracker);
+                        // FSR creates its menus in fsr_start (before wipe runs),
+                        // so we must NOT let finalize_wipe delete them here.
+                        // Legacy CREATE creates its menu in create_start AFTER
+                        // wipe runs, so it's safe for finalize_wipe to clean up.
+                        // The presence of menu_main_id in settings is set only by
+                        // fsr_start, so it's a clean signal of FSR vs CREATE.
+                        $is_fsr = isset($settings['menu_main_id']);
+                        $wipe->finalize_wipe($tracker, $is_fsr);
                         $current_label = 'Очистка завершена';
                         break;
 

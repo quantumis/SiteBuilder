@@ -18,16 +18,27 @@ class Site_Builder_Wipe_Handler {
 
     /**
      * Final wipe step: reset front-page, delete site-builder menu, clear previous import records.
+     *
+     * @param Site_Builder_Import_Tracker $tracker
+     * @param bool $preserve_menus When true, the plugin's nav menu is NOT deleted.
+     *                             Used by FSR which creates its menus in fsr_start
+     *                             (before the wipe phase runs in process_batch).
+     *                             Legacy CREATE leaves this false because it creates
+     *                             its menu later, after wipe completes.
      */
-    public function finalize_wipe(Site_Builder_Import_Tracker $tracker): void {
+    public function finalize_wipe(Site_Builder_Import_Tracker $tracker, bool $preserve_menus = false): void {
         // Reset front page settings
         update_option('show_on_front', 'posts');
         update_option('page_on_front', 0);
 
-        // Delete the plugin's nav menu if present
-        $menu = wp_get_nav_menu_object(SITE_BUILDER_MENU_NAME);
-        if ($menu) {
-            wp_delete_nav_menu($menu->term_id);
+        // Delete the plugin's nav menu if present — but only when called from
+        // legacy CREATE. FSR creates its menus before wipe runs (in fsr_start),
+        // so deleting them here would undo work we just did.
+        if (!$preserve_menus) {
+            $menu = wp_get_nav_menu_object(SITE_BUILDER_MENU_NAME);
+            if ($menu) {
+                wp_delete_nav_menu($menu->term_id);
+            }
         }
 
         // Remove import records older than the current one (rollback history is just "last")

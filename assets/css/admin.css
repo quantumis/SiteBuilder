@@ -660,3 +660,25 @@
     color: #333;
     white-space: nowrap;
 }
+
+/* FSR action block: choose between recreate / add */
+.sb-fsr-action-card {
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 16px 20px;
+    margin: 12px 0;
+    background: #fff;
+}
+.sb-fsr-action-card h3 {
+    margin: 0 0 8px;
+    font-size: 15px;
+}
+.sb-fsr-action-card p {
+    margin: 4px 0 12px;
+    color: #444;
+}
+.sb-fsr-loading-action {
+    color: #777;
+    font-style: italic;
+    padding: 16px 0;
+}

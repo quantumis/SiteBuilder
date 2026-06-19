@@ -59,7 +59,13 @@ class Site_Builder_Task_Builder {
      * Sort order: depth ascending, then folder name. Guarantees parents exist
      * before children.
      */
-    public function build_fsr_queue(string $source_dir): array {
+    /**
+     * @param string $source_dir Absolute path to the archive root
+     * @param string $mode       'create' (default) wipes existing pages first and
+     *                           initializes site assets; 'add' skips both — existing
+     *                           pages and menus are preserved.
+     */
+    public function build_fsr_queue(string $source_dir, string $mode = 'create'): array {
         $this->fsr_warnings = [];
         $this->fsr_errors   = [];
         $this->resolved_root = $source_dir;
@@ -71,8 +77,19 @@ class Site_Builder_Task_Builder {
 
         $tasks = [];
 
-        // 0. Initialization task: load logo/icon/styles.css. Runs before any
-        // pages (depth=-1 sorts first). One-shot per import.
+        // 0. CREATE mode: wipe everything that already exists, then re-create
+        //    from scratch. ADD mode: skip — existing pages and menus stay put.
+        if ($mode === 'create') {
+            foreach ($this->collect_existing_pages() as $post_id) {
+                $tasks[] = ['phase' => 'wipe', 'kind' => 'wipe_page', 'data' => ['post_id' => $post_id, 'depth' => -10]];
+            }
+            $tasks[] = ['phase' => 'wipe', 'kind' => 'wipe_finalize', 'data' => ['depth' => -10]];
+        }
+
+        // 0b. Initialization task: load logo/icon/styles.css. Runs before any
+        // pages (depth=-1 sorts first, just after wipe at depth=-10).
+        // In ADD mode the importer skips the actual work — task still runs but
+        // produces no side effects, keeping the queue shape stable.
         $tasks[] = [
             'phase' => 'fsr',
             'kind'  => 'fsr_init',

@@ -303,6 +303,12 @@
             if (cfg.confirmation) {
                 payload.confirmation = $('#' + cfg.confirmation.input).val() || '';
             }
+            // Mode is set by FSR's two-button UI just before triggering the click;
+            // we read it back here so it travels with the start payload.
+            if (typeof cfg.payloadExtras === 'function') {
+                var extras = cfg.payloadExtras() || {};
+                Object.keys(extras).forEach(function (k) { payload[k] = extras[k]; });
+            }
 
             $.post(SiteBuilderData.ajaxUrl, payload).done(function (resp) {
                 if (!resp || !resp.success) {
@@ -464,12 +470,88 @@
                 $stepIndicators.removeClass('sb-fsr-step-active');
                 $stepIndicators.filter('[data-step="mapping"]').addClass('sb-fsr-step-done');
                 $stepIndicators.filter('[data-step="import"]').addClass('sb-fsr-step-active');
+                renderActionBlock();
             } else {
                 $importStep.hide();
                 $mappingStep.show();
                 $stepIndicators.removeClass('sb-fsr-step-active sb-fsr-step-done');
                 $stepIndicators.filter('[data-step="mapping"]').addClass('sb-fsr-step-active');
             }
+        }
+
+        // Renders the action block (start buttons) at the bottom of step 2.
+        // On an empty site → single "Создать сайт" button.
+        // On a site with existing pages → two buttons (recreate + add) plus a
+        // confirmation input for the destructive option.
+        // The currently-chosen mode is stored on a hidden input that the
+        // wireImporter's payloadExtras reads at submit time.
+        function renderActionBlock() {
+            var $block = $('#sb-fsr-action-block');
+            if (!$block.length) return;
+
+            var existing = (SiteBuilderData && SiteBuilderData.existingPages) || 0;
+
+            var html = '<input type="hidden" id="sb-fsr-mode" value="create">';
+
+            if (existing > 0) {
+                html += '<div class="notice notice-warning inline" style="margin:16px 0;">';
+                html +=   '<p><strong>На сайте уже есть страницы (' + existing + ' шт.).</strong> Выберите режим импорта:</p>';
+                html += '</div>';
+
+                // RECREATE — destructive, needs confirmation
+                html += '<div class="sb-fsr-action-card">';
+                html +=   '<h3>Создать сайт заново</h3>';
+                html +=   '<p>Все существующие страницы будут <strong>удалены</strong>, меню пересозданы, лого/иконка/стили заменены на новые. Это полная переустановка.</p>';
+                html +=   '<p>';
+                html +=     '<label>Введите <code>УДАЛИТЬ</code> для подтверждения: ';
+                html +=     '<input type="text" id="sb-fsr-confirmation" placeholder="УДАЛИТЬ" autocomplete="off" style="width:160px">';
+                html +=     '</label>';
+                html +=   '</p>';
+                html +=   '<button type="button" class="button button-primary button-large sb-fsr-action-btn" data-mode="create" disabled>';
+                html +=     '<span class="dashicons dashicons-controls-play"></span> Создать сайт заново';
+                html +=   '</button>';
+                html += '</div>';
+
+                // ADD — safe, no confirmation
+                html += '<div class="sb-fsr-action-card">';
+                html +=   '<h3>Добавить страницы к существующему сайту</h3>';
+                html +=   '<p>Импортируются только <strong>новые</strong> страницы (с уникальным slug + parent). Существующие — пропускаются. Меню расширяются, лого/иконка/стили <strong>не меняются</strong>.</p>';
+                html +=   '<button type="button" class="button button-primary button-large sb-fsr-action-btn" data-mode="add">';
+                html +=     '<span class="dashicons dashicons-plus-alt2"></span> Добавить страницы';
+                html +=   '</button>';
+                html += '</div>';
+            } else {
+                html += '<div class="sb-fsr-action-card">';
+                html +=   '<p>На сайте пока нет страниц — будет создан новый сайт из архива.</p>';
+                html +=   '<button type="button" class="button button-primary button-large sb-fsr-action-btn" data-mode="create">';
+                html +=     '<span class="dashicons dashicons-controls-play"></span> Создать сайт';
+                html +=   '</button>';
+                html += '</div>';
+            }
+
+            // Note: the hidden #sb-fsr-start-btn and #sb-fsr-cancel-btn buttons
+            // live in the static HTML (tab-fsr.php) so wireImporter's click
+            // handlers are attached at page load. Don't recreate them here.
+
+            $block.html(html);
+
+            // Enable Create button only when confirmation matches keyword
+            var keyword = (SiteBuilderData && SiteBuilderData.wipeKeyword) || 'УДАЛИТЬ';
+            var $conf = $('#sb-fsr-confirmation');
+            if ($conf.length) {
+                $conf.on('input', function () {
+                    var ok = ($(this).val() || '').trim() === keyword;
+                    $('.sb-fsr-action-btn[data-mode="create"]').prop('disabled', !ok);
+                });
+            }
+
+            // Visible buttons → set mode, copy confirmation into the input the
+            // backend expects, then trigger the (hidden) wireImporter start button.
+            $('.sb-fsr-action-btn').on('click', function () {
+                var mode = $(this).data('mode') || 'create';
+                $('#sb-fsr-mode').val(mode);
+                $('#sb-fsr-start-btn').trigger('click');
+            });
         }
 
         function escHtml(s) {
@@ -719,7 +801,16 @@
             immediate:      'sb-fsr-no-such-id',
             waitWeek:       'sb-fsr-wait-week'
         },
-        confirmation: null
+        confirmation: null,
+        // Tell the backend which mode the user picked (create vs add) and pass
+        // the confirmation token along when present. Both fields live in the
+        // dynamically-rendered action block; we read them at submit time.
+        payloadExtras: function () {
+            return {
+                mode:         $('#sb-fsr-mode').val() || 'create',
+                confirmation: $('#sb-fsr-confirmation').val() || ''
+            };
+        }
     });
 
     // === ROLLBACK tab ===

@@ -16,20 +16,6 @@ class Site_Builder_Admin {
         add_action('admin_enqueue_scripts', [$this, 'enqueue_assets']);
         add_action('admin_post_site_builder_save_settings', [$this, 'handle_save_settings']);
         add_action('admin_post_site_builder_reset_settings', [$this, 'handle_reset_settings']);
-        add_filter('update_footer', [$this, 'admin_footer_version'], 11);
-    }
-
-    /**
-     * Show the plugin version in the WordPress admin bottom-right corner —
-     * but only on Site Builder's own pages, so we don't override the WordPress
-     * version everywhere. Priority 11 ensures we run after core (priority 10).
-     */
-    public function admin_footer_version($content) {
-        $screen = function_exists('get_current_screen') ? get_current_screen() : null;
-        if (!$screen || strpos((string)$screen->id, self::MENU_SLUG) === false) {
-            return $content;
-        }
-        return 'Site Builder v' . SITE_BUILDER_VERSION;
     }
 
     /**

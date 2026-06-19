@@ -47,6 +47,17 @@ class Site_Builder_FSR_Importer {
     private int $menu_footer_id;
     private ?Site_Builder_FSR_Image_Resolver $image_resolver;
     /**
+     * Operating mode:
+     *   - 'create' (default): full site import. Wipes existing pages BEFORE this
+     *     importer runs (see Task_Builder::build_fsr_queue), inserts the front
+     *     page, builds menus from scratch, sets logo/icon/styles.
+     *   - 'add': extend an existing site. Skips front-page injection, skips
+     *     init_site_assets entirely, treats slug+parent collisions as gentle
+     *     "already exists" warnings rather than errors. Menus and the front
+     *     page are left as the user configured them.
+     */
+    private string $mode = 'create';
+    /**
      * Schedule config for [DLY] pages. Shape:
      *   ['mode' => 'instant'|'one_day'|'period', 'days' => int, 'wait_week' => bool, 'start_ts' => int]
      * 'start_ts' is the unix timestamp used as t=0 for the delay calculation —
@@ -83,6 +94,14 @@ class Site_Builder_FSR_Importer {
         $this->schedule = array_merge($this->schedule, $schedule);
         $this->dly_total = max(0, $dly_total);
         $this->dly_index = 0;
+    }
+
+    /**
+     * Set operating mode. Accepts 'create' or 'add'; anything else is treated
+     * as 'create' to fail safe.
+     */
+    public function set_mode(string $mode): void {
+        $this->mode = ($mode === 'add') ? 'add' : 'create';
     }
 
     /**
@@ -176,6 +195,18 @@ class Site_Builder_FSR_Importer {
             'suppress_filters' => true,
         ]);
         if (!empty($existing)) {
+            // ADD mode: existing pages are expected — we're extending the site.
+            // Report as a successful "skipped" outcome (ok=true so it doesn't
+            // bloat the error count, with a clear message so the report shows it).
+            if ($this->mode === 'add') {
+                return [
+                    'ok'      => true,
+                    'title'   => $parsed['title'],
+                    'message' => 'Уже существует, пропущена (id=' . (int)$existing[0] . ')',
+                    'post_id' => (int)$existing[0],
+                    'skipped' => true,
+                ];
+            }
             return ['ok' => false, 'title' => $parsed['title'],
                 'message' => 'Страница с таким slug+parent уже существует (id=' . (int)$existing[0] . ')'];
         }
@@ -330,7 +361,7 @@ class Site_Builder_FSR_Importer {
         // To keep things working without forcing every theme to be rewritten,
         // we do the marker replacement when the marker is present, and the
         // standard front-page assignment always.
-        if ($is_root) {
+        if ($is_root && $this->mode === 'create') {
             $this->tracker->track_item($this->import_id, 'option_snapshot', null, null, [
                 'show_on_front' => get_option('show_on_front'),
                 'page_on_front' => get_option('page_on_front'),
@@ -342,6 +373,9 @@ class Site_Builder_FSR_Importer {
                 $this->inject_into_theme_front_page($parsed['content']);
             }
         }
+        // ADD mode: root page (if it even appears in an ADD archive — typically
+        // wouldn't) is just one more page. We do NOT touch page_on_front, do NOT
+        // inject into front-page.php — the user's existing home stays intact.
 
         // Build the result message — include image stats if any work was done
         $msg = 'Создана' . ($index_file === '' ? ' (контейнер)' : '');
@@ -484,6 +518,14 @@ class Site_Builder_FSR_Importer {
      */
     public function init_site_assets(string $archive_root): array {
         $stats = ['logo' => 0, 'icon' => 0, 'styles' => 0, 'messages' => []];
+
+        // ADD mode: preserve the user's existing logo, icon, and stylesheet —
+        // we're extending the site, not redoing it.
+        if ($this->mode === 'add') {
+            $stats['messages'][] = 'Режим расширения: лого/иконка/стили оставлены без изменений';
+            return $stats;
+        }
+
         if (!$this->image_resolver) {
             $stats['messages'][] = 'image resolver не передан (init пропущен)';
             return $stats;
