@@ -136,9 +136,18 @@ class Site_Builder_Rollback_Handler {
 
             case 'rollback_theme_file': {
                 $path = (string)($data['path'] ?? '');
-                $original = (string)($data['original'] ?? '');
-                if ($path && is_writable($path)) {
-                    @file_put_contents($path, $original);
+                $original = $data['original'] ?? '';
+
+                if ($path) {
+                    // original=null means "the file didn't exist before our import" —
+                    // remove it on rollback, don't recreate as an empty file.
+                    if ($original === null) {
+                        if (is_file($path)) @unlink($path);
+                    } else {
+                        if (is_writable($path) || (!file_exists($path) && is_writable(dirname($path)))) {
+                            @file_put_contents($path, (string)$original);
+                        }
+                    }
                 }
                 // Also drop the pristine snapshot for this file, so the next CREATE
                 // starts fresh.
@@ -158,7 +167,19 @@ class Site_Builder_Rollback_Handler {
                 $opts = $data['options'] ?? [];
                 if (is_array($opts)) {
                     foreach ($opts as $opt_name => $opt_value) {
-                        update_option($opt_name, $opt_value);
+                        // Special prefix theme_mod:KEY routes to set_theme_mod()
+                        // rather than update_option(). Used for theme-specific
+                        // settings like custom_logo that aren't regular options.
+                        if (strpos($opt_name, 'theme_mod:') === 0) {
+                            $mod_name = substr($opt_name, strlen('theme_mod:'));
+                            if ($opt_value === 0 || $opt_value === '' || $opt_value === null) {
+                                remove_theme_mod($mod_name);
+                            } else {
+                                set_theme_mod($mod_name, $opt_value);
+                            }
+                        } else {
+                            update_option($opt_name, $opt_value);
+                        }
                     }
                 }
                 return ['ok' => true, 'message' => 'Восстановлены опции'];

@@ -71,6 +71,17 @@ class Site_Builder_Task_Builder {
 
         $tasks = [];
 
+        // 0. Initialization task: load logo/icon/styles.css. Runs before any
+        // pages (depth=-1 sorts first). One-shot per import.
+        $tasks[] = [
+            'phase' => 'fsr',
+            'kind'  => 'fsr_init',
+            'data'  => [
+                'archive_root' => $source_dir,
+                'depth'        => -1,
+            ],
+        ];
+
         // 1. Root page — index.md or index.html directly in $source_dir.
         $root_index = '';
         foreach (['index.md', 'index.html'] as $candidate) {
@@ -94,11 +105,14 @@ class Site_Builder_Task_Builder {
         // 2. Walk subfolders.
         $this->scan_fsr_folder($source_dir, [], $tasks);
 
-        // 3. Validate global slug uniqueness.
+        // 3. Validate global slug uniqueness — only across actual page tasks
+        // (init/footer-like tasks have no slug and don't count).
         $slug_locations = [];
         foreach ($tasks as $t) {
-            $slug = $t['data']['slug'];
-            $loc  = '/' . implode('/', $t['data']['segments']);
+            if (($t['kind'] ?? '') !== 'fsr_page') continue;
+            $slug = $t['data']['slug'] ?? '';
+            if ($slug === '') continue;
+            $loc  = '/' . implode('/', $t['data']['segments'] ?? []);
             $slug_locations[$slug][] = $loc;
         }
         foreach ($slug_locations as $slug => $locations) {
@@ -113,7 +127,7 @@ class Site_Builder_Task_Builder {
             $da = (int)$a['data']['depth'];
             $db = (int)$b['data']['depth'];
             if ($da !== $db) return $da <=> $db;
-            return strcmp($a['data']['slug'], $b['data']['slug']);
+            return strcmp((string)($a['data']['slug'] ?? ''), (string)($b['data']['slug'] ?? ''));
         });
 
         return $tasks;

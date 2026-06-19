@@ -84,6 +84,16 @@ class Site_Builder_Field_Mapping {
             'headline',
             '_genesis_seo_title',
         ],
+        'featured_image' => [
+            '_yoast_wpseo_opengraph-image',
+            'rank_math_facebook_image',
+            '_aioseop_opengraph_settings_customimg',
+            '_aioseo_og_image_custom_url',
+            '_seopress_social_fb_img',
+            'og_image',
+            'og_meta_image',
+            'featured_image_url',
+        ],
     ];
 
     /**
@@ -99,6 +109,7 @@ class Site_Builder_Field_Mapping {
         'social_headline'  => ['_yoast_wpseo_opengraph-title', 'rank_math_facebook_title'],
         'og_description'   => ['_yoast_wpseo_opengraph-description', 'rank_math_facebook_description'],
         'h1_title'         => [],
+        'featured_image'   => ['_yoast_wpseo_opengraph-image', 'rank_math_facebook_image'],
     ];
 
     /**
@@ -126,6 +137,10 @@ class Site_Builder_Field_Mapping {
             'h1_title'         => [
                 'label'  => 'H1 Title (display)',
                 'hint'   => 'Заголовок, который тема выводит как &lt;h1&gt; на странице. Источник во FSR: frontmatter <code>headline</code>.',
+            ],
+            'featured_image'   => [
+                'label'  => 'Featured Image / og:image',
+                'hint'   => 'URL картинки для соцсетей при шеринге. Источник во FSR: frontmatter <code>headimg</code>. Помимо этих полей плагин также устанавливает картинку как Featured Image страницы (стандартный механизм WordPress).',
             ],
         ];
     }

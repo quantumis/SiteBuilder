@@ -45,12 +45,20 @@ class Site_Builder_FSR_Importer {
     private int $import_id;
     private int $menu_main_id;
     private int $menu_footer_id;
+    private ?Site_Builder_FSR_Image_Resolver $image_resolver;
 
-    public function __construct(Site_Builder_Import_Tracker $tracker, int $import_id, int $menu_main_id = 0, int $menu_footer_id = 0) {
+    public function __construct(
+        Site_Builder_Import_Tracker $tracker,
+        int $import_id,
+        int $menu_main_id = 0,
+        int $menu_footer_id = 0,
+        ?Site_Builder_FSR_Image_Resolver $image_resolver = null
+    ) {
         $this->tracker = $tracker;
         $this->import_id = $import_id;
         $this->menu_main_id = $menu_main_id;
         $this->menu_footer_id = $menu_footer_id;
+        $this->image_resolver = $image_resolver;
     }
 
     /**
@@ -98,6 +106,32 @@ class Site_Builder_FSR_Importer {
         // 2. Replace inline shortcodes in all text fields
         foreach (['title', 'description', 'headline', 'content'] as $f) {
             $parsed[$f] = $this->replace_inline_shortcodes((string)$parsed[$f]);
+        }
+
+        // 2.5. Process images: resolve every <img src=""> in the page HTML to an
+        // actual file on disk, upload to media library, rewrite src. Same for
+        // the featured image declared in frontmatter (headimg). The resolver
+        // applies a multi-level lookup strategy — see Site_Builder_FSR_Image_Resolver.
+        $img_stats = ['found' => 0, 'uploaded' => 0, 'missing' => 0];
+        $featured_attach_id = 0;
+        if ($this->image_resolver) {
+            // page_dir: the folder containing this page's index.* (or archive root for the front page)
+            $page_dir = $folder_path !== '' ? $folder_path : dirname((string)$index_file);
+
+            if ($parsed['content'] !== '') {
+                $img_result = $this->image_resolver->process_content($parsed['content'], $page_dir);
+                $parsed['content'] = $img_result['html'];
+                $img_stats = [
+                    'found'    => $img_result['found'],
+                    'uploaded' => $img_result['uploaded'],
+                    'missing'  => $img_result['missing'],
+                ];
+            }
+            if ($parsed['headimg'] !== '') {
+                $featured_attach_id = (int)$this->image_resolver->resolve_and_upload(
+                    $parsed['headimg'], $page_dir, $parsed['headline']
+                );
+            }
         }
 
         // 3. Determine page parent (chain through previous segments)
@@ -178,6 +212,18 @@ class Site_Builder_FSR_Importer {
             update_post_meta($post_id, 'fsr_headimg', $parsed['headimg']);
         }
 
+        // Featured image: if the resolver uploaded headimg, set as WP thumbnail
+        // and also write its URL into the user-configured featured_image slot.
+        if ($featured_attach_id > 0) {
+            set_post_thumbnail($post_id, $featured_attach_id);
+            $featured_url = (string)wp_get_attachment_url($featured_attach_id);
+            if ($featured_url !== '' && !empty($mapping['featured_image'])) {
+                foreach ($mapping['featured_image'] as $meta_key) {
+                    update_post_meta($post_id, $meta_key, $featured_url);
+                }
+            }
+        }
+
         // (b) Single-letter behaviour flags become individual post_meta entries
         //     so themes can read them with simple get_post_meta($id, 'fsr_utility', true).
         //     We always write 0/1, never delete — this way themes can rely on the key
@@ -240,11 +286,19 @@ class Site_Builder_FSR_Importer {
             }
         }
 
+        // Build the result message — include image stats if any work was done
+        $msg = 'Создана' . ($index_file === '' ? ' (контейнер)' : '');
+        if ($img_stats['found'] > 0) {
+            $msg .= ' [' . $img_stats['uploaded'] . '/' . $img_stats['found'] . ' картинок]';
+        }
+
         return [
-            'ok'       => true,
-            'title'    => $parsed['title'],
-            'message'  => 'Создана' . ($index_file === '' ? ' (контейнер)' : ''),
-            'post_id'  => (int)$post_id,
+            'ok'         => true,
+            'title'      => $parsed['title'],
+            'message'    => $msg,
+            'post_id'    => (int)$post_id,
+            'img_stats'  => $img_stats,
+            'featured'   => $featured_attach_id,
         ];
     }
 
@@ -359,6 +413,128 @@ class Site_Builder_FSR_Importer {
      */
     public static function empty_flag_bag_public(): array {
         return self::empty_flag_bag();
+    }
+
+    /**
+     * Initialize site-wide assets that are configured once per import, not per page:
+     *   - logo.{png,jpg,svg,ico}  → custom_logo theme_mod (and site_logo option)
+     *   - icon.{png,jpg,svg,ico}  → site_icon option (browser favicon)
+     *   - styles.css              → copied into theme's imported-styles/ folder
+     *
+     * Each modified option is snapshotted via the tracker so rollback restores
+     * the previous state. logo and icon attachment uploads go through Media_Handler
+     * which also tracks them for rollback.
+     */
+    public function init_site_assets(string $archive_root): array {
+        $stats = ['logo' => 0, 'icon' => 0, 'styles' => 0, 'messages' => []];
+        if (!$this->image_resolver) {
+            $stats['messages'][] = 'image resolver не передан (init пропущен)';
+            return $stats;
+        }
+
+        // --- LOGO ---
+        $logo_path = $this->find_branded_file($archive_root, 'logo');
+        if ($logo_path) {
+            // We pipe the upload via the resolver's underlying media handler.
+            // resolve_and_upload bypasses the multi-level lookup since we already
+            // have the absolute path — pass an empty src and a "page_dir"
+            // pointing at the file's own dir so step-1 of the strategy hits.
+            $attach_id = $this->image_resolver->resolve_and_upload(basename($logo_path), dirname($logo_path), 'Site logo');
+            if ($attach_id) {
+                $old_logo = (int)get_theme_mod('custom_logo', 0);
+                $old_site_logo = (int)get_option('site_logo', 0);
+                $this->tracker->track_item($this->import_id, 'option_snapshot', null, null, [
+                    'theme_mod:custom_logo' => $old_logo,
+                    'site_logo'             => $old_site_logo,
+                ]);
+                set_theme_mod('custom_logo', $attach_id);
+                update_option('site_logo', $attach_id);
+                $stats['logo'] = $attach_id;
+                $stats['messages'][] = "Логотип установлен (attachment_id={$attach_id})";
+            }
+        } else {
+            $stats['messages'][] = 'logo.{png,jpg,svg,ico} в архиве не найден';
+        }
+
+        // --- ICON (favicon) ---
+        $icon_path = $this->find_branded_file($archive_root, 'icon');
+        if ($icon_path) {
+            $attach_id = $this->image_resolver->resolve_and_upload(basename($icon_path), dirname($icon_path), 'Site icon');
+            if ($attach_id) {
+                $old_site_icon = (int)get_option('site_icon', 0);
+                $this->tracker->track_item($this->import_id, 'option_snapshot', null, null, [
+                    'site_icon' => $old_site_icon,
+                ]);
+                update_option('site_icon', $attach_id);
+                $stats['icon'] = $attach_id;
+                $stats['messages'][] = "Favicon установлен (attachment_id={$attach_id})";
+            }
+        } else {
+            $stats['messages'][] = 'icon.{png,jpg,svg,ico} в архиве не найден';
+        }
+
+        // --- STYLES.CSS ---
+        $styles_src = $archive_root . '/styles.css';
+        if (is_file($styles_src)) {
+            $theme_dir = get_stylesheet_directory();
+            $target_dir = $theme_dir . '/' . SITE_BUILDER_THEME_CSS_DIR;
+            $target_file = $target_dir . '/style.css';
+
+            // Ensure target dir exists
+            if (!is_dir($target_dir)) {
+                @mkdir($target_dir, 0755, true);
+            }
+
+            if (is_dir($target_dir) && is_writable($target_dir)) {
+                // Snapshot existing target file if any (so rollback restores it)
+                if (is_file($target_file)) {
+                    $existing = (string)@file_get_contents($target_file);
+                    $this->tracker->track_item(
+                        $this->import_id,
+                        'theme_file_snapshot',
+                        null,
+                        $target_file,
+                        ['original' => $existing]
+                    );
+                } else {
+                    // Mark as "originally didn't exist" so rollback knows to delete it
+                    $this->tracker->track_item(
+                        $this->import_id,
+                        'theme_file_snapshot',
+                        null,
+                        $target_file,
+                        ['original' => null]
+                    );
+                }
+                $bytes = @copy($styles_src, $target_file);
+                if ($bytes) {
+                    $stats['styles'] = filesize($target_file);
+                    $stats['messages'][] = "styles.css скопирован в тему ({$stats['styles']} байт)";
+                } else {
+                    $stats['messages'][] = 'Не удалось скопировать styles.css в тему';
+                }
+            } else {
+                $stats['messages'][] = 'Папка темы недоступна для записи: ' . $target_dir;
+            }
+        } else {
+            $stats['messages'][] = 'styles.css в архиве не найден';
+        }
+
+        return $stats;
+    }
+
+    /**
+     * Look for a branded asset file (logo or icon) in the archive's IMAGES/
+     * folder, with PNG/JPG/SVG/ICO extensions tried in that order.
+     */
+    private function find_branded_file(string $archive_root, string $stem): ?string {
+        $dir = $archive_root . '/IMAGES';
+        if (!is_dir($dir)) return null;
+        foreach (['png', 'jpg', 'jpeg', 'svg', 'ico'] as $ext) {
+            $p = $dir . '/' . $stem . '.' . $ext;
+            if (is_file($p)) return $p;
+        }
+        return null;
     }
 
     /**

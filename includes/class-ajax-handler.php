@@ -586,11 +586,20 @@ class Site_Builder_Ajax_Handler {
         $articles_setup = new Site_Builder_Articles_Setup($tracker, $import_id, $menu_id);
         $rollback = new Site_Builder_Rollback_Handler();
         $md_restore = new Site_Builder_MD_Restore($tracker, $import_id);
+        // Image resolver for FSR — re-used across all pages in this batch so
+        // upload caching survives. Only constructed when we have an archive root,
+        // which is the case for FSR imports (settings.resolved_root is set).
+        $fsr_image_resolver = null;
+        if (!empty($settings['resolved_root']) && is_dir($settings['resolved_root'])) {
+            $fsr_image_resolver = new Site_Builder_FSR_Image_Resolver($media, $settings['resolved_root']);
+        }
+
         $fsr_importer = new Site_Builder_FSR_Importer(
             $tracker,
             $import_id,
             (int)($settings['menu_main_id'] ?? 0),
-            (int)($settings['menu_footer_id'] ?? 0)
+            (int)($settings['menu_footer_id'] ?? 0),
+            $fsr_image_resolver
         );
 
         $current_label = '';
@@ -659,6 +668,27 @@ class Site_Builder_Ajax_Handler {
                         }
                         break;
 
+                    case 'fsr_init':
+                        // Site-wide asset setup: logo, icon, styles.css. Runs once
+                        // per import as the first task (depth=-1 sorts before page tasks).
+                        $init_result = $fsr_importer->init_site_assets(
+                            (string)($task['data']['archive_root'] ?? '')
+                        );
+                        $current_label = 'Инициализация сайта';
+                        foreach (($init_result['messages'] ?? []) as $msg) {
+                            if (stripos($msg, 'не найден') !== false || stripos($msg, 'Не удалось') !== false) {
+                                $tracker->append_error($import_id, $msg, ['kind' => 'fsr_init']);
+                            }
+                        }
+                        // Image-resolver warnings produced during init (e.g. failed logo upload)
+                        if ($fsr_image_resolver && !empty($fsr_image_resolver->warnings)) {
+                            foreach ($fsr_image_resolver->warnings as $w) {
+                                $tracker->append_error($import_id, $w, ['kind' => 'fsr_init']);
+                            }
+                            $fsr_image_resolver->warnings = [];
+                        }
+                        break;
+
                     case 'fsr_page':
                         $result = $fsr_importer->import_page($task);
                         $current_label = ($result['title'] ?? '') . ' — ' . ($result['message'] ?? '');
@@ -669,6 +699,19 @@ class Site_Builder_Ajax_Handler {
                                 'path'  => '/' . implode('/', $task['data']['segments'] ?? []),
                                 'kind'  => 'fsr_page',
                             ]);
+                        }
+                        // Drain image-resolver warnings collected during this page's processing
+                        // (typically missing image files). Reset after each page so they don't
+                        // pile up indefinitely across the batch.
+                        if ($fsr_image_resolver && !empty($fsr_image_resolver->warnings)) {
+                            foreach ($fsr_image_resolver->warnings as $w) {
+                                $tracker->append_error($import_id, $w, [
+                                    'kind'  => 'fsr_image',
+                                    'slug'  => $task['data']['slug'] ?? '',
+                                    'path'  => '/' . implode('/', $task['data']['segments'] ?? []),
+                                ]);
+                            }
+                            $fsr_image_resolver->warnings = [];
                         }
                         break;
 
