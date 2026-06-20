@@ -150,6 +150,7 @@ class Site_Builder_Admin {
 
         $tabs = [
             'fsr'      => ['label' => 'FSR Import',          'icon' => 'category'],
+            'theme'    => ['label' => 'Тема',                'icon' => 'admin-appearance'],
         ];
 
         // Legacy importers — visible only when the corresponding setting is on.

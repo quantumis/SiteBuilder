@@ -922,4 +922,50 @@
         });
     })();
 
+    // === Theme tab — variant constructor ===
+    (function () {
+        var $buildBtn = $('#sb-theme-build-btn');
+        if (!$buildBtn.length) return; // not on theme tab
+
+        var $status = $('#sb-theme-build-status');
+
+        // Highlight selected variant card on radio change for visual feedback
+        $('.sb-theme-variant input[type=radio]').on('change', function () {
+            var name = $(this).attr('name');
+            $('input[name="' + name + '"]').each(function () {
+                $(this).closest('.sb-theme-variant').toggleClass('sb-theme-variant-selected', $(this).is(':checked'));
+            });
+        });
+
+        $buildBtn.on('click', function () {
+            $status.removeClass('sb-theme-error sb-theme-success').text('Генерация…');
+            $buildBtn.prop('disabled', true);
+
+            $.ajax({
+                url: ajaxurl,
+                method: 'POST',
+                data: {
+                    action: 'site_builder_theme_build',
+                    nonce: SiteBuilderData.nonce,
+                    header: $('input[name="sb-theme-header"]:checked').val() || '',
+                    footer: $('input[name="sb-theme-footer"]:checked').val() || '',
+                    style:  $('input[name="sb-theme-style"]:checked').val() || ''
+                }
+            }).done(function (resp) {
+                $buildBtn.prop('disabled', false);
+                if (resp && resp.success) {
+                    $status.addClass('sb-theme-success').text('✓ ' + (resp.data.message || 'Тема готова'));
+                    // Reload the page after a short pause so the "active" badge updates
+                    setTimeout(function () { location.reload(); }, 1500);
+                } else {
+                    var msg = (resp && resp.data && resp.data.message) || 'Не удалось сгенерировать тему';
+                    $status.addClass('sb-theme-error').text('✗ ' + msg);
+                }
+            }).fail(function () {
+                $buildBtn.prop('disabled', false);
+                $status.addClass('sb-theme-error').text('✗ Ошибка сети');
+            });
+        });
+    })();
+
 })(jQuery);

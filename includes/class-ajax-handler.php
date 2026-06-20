@@ -18,6 +18,7 @@ class Site_Builder_Ajax_Handler {
         add_action('wp_ajax_site_builder_md_start',         [$this, 'md_start']);
         add_action('wp_ajax_site_builder_fsr_start',        [$this, 'fsr_start']);
         add_action('wp_ajax_site_builder_fsr_save_mapping', [$this, 'fsr_save_mapping']);
+        add_action('wp_ajax_site_builder_theme_build',      [$this, 'theme_build']);
         add_action('wp_ajax_site_builder_fsr_get_mapping',  [$this, 'fsr_get_mapping']);
         add_action('wp_ajax_site_builder_rollback_start',   [$this, 'rollback_start']);
         add_action('wp_ajax_site_builder_process_batch',    [$this, 'process_batch']);
@@ -715,6 +716,39 @@ class Site_Builder_Ajax_Handler {
         Site_Builder_Field_Mapping::save_mapping($clean);
 
         wp_send_json_success(['mapping' => Site_Builder_Field_Mapping::get_mapping()]);
+    }
+
+    /**
+     * Endpoint: build (and activate) a theme from chosen variants.
+     *
+     * Body shape:
+     *   header = slug of header variant (e.g. 'classic')
+     *   footer = slug of footer variant
+     *   style  = slug of style variant
+     *
+     * Returns success with the path of the generated theme and whether it was
+     * activated. Failure returns the textual reason (usually a permissions issue
+     * with wp-content/themes/).
+     */
+    public function theme_build(): void {
+        $this->authorize();
+
+        $header = isset($_POST['header']) ? sanitize_key(wp_unslash($_POST['header'])) : '';
+        $footer = isset($_POST['footer']) ? sanitize_key(wp_unslash($_POST['footer'])) : '';
+        $style  = isset($_POST['style'])  ? sanitize_key(wp_unslash($_POST['style']))  : '';
+
+        $generator = new Site_Builder_Theme_Generator();
+        $result = $generator->build([
+            'header' => $header,
+            'footer' => $footer,
+            'style'  => $style,
+        ], true);
+
+        if (!empty($result['ok'])) {
+            wp_send_json_success($result);
+        } else {
+            wp_send_json_error(['message' => $result['message'] ?? 'Не удалось сгенерировать тему']);
+        }
     }
 
     /**

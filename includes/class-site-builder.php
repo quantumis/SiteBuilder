@@ -39,6 +39,7 @@ class Site_Builder {
         require_once $base . 'class-md-restore.php';
         require_once $base . 'class-field-mapping.php';
         require_once $base . 'class-fsr-image-resolver.php';
+        require_once $base . 'class-theme-generator.php';
         require_once $base . 'class-fsr-importer.php';
         require_once $base . 'class-ajax-handler.php';
         require_once $base . 'class-frontend.php';
