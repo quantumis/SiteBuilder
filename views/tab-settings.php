@@ -137,6 +137,63 @@ if (!empty($_GET['sb_settings_errors'])) {
         </div>
 
         <div class="sb-form-card">
+            <h2>Привязка меню к локациям темы</h2>
+            <p class="description">
+                Плагин создаёт два меню — <code>Main Auto Menu</code> и <code>Footer Auto Menu</code> — но они не отображаются на сайте, пока не привязаны к локациям темы.
+                Здесь можно настроить автоматическую привязку: при каждом FSR-импорте плагин сам поставит меню в выбранные локации.
+                Если оставить «Не привязывать» — нужно будет привязать вручную в <em>Внешний вид → Меню → Управление расположением</em>.
+            </p>
+
+            <?php
+            $st_locations = function_exists('get_registered_nav_menus') ? get_registered_nav_menus() : [];
+            $st_theme_name = wp_get_theme()->get('Name');
+            ?>
+
+            <?php if (empty($st_locations)): ?>
+                <div class="notice notice-warning inline" style="margin:8px 0">
+                    <p>Активная тема <strong><?php echo esc_html($st_theme_name); ?></strong> не объявляет ни одной локации меню. Возможно, это block-тема (FSE) — она использует блоки навигации вместо локаций. В этом случае меню придётся встраивать вручную через редактор сайта.</p>
+                </div>
+            <?php else: ?>
+                <table class="form-table" role="presentation">
+                    <?php foreach ([
+                        'menu_location_main'   => ['Main Auto Menu (флаг [M])', SITE_BUILDER_MENU_NAME],
+                        'menu_location_footer' => ['Footer Auto Menu (флаг [F])', SITE_BUILDER_FOOTER_MENU_NAME],
+                    ] as $field => $meta):
+                        $st_current = (string)($st_settings[$field] ?? '');
+                        $st_orphan  = $st_current !== '' && !isset($st_locations[$st_current]);
+                    ?>
+                        <tr>
+                            <th scope="row">
+                                <label for="<?php echo esc_attr($field); ?>"><?php echo esc_html($meta[0]); ?></label>
+                            </th>
+                            <td>
+                                <select id="<?php echo esc_attr($field); ?>" name="sb_settings[<?php echo esc_attr($field); ?>]">
+                                    <option value="">— Не привязывать (вручную) —</option>
+                                    <?php foreach ($st_locations as $slug => $label): ?>
+                                        <option value="<?php echo esc_attr($slug); ?>" <?php selected($st_current, $slug); ?>>
+                                            <?php echo esc_html($label); ?> <code>(<?php echo esc_html($slug); ?>)</code>
+                                        </option>
+                                    <?php endforeach; ?>
+                                    <?php if ($st_orphan): ?>
+                                        <option value="<?php echo esc_attr($st_current); ?>" selected>
+                                            <?php echo esc_html($st_current); ?> (нет в текущей теме)
+                                        </option>
+                                    <?php endif; ?>
+                                </select>
+                                <?php if ($st_orphan): ?>
+                                    <p class="description" style="color:#b32d2e">
+                                        ⚠ Локация <code><?php echo esc_html($st_current); ?></code> не существует в активной теме <strong><?php echo esc_html($st_theme_name); ?></strong>. Возможно, тема была сменена. Выберите подходящую локацию или «Не привязывать».
+                                    </p>
+                                <?php endif; ?>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                </table>
+                <p class="description">Активная тема: <strong><?php echo esc_html($st_theme_name); ?></strong>. Доступно локаций: <?php echo count($st_locations); ?>.</p>
+            <?php endif; ?>
+        </div>
+
+        <div class="sb-form-card">
             <h2>Видимость legacy-режимов</h2>
             <p class="description">
                 <strong>FSR Import</strong> — основной режим импорта для v1.0.0+.

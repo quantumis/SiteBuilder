@@ -43,116 +43,80 @@ class Site_Builder_Ajax_Handler {
      * Ensure a clean nav menu is ready for the FSR importer to populate. Returns
      * the term_id, or 0 if everything failed.
      *
-     * Lookup + creation can fail in surprising ways on long-lived sites:
-     *   - WordPress term cache may not refresh between wp_delete_nav_menu and
-     *     wp_create_nav_menu, so wp_create_nav_menu returns WP_Error('menu_exists')
-     *     even after a successful delete.
-     *   - Orphaned terms can exist (wp_terms row present but no matching
-     *     wp_term_taxonomy row for 'nav_menu') — wp_get_nav_menu_object returns
-     *     null, but wp_insert_term tries to reuse the existing wp_terms slug
-     *     and may fail.
-     *   - Other plugins may hook into 'wp_update_nav_menu' and block creation.
+     * Strategy:
+     *   - ADD mode + menu exists       → reuse as-is
+     *   - CREATE + menu exists         → delete with cache-reset, then create fresh.
+     *                                    If create fails, fall back to clearing
+     *                                    items on the existing menu and reusing it.
+     *   - CREATE + no existing menu    → create fresh
      *
-     * Strategy is layered: each step records what it tried into the import
-     * journal as a debug message, so failures show up in the report rather
-     * than silently producing menu_id = 0.
+     * If absolutely everything fails (rare; usually a plugin blocking the hook),
+     * we record a warning and return 0 — the importer continues but skips [M]/[F]
+     * placement for that menu.
      */
     private function ensure_menu_ready(string $name, string $mode, Site_Builder_Import_Tracker $tracker, int $import_id): int {
-        $log = function ($msg) use ($tracker, $import_id) {
-            $tracker->append_error($import_id, $msg, ['kind' => 'fsr_menu_debug']);
-        };
-
         $existing = wp_get_nav_menu_object($name);
 
         if ($mode === 'add' && $existing) {
-            $log(sprintf('Меню "%s" найдено (term_id=%d) — переиспользуем в режиме ADD', $name, (int)$existing->term_id));
             return (int)$existing->term_id;
         }
 
-        // CREATE mode: try delete + recreate. Log every step.
         if ($existing) {
-            $log(sprintf('Меню "%s" найдено (term_id=%d), пробуем удалить перед пересозданием', $name, (int)$existing->term_id));
             $deleted = wp_delete_nav_menu($existing->term_id);
+            // Force term-cache reset so the next wp_create_nav_menu doesn't see
+            // the deleted term as "still there".
             clean_term_cache((int)$existing->term_id, 'nav_menu');
             wp_cache_delete('last_changed', 'terms');
-
-            if (is_wp_error($deleted)) {
-                $log('wp_delete_nav_menu вернул ошибку: ' . $deleted->get_error_message());
-                $this->clear_menu_items((int)$existing->term_id);
-                $tracker->track_item($import_id, 'nav_menu', (int)$existing->term_id);
-                $log(sprintf('Переиспользуем существующее меню "%s" (term_id=%d), очистив его пункты', $name, (int)$existing->term_id));
-                return (int)$existing->term_id;
-            }
-            if ($deleted === false) {
-                $log('wp_delete_nav_menu вернул false — переиспользуем существующее меню');
+            if (is_wp_error($deleted) || $deleted === false) {
+                // Couldn't delete — clear items and reuse in place
                 $this->clear_menu_items((int)$existing->term_id);
                 $tracker->track_item($import_id, 'nav_menu', (int)$existing->term_id);
                 return (int)$existing->term_id;
             }
-            $log('Меню удалено успешно');
-        } else {
-            $log(sprintf('Меню "%s" не существует, создаём новое', $name));
         }
 
-        // Try wp_create_nav_menu first (the canonical way)
         $new_id = wp_create_nav_menu($name);
         if (!is_wp_error($new_id) && $new_id) {
-            $log(sprintf('Меню "%s" создано через wp_create_nav_menu (term_id=%d)', $name, (int)$new_id));
             $tracker->track_item($import_id, 'nav_menu', (int)$new_id);
             return (int)$new_id;
         }
-        $err_msg = is_wp_error($new_id) ? $new_id->get_error_message() : 'не вернул ID';
-        $log(sprintf('wp_create_nav_menu провалился для "%s": %s. Пробуем альтернативные пути.', $name, $err_msg));
 
-        // Maybe the term reappeared between our delete and our create (cache lag).
-        // Look it up again.
+        // wp_create_nav_menu failed despite our cleanup. Try a few fallback paths.
         $retry = wp_get_nav_menu_object($name);
         if ($retry) {
-            $log(sprintf('Меню "%s" найдено повторно (term_id=%d) — переиспользуем', $name, (int)$retry->term_id));
             $this->clear_menu_items((int)$retry->term_id);
             $tracker->track_item($import_id, 'nav_menu', (int)$retry->term_id);
             return (int)$retry->term_id;
         }
 
-        // Try a slug lookup — maybe the menu exists by slug but with a corrupted state
-        $slug = sanitize_title($name);
-        $by_slug = get_term_by('slug', $slug, 'nav_menu');
+        $by_slug = get_term_by('slug', sanitize_title($name), 'nav_menu');
         if ($by_slug) {
-            $log(sprintf('Меню найдено по slug "%s" (term_id=%d) — переиспользуем', $slug, (int)$by_slug->term_id));
             $this->clear_menu_items((int)$by_slug->term_id);
             $tracker->track_item($import_id, 'nav_menu', (int)$by_slug->term_id);
             return (int)$by_slug->term_id;
         }
 
-        // Last-resort: bypass wp_create_nav_menu entirely and use wp_insert_term
-        // directly. This is what wp_create_nav_menu does internally but without
-        // its name-collision pre-check.
+        // Final fallback — call wp_insert_term directly (bypasses
+        // wp_create_nav_menu's name-collision pre-check).
         $inserted = wp_insert_term($name, 'nav_menu');
         if (!is_wp_error($inserted) && isset($inserted['term_id'])) {
-            $log(sprintf('Меню "%s" создано через wp_insert_term (term_id=%d)', $name, (int)$inserted['term_id']));
             $tracker->track_item($import_id, 'nav_menu', (int)$inserted['term_id']);
             return (int)$inserted['term_id'];
         }
-        $err2 = is_wp_error($inserted) ? $inserted->get_error_message() : 'не вернул term_id';
-        $log(sprintf('wp_insert_term тоже провалился: %s', $err2));
-
-        // If wp_insert_term returned WP_Error with a 'term_exists' code, the
-        // existing term_id is in the error data
         if (is_wp_error($inserted) && $inserted->get_error_data('term_exists')) {
             $existing_id = (int)$inserted->get_error_data('term_exists');
-            if ($existing_id > 0) {
-                $log(sprintf('wp_insert_term указал на существующий term_id=%d, проверяем его таксономию', $existing_id));
-                $term = get_term($existing_id, 'nav_menu');
-                if ($term && !is_wp_error($term)) {
-                    $this->clear_menu_items($existing_id);
-                    $tracker->track_item($import_id, 'nav_menu', $existing_id);
-                    return $existing_id;
-                }
-                $log('Этот term не относится к таксономии nav_menu — нужно ручное вмешательство в БД');
+            $term = get_term($existing_id, 'nav_menu');
+            if ($term && !is_wp_error($term)) {
+                $this->clear_menu_items($existing_id);
+                $tracker->track_item($import_id, 'nav_menu', $existing_id);
+                return $existing_id;
             }
         }
 
-        $log(sprintf('Все попытки получить меню "%s" провалились. Флаги [M]/[F] для него будут проигнорированы.', $name));
+        $tracker->append_error($import_id,
+            'Не удалось подготовить меню "' . $name . '". Возможно, оно блокируется другим плагином. Флаги [M]/[F] для этого меню будут проигнорированы.',
+            ['kind' => 'fsr_menu']
+        );
         return 0;
     }
 
@@ -611,6 +575,45 @@ class Site_Builder_Ajax_Handler {
         $menu_ids = [];
         foreach (['main' => SITE_BUILDER_MENU_NAME, 'footer' => SITE_BUILDER_FOOTER_MENU_NAME] as $kind => $name) {
             $menu_ids[$kind] = $this->ensure_menu_ready($name, $mode, $tracker, $import_id);
+        }
+
+        // Auto-attach the menus to theme locations selected in Settings, if any.
+        // We change a single theme_mod ('nav_menu_locations') that holds the
+        // complete location → menu_id map. Snapshot the previous value so
+        // rollback can restore the user's prior bindings.
+        $loc_main   = (string)Site_Builder_Settings::get('menu_location_main');
+        $loc_footer = (string)Site_Builder_Settings::get('menu_location_footer');
+        if ($loc_main !== '' || $loc_footer !== '') {
+            $registered = function_exists('get_registered_nav_menus') ? get_registered_nav_menus() : [];
+            $current_locations = (array)get_theme_mod('nav_menu_locations', []);
+
+            // Snapshot the previous map BEFORE we change anything — even if we
+            // bail out below, the snapshot is harmless to restore (it's the same value).
+            $tracker->track_item($import_id, 'option_snapshot', null, null, [
+                'theme_mod:nav_menu_locations' => $current_locations,
+            ]);
+
+            $new_locations = $current_locations;
+            if ($loc_main !== '' && isset($registered[$loc_main]) && $menu_ids['main'] > 0) {
+                $new_locations[$loc_main] = $menu_ids['main'];
+            }
+            if ($loc_footer !== '' && isset($registered[$loc_footer]) && $menu_ids['footer'] > 0) {
+                $new_locations[$loc_footer] = $menu_ids['footer'];
+            }
+            // Log mismatches so the user sees them in the report
+            if ($loc_main !== '' && !isset($registered[$loc_main])) {
+                $tracker->append_error($import_id,
+                    'Локация "' . $loc_main . '" не существует в активной теме — Main Auto Menu не привязано. Поправьте Настройки или привяжите вручную.',
+                    ['kind' => 'fsr_menu_location']
+                );
+            }
+            if ($loc_footer !== '' && !isset($registered[$loc_footer])) {
+                $tracker->append_error($import_id,
+                    'Локация "' . $loc_footer . '" не существует в активной теме — Footer Auto Menu не привязано.',
+                    ['kind' => 'fsr_menu_location']
+                );
+            }
+            set_theme_mod('nav_menu_locations', $new_locations);
         }
 
         // Count [DLY] pages without explicit date — those are the ones subject

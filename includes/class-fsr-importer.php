@@ -1069,14 +1069,52 @@ class Site_Builder_FSR_Importer {
     private function inject_into_theme_front_page(string $replacement_html): void {
         $theme_dir = get_stylesheet_directory();
         $file_path = $theme_dir . '/front-page.php';
-        if (!is_file($file_path) || !is_writable($file_path)) {
-            // Quietly skip — themes without front-page.php (or read-only files) just
-            // fall back to the default WP page template, which the standard
-            // show_on_front/page_on_front pair already pointed at.
+
+        // No front-page.php at all → WordPress will fall back to page.php (which
+        // calls the_content() in all sane themes), and our show_on_front +
+        // page_on_front pair routes it to the imported root page. Nothing to do.
+        if (!is_file($file_path)) {
             return;
         }
+
         $current = (string)@file_get_contents($file_path);
         if ($current === '') return;
+
+        $marker      = '<!-- Enter Code -->';
+        $has_marker  = (strpos($current, $marker) !== false);
+        // Best-effort heuristic: look for any of the common content-emitting
+        // calls. False positives are fine; we only avoid the warning when at
+        // least one is present.
+        $has_content = (bool)preg_match('/\b(the_content|do_blocks|render_block_data|wp_render_layout_support_flag)\s*\(/', $current);
+
+        if (!$has_marker && !$has_content) {
+            // Theme has its own front-page.php but neither calls the_content() nor
+            // exposes our marker. The root page won't render through it. Warn
+            // the user — they can add the marker to the theme template, switch
+            // themes, or accept a blank homepage.
+            $this->tracker->append_error(
+                $this->import_id,
+                'Тема имеет front-page.php без the_content() и без маркера <!-- Enter Code --> — главная страница может отображаться пустой. Добавьте маркер в шаблон темы, либо смените тему.',
+                ['kind' => 'fsr_front_page']
+            );
+            return;
+        }
+
+        if (!$has_marker) {
+            // Theme already renders the content properly via the_content() — our
+            // page_on_front assignment is enough. Don't modify the template.
+            return;
+        }
+
+        // Marker present → inject into it. Requires the file to be writable.
+        if (!is_writable($file_path)) {
+            $this->tracker->append_error(
+                $this->import_id,
+                'Файл темы front-page.php не доступен для записи — инжекция контента главной пропущена. Главная может отображаться пустой.',
+                ['kind' => 'fsr_front_page']
+            );
+            return;
+        }
 
         $pristine_snapshots = get_option('site_builder_pristine_theme_files', []);
         if (!is_array($pristine_snapshots)) $pristine_snapshots = [];
@@ -1100,13 +1138,7 @@ class Site_Builder_FSR_Importer {
             ['original' => $original]
         );
 
-        $marker = '<!-- Enter Code -->';
-        if (strpos($original, $marker) !== false) {
-            $new_content = str_replace($marker, $replacement_html, $original);
-        } else {
-            // No marker — append at the end so at least the content is rendered
-            $new_content = $original . "\n" . $replacement_html . "\n";
-        }
+        $new_content = str_replace($marker, $replacement_html, $original);
         @file_put_contents($file_path, $new_content);
     }
 

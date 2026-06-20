@@ -38,6 +38,11 @@ class Site_Builder_Settings {
         'show_create_tab'    => 0,
         'show_add_tab'       => 0,
         'show_md_tab'        => 0,
+        // Theme-menu location bindings for FSR. Empty string = don't bind (user
+        // attaches the menu manually via Appearance > Menus). Otherwise the slug
+        // of a registered nav menu location in the active theme.
+        'menu_location_main'   => '',
+        'menu_location_footer' => '',
     ];
 
     /** @var array|null In-process cache of the merged settings. */
@@ -167,6 +172,18 @@ class Site_Builder_Settings {
         // flip to 1 when the key is present.
         foreach (['show_create_tab', 'show_add_tab', 'show_md_tab'] as $k) {
             $new[$k] = !empty($input[$k]) ? 1 : 0;
+        }
+
+        // Theme menu locations — accept the selected slug or empty string.
+        // We don't validate against get_registered_nav_menus() at save time
+        // because the theme might be switched temporarily; the UI shows a
+        // warning if the saved slug doesn't exist in the current theme.
+        foreach (['menu_location_main', 'menu_location_footer'] as $k) {
+            if (isset($input[$k])) {
+                $v = (string)$input[$k];
+                if (!preg_match('/^[A-Za-z0-9_\-]{0,64}$/', $v)) $v = '';
+                $new[$k] = $v;
+            }
         }
 
         if (empty($errors)) {
