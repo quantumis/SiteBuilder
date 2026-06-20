@@ -194,6 +194,34 @@ if (!empty($_GET['sb_settings_errors'])) {
         </div>
 
         <div class="sb-form-card">
+            <h2>Маппинг SEO-полей</h2>
+            <p class="description">
+                Опционально для интеграции с SEO-плагинами (Yoast, Rank Math, All in One SEO и др).
+                FSR-архив содержит поля <code>title</code>, <code>description</code>, <code>headline</code>, <code>headimg</code> — здесь можно указать,
+                в какие <code>meta_key</code> сайта они должны записываться.
+                Если ничего не выбрано, поля пишутся в стандартные <code>fsr_*</code> ключи и доступны напрямую теме.
+            </p>
+
+            <div class="sb-fsr-mapping-controls" style="margin:12px 0">
+                <label>
+                    <input type="checkbox" id="sb-fsr-show-private">
+                    Показать приватные поля (начинающиеся с <code>_</code>)
+                </label>
+            </div>
+
+            <div id="sb-fsr-mapping-grid" class="sb-fsr-mapping-grid">
+                <p class="sb-fsr-mapping-loading">Загрузка списка полей из базы…</p>
+            </div>
+
+            <p>
+                <button type="button" class="button button-primary" id="sb-fsr-save-mapping-btn">
+                    Сохранить маппинг SEO-полей
+                </button>
+                <span id="sb-fsr-mapping-save-status" class="sb-fsr-save-status"></span>
+            </p>
+        </div>
+
+        <div class="sb-form-card">
             <h2>Видимость legacy-режимов</h2>
             <p class="description">
                 <strong>FSR Import</strong> — основной режим импорта для v1.0.0+.

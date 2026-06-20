@@ -15,6 +15,7 @@ $th_active  = (get_stylesheet() === Site_Builder_Theme_Generator::THEME_SLUG);
         <p><strong>Конструктор темы</strong> — генерирует WordPress-тему из выбранной комбинации шапки, футера и цветовой схемы. После генерации тема становится активной, и FSR-импорт можно проводить уже на ней.</p>
         <p class="description">
             Тема сохраняется в <code>wp-content/themes/<?php echo esc_html(Site_Builder_Theme_Generator::THEME_SLUG); ?>/</code> и перезаписывается при каждой повторной генерации. Если вы редактировали файлы темы вручную — изменения будут потеряны при следующей генерации.
+            При активации меню Main Auto Menu и Footer Auto Menu автоматически привязываются к локациям <code>primary</code> и <code>footer</code> в Настройках плагина.
         </p>
         <?php if ($th_active): ?>
             <p class="sb-theme-active-badge">

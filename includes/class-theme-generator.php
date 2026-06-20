@@ -157,10 +157,26 @@ class Site_Builder_Theme_Generator {
             $activated = true;
         }
 
+        // 8. If activated, sync the plugin's menu-location settings to the
+        //    generated theme's locations. Our theme always declares exactly
+        //    'primary' and 'footer' (functions.php → register_nav_menus), so
+        //    Main Auto Menu → primary and Footer Auto Menu → footer is the
+        //    canonical pairing. Previously the user had to remember to update
+        //    these settings manually after switching to our theme.
+        if ($activated) {
+            $st = Site_Builder_Settings::all();
+            $st['menu_location_main']   = 'primary';
+            $st['menu_location_footer'] = 'footer';
+            update_option(Site_Builder_Settings::OPTION_KEY, $st);
+            if (method_exists('Site_Builder_Settings', 'clear_cache')) {
+                Site_Builder_Settings::clear_cache();
+            }
+        }
+
         return [
             'ok'        => true,
             'message'   => $activated
-                ? 'Тема сгенерирована и активирована (' . $header . ' / ' . $footer . ' / ' . $style . ')'
+                ? 'Тема сгенерирована и активирована (' . $header . ' / ' . $footer . ' / ' . $style . '). Меню привязаны к локациям primary / footer автоматически.'
                 : 'Тема сгенерирована (' . $header . ' / ' . $footer . ' / ' . $style . '). Активируйте её в Внешний вид → Темы.',
             'path'      => $target,
             'activated' => $activated,

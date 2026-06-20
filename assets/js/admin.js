@@ -448,36 +448,21 @@
 
     (function () {
         var $grid = $('#sb-fsr-mapping-grid');
-        if (!$grid.length) return; // not on FSR tab
 
-        var $mappingStep    = $('#sb-fsr-mapping-step');
-        var $importStep     = $('#sb-fsr-import-step');
-        var $stepIndicators = $('.sb-fsr-step');
+        // If we're on the FSR tab (has #sb-fsr-action-block but no mapping grid),
+        // just render the action block right away — mapping has moved to Settings.
+        if ($('#sb-fsr-action-block').length && typeof renderActionBlock === 'function') {
+            renderActionBlock();
+        }
+
+        if (!$grid.length) return; // mapping grid not on this page
+
         var $showPrivate    = $('#sb-fsr-show-private');
         var $saveBtn        = $('#sb-fsr-save-mapping-btn');
         var $saveStatus     = $('#sb-fsr-mapping-save-status');
-        var $backLink       = $('#sb-fsr-back-to-mapping');
-        var $summary        = $('#sb-fsr-mapping-summary');
 
         var allKeys = [];
         var slots = [];
-
-        function setStep(name) {
-            // 'mapping' or 'import'
-            if (name === 'import') {
-                $mappingStep.hide();
-                $importStep.show();
-                $stepIndicators.removeClass('sb-fsr-step-active');
-                $stepIndicators.filter('[data-step="mapping"]').addClass('sb-fsr-step-done');
-                $stepIndicators.filter('[data-step="import"]').addClass('sb-fsr-step-active');
-                renderActionBlock();
-            } else {
-                $importStep.hide();
-                $mappingStep.show();
-                $stepIndicators.removeClass('sb-fsr-step-active sb-fsr-step-done');
-                $stepIndicators.filter('[data-step="mapping"]').addClass('sb-fsr-step-active');
-            }
-        }
 
         // Renders the action block (start buttons) at the bottom of step 2.
         // On an empty site → single "Создать сайт" button.
@@ -741,7 +726,6 @@
                 $saveBtn.prop('disabled', false);
                 if (resp && resp.success) {
                     $saveStatus.text('✓ Сохранено').removeClass('sb-fsr-error');
-                    setStep('import');
                 } else {
                     $saveStatus.addClass('sb-fsr-error')
                         .text((resp && resp.data && resp.data.message) || 'Не удалось сохранить');
@@ -750,11 +734,6 @@
                 $saveBtn.prop('disabled', false);
                 $saveStatus.addClass('sb-fsr-error').text('Ошибка сети — попробуйте ещё раз');
             });
-        });
-
-        $backLink.on('click', function (e) {
-            e.preventDefault();
-            setStep('mapping');
         });
 
         // Initial load of the mapping
