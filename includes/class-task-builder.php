@@ -39,6 +39,14 @@ class Site_Builder_Task_Builder {
     ];
 
     /**
+     * Merged exclude list (hard-coded service folders + user-added from
+     * Settings), populated at the start of build_fsr_queue() and used by
+     * the recursive scan. Reset on each build so changes to Settings take
+     * effect on the next import.
+     */
+    private array $fsr_effective_exclude = [];
+
+    /**
      * Build an FSR-mode queue.
      *
      * Walks $source_dir recursively, treating each subfolder as a potential page:
@@ -74,6 +82,14 @@ class Site_Builder_Task_Builder {
             $this->fsr_errors[] = 'Папка архива не найдена: ' . $source_dir;
             return [];
         }
+
+        // Build the effective exclude list used by the recursive scan:
+        //   - Hard-coded service folders (always)
+        //   - User additions from Settings → "Исключаемые папки"
+        $this->fsr_effective_exclude = array_unique(array_merge(
+            self::FSR_IGNORED_FOLDERS,
+            array_map('strval', Site_Builder_Helpers::get_excluded_folders())
+        ));
 
         $tasks = [];
 
@@ -176,12 +192,18 @@ class Site_Builder_Task_Builder {
             $full = $current_dir . '/' . $item;
             if (!is_dir($full)) continue;
 
-            // Skip ignored service folders. The check is case-insensitive on the
-            // first segment (so "IMAGES", "images", "Images" all match).
-            if (in_array($item, self::FSR_IGNORED_FOLDERS, true)
-                || in_array(strtoupper($item), self::FSR_IGNORED_FOLDERS, true)) {
-                continue;
+            // Skip ignored folders. Effective list is built once per build_fsr_queue
+            // call and contains both hard-coded service folders and user additions
+            // from Settings. Comparison is case-insensitive.
+            $item_upper = strtoupper($item);
+            $skip = false;
+            foreach ($this->fsr_effective_exclude as $ex) {
+                if ($item === $ex || $item_upper === strtoupper((string)$ex)) {
+                    $skip = true;
+                    break;
+                }
             }
+            if ($skip) continue;
 
             $parsed = Site_Builder_FSR_Importer::parse_folder_name($item);
             $slug   = $parsed['slug'];

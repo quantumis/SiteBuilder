@@ -30,7 +30,10 @@ class Site_Builder_Settings {
         'articles_template'  => 'articles.php',
         // Stored as comma- or newline-separated strings; getters split them.
         'abbreviations'      => "NBA, NFL, NHL, MLB, WNBA, NCAA, MMA, UFC, EPL, UEFA, FIFA, MLS, PGA, LPGA, NASCAR, USA, UK, EU, NYC, LA, DC, CEO, CFO, CTO, COO, GDP, IPO, ROI, KPI, AI, API, URL, HTML, CSS, PDF, JS, TV, DVD, GPS, USB, FAQ, DIY",
-        'excluded_folders'   => "hub, images, prompts, .DS_Store, .git, node_modules, __MACOSX",
+        // User additions to the always-excluded list. Service folders
+        // (IMAGES, PROMPTS, .git, node_modules, __MACOSX, .DS_Store) are
+        // hard-coded inside Task_Builder and excluded regardless of this value.
+        'excluded_folders'   => "",
         // Visibility of legacy importers in the navigation. FSR is the canonical
         // import method for v1.0.0+; CREATE/ADD/MD Restore remain available for
         // edge cases (old archives, partial recovery) but are hidden by default

@@ -13,6 +13,15 @@ if (!defined('ABSPATH')) {
 $st_settings = Site_Builder_Settings::all();
 $st_defaults = Site_Builder_Settings::DEFAULTS;
 
+// Visibility flags for legacy-only sections. The plugin's primary mode is
+// FSR — many older settings (Articles page, abbreviations title-casing, the
+// CREATE/ADD batch sizes) are meaningful only when the corresponding legacy
+// tabs are enabled. Hide them by default so the Settings page isn't cluttered
+// with knobs that have no effect.
+$st_show_create  = !empty($st_settings['show_create_tab']);
+$st_show_add     = !empty($st_settings['show_add_tab']);
+$st_any_legacy   = $st_show_create || $st_show_add || !empty($st_settings['show_md_tab']);
+
 // Flash messages from the redirect
 $st_saved    = !empty($_GET['sb_settings_saved']);
 $st_reset    = !empty($_GET['sb_settings_reset']);
@@ -51,44 +60,45 @@ if (!empty($_GET['sb_settings_errors'])) {
         <input type="hidden" name="action" value="site_builder_save_settings" />
 
         <div class="sb-form-card">
-            <h2>Размеры пачек</h2>
-            <p class="description">Сколько задач обрабатывается за один AJAX-запрос. Картинки — самая дорогая операция, поэтому для импортов с картинками значения ниже. После изменения настроек они начнут применяться со следующего запуска импорта.</p>
+            <h2>Размер пачки</h2>
+            <p class="description">Сколько задач обрабатывается за один AJAX-запрос. Увеличение ускоряет импорт, но рискует упереться в <code>max_execution_time</code> PHP (обычно 30 сек) — тогда пачка не успеет завершиться и импорт упадёт.</p>
 
             <table class="form-table" role="presentation">
                 <tr>
-                    <th scope="row"><label for="sb-batch-create">CREATE (создание сайта)</label></th>
-                    <td>
-                        <input type="number" id="sb-batch-create" name="sb_settings[batch_create]"
-                               value="<?php echo esc_attr($st_settings['batch_create']); ?>" min="1" max="500" class="small-text" />
-                        <span class="description">страниц за пачку. Дефолт: <?php echo (int)$st_defaults['batch_create']; ?>. Всегда с картинками и HUB.</span>
-                    </td>
-                </tr>
-                <tr>
-                    <th scope="row"><label for="sb-batch-add-folders">ADD (папки с картинками)</label></th>
-                    <td>
-                        <input type="number" id="sb-batch-add-folders" name="sb_settings[batch_add_folders]"
-                               value="<?php echo esc_attr($st_settings['batch_add_folders']); ?>" min="1" max="500" class="small-text" />
-                        <span class="description">страниц за пачку. Дефолт: <?php echo (int)$st_defaults['batch_add_folders']; ?>. Применяется, если в архиве найдены подпапки с index.html.</span>
-                    </td>
-                </tr>
-                <tr>
-                    <th scope="row"><label for="sb-batch-add-flat">ADD (плоский, без картинок)</label></th>
+                    <th scope="row"><label for="sb-batch-add-flat">FSR-импорт</label></th>
                     <td>
                         <input type="number" id="sb-batch-add-flat" name="sb_settings[batch_add_flat]"
                                value="<?php echo esc_attr($st_settings['batch_add_flat']); ?>" min="1" max="500" class="small-text" />
-                        <span class="description">страниц за пачку. Дефолт: <?php echo (int)$st_defaults['batch_add_flat']; ?>. Применяется, если в архиве только .html-файлы в корне.</span>
+                        <span class="description">страниц за пачку. Дефолт: <?php echo (int)$st_defaults['batch_add_flat']; ?>. Безопасный диапазон: 20–150.</span>
                     </td>
                 </tr>
+                <?php if ($st_show_create): ?>
+                    <tr>
+                        <th scope="row"><label for="sb-batch-create">Legacy CREATE</label></th>
+                        <td>
+                            <input type="number" id="sb-batch-create" name="sb_settings[batch_create]"
+                                   value="<?php echo esc_attr($st_settings['batch_create']); ?>" min="1" max="500" class="small-text" />
+                            <span class="description">страниц за пачку. Дефолт: <?php echo (int)$st_defaults['batch_create']; ?>. Всегда с картинками, безопасный диапазон 5–30.</span>
+                        </td>
+                    </tr>
+                <?php endif; ?>
+                <?php if ($st_show_add): ?>
+                    <tr>
+                        <th scope="row"><label for="sb-batch-add-folders">Legacy ADD (с папками картинок)</label></th>
+                        <td>
+                            <input type="number" id="sb-batch-add-folders" name="sb_settings[batch_add_folders]"
+                                   value="<?php echo esc_attr($st_settings['batch_add_folders']); ?>" min="1" max="500" class="small-text" />
+                            <span class="description">страниц за пачку. Дефолт: <?php echo (int)$st_defaults['batch_add_folders']; ?>. Применяется когда в архиве подпапки с index.html. Безопасный диапазон 5–30.</span>
+                        </td>
+                    </tr>
+                <?php endif; ?>
             </table>
-
-            <p class="description" style="background: #fcf9e8; border-left: 4px solid #dba617; padding: 8px 12px;">
-                <strong>Предостережение:</strong> завышенный размер пачки может упереться в <code>max_execution_time</code> PHP (обычно 30 сек) — пачка не успеет обработаться, и импорт упадёт. Подбирайте опытным путём, начиная с дефолтов. Безопасные диапазоны: с картинками 5–30, без картинок 20–150.
-            </p>
         </div>
 
+        <?php if ($st_show_add): ?>
         <div class="sb-form-card">
-            <h2>Страница «Articles» (для ADD)</h2>
-            <p class="description">Страница, к которой ADD-импорт прикрепляет все новые статьи как дочерние.</p>
+            <h2>Страница «Articles» (для legacy ADD)</h2>
+            <p class="description">Страница, к которой ADD-импорт прикрепляет все новые статьи как дочерние. Используется только в legacy ADD-режиме.</p>
 
             <table class="form-table" role="presentation">
                 <tr>
@@ -117,22 +127,25 @@ if (!empty($_GET['sb_settings_errors'])) {
                 </tr>
             </table>
         </div>
+        <?php endif; ?>
 
+        <?php if ($st_any_legacy): ?>
         <div class="sb-form-card">
-            <h2>Аббревиатуры</h2>
-            <p class="description">Слова, которые сохраняются заглавными при формировании заголовков страниц из slug'ов. Пример: slug <code>nba-finals</code> → заголовок <code>NBA Finals</code> (только если <code>NBA</code> в списке).</p>
+            <h2>Аббревиатуры (для legacy)</h2>
+            <p class="description">Слова, которые сохраняются заглавными при формировании заголовков страниц из slug'ов. Пример: slug <code>nba-finals</code> → заголовок <code>NBA Finals</code> (только если <code>NBA</code> в списке). Применяется только в legacy CREATE/ADD-режимах. В FSR заголовок берётся из <code>title</code> во frontmatter.</p>
 
             <textarea name="sb_settings[abbreviations]" rows="6" class="large-text code"
                       placeholder="NBA, NFL, NHL, MLB, ..."><?php echo esc_textarea($st_settings['abbreviations']); ?></textarea>
             <p class="description">Можно разделять запятыми и переводами строк. Регистр не важен — все приводятся к верхнему.</p>
         </div>
+        <?php endif; ?>
 
         <div class="sb-form-card">
             <h2>Исключаемые папки</h2>
-            <p class="description">Папки, которые игнорируются при сканировании архива. Применяется и в CREATE, и в ADD.</p>
+            <p class="description">Папки, которые игнорируются при сканировании архива. Применяется во всех режимах. К пользовательскому списку всегда добавляются служебные: <code>IMAGES</code>, <code>PROMPTS</code>, <code>PROMTS</code>, <code>.git</code>, <code>node_modules</code>, <code>__MACOSX</code>, <code>.DS_Store</code> — они исключаются всегда независимо от настройки.</p>
 
             <textarea name="sb_settings[excluded_folders]" rows="4" class="large-text code"
-                      placeholder="hub, images, prompts, ..."><?php echo esc_textarea($st_settings['excluded_folders']); ?></textarea>
+                      placeholder="hub, my-extras, draft-pages, ..."><?php echo esc_textarea($st_settings['excluded_folders']); ?></textarea>
             <p class="description">Стандартные <code>.</code> и <code>..</code> добавляются автоматически.</p>
         </div>
 
