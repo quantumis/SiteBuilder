@@ -1,0 +1,18 @@
+/* Style variant: Elegant.
+ * Cream background, deep emerald accents, serif typography for headings.
+ * Refined editorial look — ideal for blogs, magazines, premium brands.
+ */
+:root {
+    --sb-color-bg: #fdfaf3;
+    --sb-color-bg-alt: #f5f0e3;
+    --sb-color-text: #2d2a26;
+    --sb-color-muted: #847d70;
+    --sb-color-link: #14532d;
+    --sb-color-accent: #166534;
+    --sb-color-border: #e7dfcd;
+    --sb-font-body: "Georgia", "Times New Roman", Cambria, "Liberation Serif", serif;
+    --sb-font-heading: "Playfair Display", "Georgia", "Times New Roman", serif;
+    --sb-font-size: 17px;
+    --sb-line-height: 1.75;
+    --sb-content-max-width: 760px;
+}

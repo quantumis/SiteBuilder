@@ -1,0 +1,18 @@
+/* Style variant: Dark.
+ * Deep slate background, soft white text, cyan accents.
+ * Modern dark mode aesthetic for tech and content sites.
+ */
+:root {
+    --sb-color-bg: #0f172a;
+    --sb-color-bg-alt: #1e293b;
+    --sb-color-text: #e2e8f0;
+    --sb-color-muted: #94a3b8;
+    --sb-color-link: #38bdf8;
+    --sb-color-accent: #06b6d4;
+    --sb-color-border: #334155;
+    --sb-font-body: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+    --sb-font-heading: var(--sb-font-body);
+    --sb-font-size: 16px;
+    --sb-line-height: 1.65;
+    --sb-content-max-width: 920px;
+}

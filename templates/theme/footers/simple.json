@@ -1,0 +1,6 @@
+{
+    "name": "Минимальный",
+    "description": "Единственная строка копирайта по центру. Без меню, без дополнительных секций. Подходит для лендингов и максимально лаконичных сайтов.",
+    "category": "footer",
+    "css": ".sb-footer-simple { background: transparent; padding: 32px 20px; text-align: center; margin-top: 32px; } .sb-footer-simple .sb-footer-inner { max-width: var(--sb-content-max-width, 920px); margin: 0 auto; } .sb-footer-simple .sb-footer-copyright { color: var(--sb-color-muted, #6b7280); font-size: 0.88em; }"
+}
