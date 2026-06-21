@@ -15,6 +15,16 @@
 
 if (!defined('ABSPATH')) exit;
 
+// Theme add-on modules. i18n is loaded first because the other modules
+// (and header/footer templates) may call sb_t(). Each module wraps its
+// functions in function_exists() guards so duplicate loads are safe.
+$sb_inc_dir = __DIR__ . '/inc';
+foreach (['i18n.php', 'similar-post.php', 'geo-shortcodes.php', 'back-to-top.php'] as $sb_inc_file) {
+    $sb_inc_path = $sb_inc_dir . '/' . $sb_inc_file;
+    if (file_exists($sb_inc_path)) require_once $sb_inc_path;
+}
+unset($sb_inc_dir, $sb_inc_file, $sb_inc_path);
+
 if (!function_exists('sb_theme_setup')) {
     function sb_theme_setup() {
         add_theme_support('title-tag');
@@ -27,8 +37,8 @@ if (!function_exists('sb_theme_setup')) {
             'flex-width'  => true,
         ]);
         register_nav_menus([
-            'primary' => 'Основное меню',
-            'footer'  => 'Меню в подвале',
+            'primary' => function_exists('sb_t') ? sb_t('primary_menu') : 'Primary menu',
+            'footer'  => function_exists('sb_t') ? sb_t('footer_menu')  : 'Footer menu',
         ]);
     }
     add_action('after_setup_theme', 'sb_theme_setup');

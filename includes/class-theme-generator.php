@@ -106,6 +106,18 @@ class Site_Builder_Theme_Generator {
             }
         }
 
+        // 3b. Copy the inc/ directory recursively — it holds add-on modules
+        // (i18n, similar-post, geo-shortcodes, back-to-top) that functions.php
+        // wires in. Skipping this would leave the theme without translations,
+        // related posts, GEO shortcode placement, and the back-to-top button.
+        $inc_src = $base . 'inc';
+        if (is_dir($inc_src)) {
+            $err = $this->copy_dir_recursive($inc_src, $target . '/inc');
+            if ($err !== null) {
+                return ['ok' => false, 'message' => 'Не удалось скопировать inc/ в папку темы: ' . $err];
+            }
+        }
+
         // 4. Compose style.css = base template + chosen style variant + variant-specific CSS
         //    from header.json and footer.json (they ship the styles inline in metadata).
         $style_template = (string)@file_get_contents($base . 'style.css.template');
@@ -206,5 +218,33 @@ class Site_Builder_Theme_Generator {
         if (!is_file($path)) return [];
         $decoded = json_decode((string)@file_get_contents($path), true);
         return is_array($decoded) ? $decoded : [];
+    }
+
+    /**
+     * Recursively copy a directory tree. Used to bring templates/theme/base/inc/
+     * into the generated theme. Returns null on success or an error message
+     * describing the first failure (we abort on first failure rather than
+     * leaving the theme in an inconsistent partial-copy state).
+     */
+    private function copy_dir_recursive(string $src, string $dst): ?string {
+        if (!is_dir($dst) && !@mkdir($dst, 0755, true) && !is_dir($dst)) {
+            return 'не удалось создать ' . $dst;
+        }
+        $items = @scandir($src);
+        if ($items === false) return 'не удалось прочитать ' . $src;
+        foreach ($items as $item) {
+            if ($item === '.' || $item === '..') continue;
+            $src_path = $src . '/' . $item;
+            $dst_path = $dst . '/' . $item;
+            if (is_dir($src_path)) {
+                $err = $this->copy_dir_recursive($src_path, $dst_path);
+                if ($err !== null) return $err;
+            } else {
+                if (!@copy($src_path, $dst_path)) {
+                    return 'не удалось скопировать ' . $src_path;
+                }
+            }
+        }
+        return null;
     }
 }

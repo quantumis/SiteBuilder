@@ -16,7 +16,7 @@ if (!defined('ABSPATH')) exit;
             }
             ?>
         </div>
-        <nav class="sb-header-nav" aria-label="<?php esc_attr_e('Основное меню', 'site-builder'); ?>">
+        <nav class="sb-header-nav" aria-label="<?php echo esc_attr(sb_t('primary_menu')); ?>">
             <?php
             if (has_nav_menu('primary')) {
                 wp_nav_menu([

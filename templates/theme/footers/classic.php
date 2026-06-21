@@ -8,7 +8,7 @@ if (!defined('ABSPATH')) exit;
 <footer class="sb-footer sb-footer-classic">
     <div class="sb-footer-inner">
         <?php if (has_nav_menu('footer')) : ?>
-            <nav class="sb-footer-nav" aria-label="<?php esc_attr_e('Меню в подвале', 'site-builder'); ?>">
+            <nav class="sb-footer-nav" aria-label="<?php echo esc_attr(sb_t('footer_menu')); ?>">
                 <?php
                 wp_nav_menu([
                     'theme_location' => 'footer',
@@ -21,7 +21,7 @@ if (!defined('ABSPATH')) exit;
         <?php endif; ?>
 
         <div class="sb-footer-copyright">
-            &copy; <?php echo esc_html(date('Y')); ?> <?php echo esc_html(get_bloginfo('name')); ?>. <?php esc_html_e('Все права защищены.', 'site-builder'); ?>
+            &copy; <?php echo esc_html(date('Y')); ?> <?php echo esc_html(get_bloginfo('name')); ?>. <?php echo esc_html(sb_t('rights_reserved')); ?>
         </div>
     </div>
 </footer>

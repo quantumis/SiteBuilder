@@ -27,8 +27,8 @@ if (!defined('ABSPATH')) exit;
 
             <?php if (has_nav_menu('footer')) : ?>
                 <div class="sb-footer-col sb-footer-menu-col">
-                    <h4 class="sb-footer-heading"><?php esc_html_e('Навигация', 'site-builder'); ?></h4>
-                    <nav aria-label="<?php esc_attr_e('Меню в подвале', 'site-builder'); ?>">
+                    <h4 class="sb-footer-heading"><?php echo esc_html(sb_t('navigation')); ?></h4>
+                    <nav aria-label="<?php echo esc_attr(sb_t('footer_menu')); ?>">
                         <?php
                         wp_nav_menu([
                             'theme_location' => 'footer',
@@ -42,19 +42,19 @@ if (!defined('ABSPATH')) exit;
             <?php endif; ?>
 
             <div class="sb-footer-col sb-footer-info">
-                <h4 class="sb-footer-heading"><?php esc_html_e('Сайт', 'site-builder'); ?></h4>
+                <h4 class="sb-footer-heading"><?php echo esc_html(sb_t('site')); ?></h4>
                 <ul class="sb-footer-info-list">
-                    <li><a href="<?php echo esc_url(home_url('/')); ?>"><?php esc_html_e('Главная', 'site-builder'); ?></a></li>
+                    <li><a href="<?php echo esc_url(home_url('/')); ?>"><?php echo esc_html(sb_t('home')); ?></a></li>
                     <?php $sb_privacy_url = get_privacy_policy_url(); ?>
                     <?php if ($sb_privacy_url) : ?>
-                        <li><a href="<?php echo esc_url($sb_privacy_url); ?>"><?php esc_html_e('Политика конфиденциальности', 'site-builder'); ?></a></li>
+                        <li><a href="<?php echo esc_url($sb_privacy_url); ?>"><?php echo esc_html(sb_t('privacy_policy')); ?></a></li>
                     <?php endif; ?>
                 </ul>
             </div>
         </div>
 
         <div class="sb-footer-copyright">
-            &copy; <?php echo esc_html(date('Y')); ?> <?php echo esc_html(get_bloginfo('name')); ?>. <?php esc_html_e('Все права защищены.', 'site-builder'); ?>
+            &copy; <?php echo esc_html(date('Y')); ?> <?php echo esc_html(get_bloginfo('name')); ?>. <?php echo esc_html(sb_t('rights_reserved')); ?>
         </div>
     </div>
 </footer>

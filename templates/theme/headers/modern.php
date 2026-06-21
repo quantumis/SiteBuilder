@@ -22,7 +22,7 @@ if (!defined('ABSPATH')) exit;
         <?php endif; ?>
     </div>
     <?php if (has_nav_menu('primary')) : ?>
-        <nav class="sb-header-nav" aria-label="<?php esc_attr_e('Основное меню', 'site-builder'); ?>">
+        <nav class="sb-header-nav" aria-label="<?php echo esc_attr(sb_t('primary_menu')); ?>">
             <?php
             wp_nav_menu([
                 'theme_location' => 'primary',

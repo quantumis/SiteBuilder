@@ -15,7 +15,7 @@ if (!defined('ABSPATH')) {
             <h2>Запуск импорта</h2>
 
             <p class="description">
-                <a href="#" id="sb-fsr-back-to-mapping" class="sb-fsr-back-link">← Изменить маппинг полей</a>
+                <a href="<?php echo esc_url(admin_url('admin.php?page=site-builder&tab=settings#sb-fsr-mapping-grid')); ?>" class="sb-fsr-settings-link">⚙ Настроить маппинг полей (для SEO-плагинов)</a>
                 <span class="sb-fsr-mapping-summary" id="sb-fsr-mapping-summary"></span>
             </p>
 
