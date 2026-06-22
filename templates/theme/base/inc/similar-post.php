@@ -322,6 +322,11 @@ function auto_insert_child_pages($content) {
     // sitemaps, footer-only content, where related-posts blocks make no sense.
     if ((int)get_post_meta($post->ID, 'fsr_utility', true) === 1) return $content;
 
+    // Skip [A] pages — they already display a grid of their own children via
+    // articles-grid.php; a separate "related posts" block on top would feel
+    // redundant and visually crowded.
+    if ((int)get_post_meta($post->ID, 'fsr_articles_grid', true) === 1) return $content;
+
     // Исключаем страницы с определенными шаблонами
     $excluded_templates = array('page-sitemap.php', 'those-pages.php');
     $current_template = get_page_template_slug($post->ID);
