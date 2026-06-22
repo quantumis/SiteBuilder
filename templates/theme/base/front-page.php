@@ -2,16 +2,19 @@
 /**
  * Front-page template — the homepage.
  *
- * Two-track rendering strategy:
- *   1. The FSR importer injects the root page's HTML into the <!-- Enter Code -->
- *      marker below (in-place replacement, replacing the whole the_content()
- *      block). This is how it worked in the original minipages theme.
- *   2. If the importer did NOT inject (e.g. you're using this theme without
- *      having run an FSR import yet, or you're running the importer on an
- *      external theme), the standard the_content() call still renders the
- *      page set as "page on front" in Settings → Reading.
+ * Renders the homepage content via the standard WordPress loop. We do NOT
+ * use the legacy injection marker here — that was a workaround for the
+ * minipages theme whose layout had no the_content() slot. Since we generate
+ * this theme ourselves, we can place the_content() exactly where it belongs,
+ * which means:
+ *   - no injection step (the FSR importer sees the_content() without the
+ *     marker and skips this file unchanged)
+ *   - no duplicated content
+ *   - the_content() filters (GEO shortcodes, similar posts) apply
+ *   - h1 is rendered via fsr_headline meta or the_title
  *
- * Either way, the homepage shows content — no blank state.
+ * Other themes (e.g. legacy minipages) keep the marker in their front-page.php
+ * and continue to receive injected content as before.
  */
 if (!defined('ABSPATH')) exit;
 ?>
@@ -28,10 +31,7 @@ if (!defined('ABSPATH')) exit;
 
 <main class="sb-site-content">
     <div class="sb-content">
-        <!-- Enter Code -->
         <?php
-        // Fallback rendering: if the marker above wasn't replaced by an FSR import,
-        // render the page content the standard way.
         if (have_posts()) {
             while (have_posts()) {
                 the_post();

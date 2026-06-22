@@ -746,6 +746,15 @@ class Site_Builder_FSR_Importer {
             $body = $m[2];
         }
 
+        // If frontmatter didn't supply a title, use the first H1 of the body
+        // as the title. Without this, archives without YAML frontmatter (just
+        // a "# Heading" at the top) end up with an empty post_title and no h1
+        // on the rendered page — the h1 gets stripped from body content below
+        // because in the source theme it was redundant with the page title.
+        if ($title === '' && preg_match('/^\s*#\s+([^\n]+)/m', $body, $h1m)) {
+            $title = trim($h1m[1]);
+        }
+
         // Strip the first H1 (it's redundant with the page title)
         $body = preg_replace('/^\s*#\s+[^\n]+\n/', '', $body, 1);
 
@@ -784,6 +793,11 @@ class Site_Builder_FSR_Importer {
             $content = trim($m[1]);
         } else {
             $content = $raw;
+        }
+        // If <title> didn't supply a title, use the first <h1> from the body
+        // as a fallback before stripping it. Same rationale as parse_md_file.
+        if ($title === '' && preg_match('/<h1\b[^>]*>(.*?)<\/h1>/is', $content, $h1m)) {
+            $title = trim(html_entity_decode(strip_tags($h1m[1]), ENT_QUOTES, 'UTF-8'));
         }
         $content = preg_replace('/<h1\b[^>]*>.*?<\/h1>/is', '', $content, 1);
 
