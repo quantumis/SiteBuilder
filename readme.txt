@@ -4,7 +4,7 @@ Tags: import, content, automation
 Requires at least: 6.0
 Tested up to: 6.6
 Requires PHP: 8.0
-Stable tag: 1.1.2-beta5
+Stable tag: 1.1.2-beta6
 
 Внутренний инструмент массового импорта контента в WordPress.
 
@@ -30,6 +30,25 @@ Site Builder — это плагин для автоматического ра�
 4. В сайдбаре админки появится пункт меню «Site Builder».
 
 == Changelog ==
+
+= 1.1.2-beta6 =
+* **Встроенный SEO-модуль и хлебные крошки** — интеграция блоков 3+4 из `mod-seo.php` от параллельной команды разработки, адаптированных под нашу архитектуру.
+* **Новый модуль `inc/seo.php`** — два WP-хука: кастомный `rel="canonical"` (учитывает пагинацию `?page=N` и `/page/N/` — стандартный WP rel_canonical их игнорирует) и полный SEO-блок в `wp_head` (priority 1).
+  * `<title>`, `<meta description>`, Open Graph (`og:type`/`og:title`/`og:url`/`og:image`/`og:locale`), Twitter Card, JSON-LD Schema.org граф (Organization + WebSite + WebPage + BreadcrumbList + Article)
+  * **Schema @type подбирается по флагам FSR**:
+    * `fsr_articles_grid=1` → `CollectionPage` (страница-хаб с карточками)
+    * `fsr_utility=1` → `WebPage` (privacy/legal/cookies — это не статья)
+    * иначе → `Article` (с `wordCount`, `headline`, `dateModified`)
+  * **Word count Unicode-aware** — `\p{L}\p{N}` корректно считает кириллицу, греческий, диакритику
+  * **Источники данных** идут с приоритетом override → автоматика: `_custom_seo_title` → `post_title`; `_custom_seo_desc` → `post_excerpt` → авто; `_custom_seo_headline` → `fsr_headline` → seo_title. Featured image из WP thumbnail
+  * **Автодетект конфликтов**: если активен Yoast / RankMath / All in One SEO / SEOPress / The SEO Framework — наш модуль молча выключается. Никакой двойной выдачи `<title>` и canonical в HTML
+* **Новый модуль `inc/breadcrumbs.php`** — хлебные крошки.
+  * Функция `get_my_breadcrumbs_items()` возвращает массив `[name, url]` (Home → предки страницы → текущая). На front-page возвращает пустой массив. Имя функции выбрано совместимо с `mod-seo.php` — если их SEO-плагин когда-нибудь активируется рядом, он подхватит наши крошки автоматически
+  * Визуальный рендер через filter `the_content` (priority 11, после wp_autop): `<nav class="sb-breadcrumbs">` с `<ol>` и `aria-current="page"` на последнем элементе. Inline CSS использует CSS-переменные базовой темы
+  * Last элемент пути — название текущей страницы (не ссылка)
+  * Home label локализован через `sb_t('home')` — на испанской локали будет «Inicio», немецкой «Startseite» и т.д.
+* **Интеграция между модулями.** SEO-модуль автоматически подхватывает `get_my_breadcrumbs_items()` из breadcrumbs-модуля и добавляет BreadcrumbList entry в JSON-LD. Если breadcrumbs выключены — BreadcrumbList просто пропускается, остальной граф работает.
+* **Что НЕ вошло из mod-seo.php**: JS-панель Block Editor (массовый импорт 1500 сайтов в месяц не предполагает ручной правки SEO). Если когда-нибудь понадобится — есть готовый исходник параллельной команды.
 
 = 1.1.2-beta5 =
 * **Фикс: карточки на странице articles ([U]+[A]) теперь отображаются.** В beta4 я ошибочно полагал, что флаг `[U]` доминирует над `[A]` (логика «utility takes precedence»). На деле это неверно для канонического кейса: страница «articles» в архивах помечена `[6M;Artículos][U][A]` — она одновременно utility-страница (поэтому без GEO-шорткодов и без «Похожих записей») И главный хаб карточек ([A]) — то есть именно та страница, где сетка карточек должна быть. Из-за неправильного `if ((int)get_post_meta(...'fsr_utility'...) === 1) return $content;` в `inc/articles-grid.php` карточки на ней не появлялись.
