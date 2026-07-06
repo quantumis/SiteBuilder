@@ -636,9 +636,16 @@ class Site_Builder_FSR_Importer {
         ]);
         if (!empty($existing)) {
             $sitemap_id = (int)$existing[0];
-            // Tag if not already tagged — no track_item, we didn't create it
+            // Ensure our meta flags are set on the existing page, even if it
+            // pre-dated this version of the plugin.
             if ((int)get_post_meta($sitemap_id, 'fsr_is_sitemap', true) !== 1) {
                 update_post_meta($sitemap_id, 'fsr_is_sitemap', 1);
+            }
+            if ((int)get_post_meta($sitemap_id, 'fsr_utility', true) !== 1) {
+                update_post_meta($sitemap_id, 'fsr_utility', 1);
+            }
+            if ((int)get_post_meta($sitemap_id, 'fsr_no_index', true) !== 1) {
+                update_post_meta($sitemap_id, 'fsr_no_index', 1);
             }
             $stats['messages'][] = 'Страница Sitemap уже существует (ID=' . $sitemap_id . ') — помечена';
         } else {
@@ -653,8 +660,26 @@ class Site_Builder_FSR_Importer {
             if (is_wp_error($sitemap_id) || !$sitemap_id) {
                 $stats['messages'][] = 'Не удалось создать страницу Sitemap';
             } else {
-                update_post_meta($sitemap_id, 'fsr_is_sitemap', 1);
-                update_post_meta($sitemap_id, 'fsr_no_index', 1);  // no need for search engines
+                // Meta flags (implicit [U] + no_index): sitemap page behaves as a
+                // utility page — no GEO shortcodes, no related-posts, not in the
+                // search index. It IS discoverable via the footer menu ([F] flag).
+                update_post_meta($sitemap_id, 'fsr_is_sitemap',    1);
+                update_post_meta($sitemap_id, 'fsr_utility',       1);
+                update_post_meta($sitemap_id, 'fsr_no_index',      1);
+                update_post_meta($sitemap_id, 'fsr_flags_summary', 'F U');
+
+                // [F] flag — add to the footer menu if it exists
+                if ($this->menu_footer_id > 0) {
+                    $this->add_to_menu(
+                        $this->menu_footer_id,
+                        (int)$sitemap_id,
+                        'Sitemap',
+                        null,     // no explicit order — footer menu order is by insertion
+                        [],       // no ancestors (top-level in footer menu)
+                        'footer'
+                    );
+                }
+
                 $this->tracker->track_item($this->import_id, 'page', (int)$sitemap_id);
                 $stats['messages'][] = 'Создана страница Sitemap (ID=' . $sitemap_id . ')';
             }
