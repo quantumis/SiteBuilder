@@ -2,14 +2,31 @@
 /**
  * Site Builder — breadcrumbs.
  *
- * Generates the page hierarchy as breadcrumb items and renders them above
- * the_content on singular pages. Also provides get_my_breadcrumbs_items()
- * which seo.php uses to populate the BreadcrumbList JSON-LD entry.
+ * Two entry points:
+ *   - get_my_breadcrumbs_items()  — array of ['name', 'url'] for JSON-LD
+ *                                    (seo.php picks it up if defined)
+ *   - sb_breadcrumbs_html()       — rendered HTML for embedding into templates
  *
- * Skipped on front page (the home crumb would point at itself, which is
- * meaningless).
+ * The theme templates (page.php) call sb_breadcrumbs_html() BEFORE the_title()
+ * so breadcrumbs appear above the h1 — that's the expected visual order.
+ *
+ * Runtime toggle: the option site_builder_theme_module_options['show_breadcrumbs']
+ * (default: true) controls whether breadcrumbs render at all. When false,
+ * sb_breadcrumbs_html() returns an empty string. Changed instantly via the
+ * checkbox on the plugin's Theme tab — no theme regeneration needed.
+ *
+ * Skipped on front page (the home crumb would point at itself).
  */
 if (!defined('ABSPATH')) exit;
+
+if (!function_exists('sb_breadcrumbs_enabled')) {
+    function sb_breadcrumbs_enabled() {
+        $opts = get_option('site_builder_theme_module_options', []);
+        if (!is_array($opts)) return true;
+        // Default is ON — only explicit false disables
+        return !array_key_exists('show_breadcrumbs', $opts) || !empty($opts['show_breadcrumbs']);
+    }
+}
 
 if (!function_exists('get_my_breadcrumbs_items')) {
     /**
@@ -42,18 +59,24 @@ if (!function_exists('get_my_breadcrumbs_items')) {
     }
 }
 
-if (!function_exists('sb_breadcrumbs_render')) {
+if (!function_exists('sb_breadcrumbs_html')) {
     /**
-     * Prepend a visual breadcrumbs list to the_content on singular pages.
-     * Hooked at priority 11 — after wp_autop (10) so our ordered list isn't
-     * wrapped in stray <p> tags.
+     * Return the breadcrumbs HTML (or empty string if they shouldn't render).
+     * Called explicitly by templates BEFORE the h1 — that's why we don't
+     * hook the_content: we want position control.
+     *
+     * Guaranteed to return empty on:
+     *   - Front page
+     *   - Non-singular views (archives, search, etc)
+     *   - When show_breadcrumbs is disabled
+     *   - When breadcrumb list has fewer than 2 items (would be just "Home")
      */
-    function sb_breadcrumbs_render($content) {
-        if (!is_singular() || is_admin() || !is_main_query()) return $content;
-        if (is_front_page()) return $content;
+    function sb_breadcrumbs_html() {
+        if (!is_singular() || is_admin() || is_front_page()) return '';
+        if (!sb_breadcrumbs_enabled()) return '';
+
         $items = get_my_breadcrumbs_items();
-        // Need at least Home + current to be useful
-        if (count($items) < 2) return $content;
+        if (count($items) < 2) return '';
 
         $html  = "\n<nav class=\"sb-breadcrumbs\" aria-label=\"Breadcrumbs\">\n";
         $html .= "  <ol class=\"sb-breadcrumbs-list\">\n";
@@ -66,19 +89,19 @@ if (!function_exists('sb_breadcrumbs_render')) {
             }
         }
         $html .= "  </ol>\n</nav>\n";
-
-        return $html . $content;
+        return $html;
     }
-    add_filter('the_content', 'sb_breadcrumbs_render', 11);
 }
 
 if (!function_exists('sb_breadcrumbs_styles')) {
     function sb_breadcrumbs_styles() {
         if (!is_singular() || is_front_page()) return;
+        if (!sb_breadcrumbs_enabled()) return;
+
         wp_register_style('sb-breadcrumbs', false);
         wp_enqueue_style('sb-breadcrumbs');
         $css = '
-            .sb-breadcrumbs { margin: 0 0 24px; font-size: 0.85em; }
+            .sb-breadcrumbs { margin: 0 0 20px; font-size: 0.85em; }
             .sb-breadcrumbs-list { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px 8px; align-items: center; }
             .sb-breadcrumb-item { display: inline-flex; align-items: center; gap: 8px; color: var(--sb-color-muted, #6b7280); }
             .sb-breadcrumb-item:not(:last-child)::after { content: "›"; opacity: 0.45; }

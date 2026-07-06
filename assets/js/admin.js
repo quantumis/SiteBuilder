@@ -945,6 +945,41 @@
                 $status.addClass('sb-theme-error').text('✗ Ошибка сети');
             });
         });
+
+        // Instant save for module option checkboxes (breadcrumbs etc). No theme
+        // regeneration needed — modules read the option from DB on each render.
+        $('.sb-theme-module-option').on('change', function () {
+            var $cb = $(this);
+            var key = $cb.data('option-key');
+            var val = $cb.is(':checked');
+            var $st = $cb.closest('td').find('.sb-theme-opt-status');
+            var options = {};
+            options[key] = val ? 1 : 0;
+
+            $st.text('Сохраняем…').css('color', '');
+            $cb.prop('disabled', true);
+
+            $.ajax({
+                url: ajaxurl,
+                method: 'POST',
+                data: {
+                    action: 'site_builder_theme_module_options',
+                    nonce: SiteBuilderData.nonce,
+                    options: options
+                }
+            }).done(function (resp) {
+                $cb.prop('disabled', false);
+                if (resp && resp.success) {
+                    $st.text('✓ Сохранено').css('color', '#00a32a');
+                    setTimeout(function () { $st.text(''); }, 2000);
+                } else {
+                    $st.text('✗ Не удалось сохранить').css('color', '#d63638');
+                }
+            }).fail(function () {
+                $cb.prop('disabled', false);
+                $st.text('✗ Ошибка сети').css('color', '#d63638');
+            });
+        });
     })();
 
 })(jQuery);

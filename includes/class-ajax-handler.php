@@ -19,6 +19,7 @@ class Site_Builder_Ajax_Handler {
         add_action('wp_ajax_site_builder_fsr_start',        [$this, 'fsr_start']);
         add_action('wp_ajax_site_builder_fsr_save_mapping', [$this, 'fsr_save_mapping']);
         add_action('wp_ajax_site_builder_theme_build',      [$this, 'theme_build']);
+        add_action('wp_ajax_site_builder_theme_module_options', [$this, 'theme_module_options']);
         add_action('wp_ajax_site_builder_fsr_get_mapping',  [$this, 'fsr_get_mapping']);
         add_action('wp_ajax_site_builder_rollback_start',   [$this, 'rollback_start']);
         add_action('wp_ajax_site_builder_process_batch',    [$this, 'process_batch']);
@@ -749,6 +750,22 @@ class Site_Builder_Ajax_Handler {
         } else {
             wp_send_json_error(['message' => $result['message'] ?? 'Не удалось сгенерировать тему']);
         }
+    }
+
+    /**
+     * Endpoint: toggle a theme-side module option (e.g. show_breadcrumbs).
+     * Called from tab-theme.php when a checkbox is changed — no theme
+     * regeneration needed, modules read the option on each request.
+     */
+    public function theme_module_options(): void {
+        $this->authorize();
+
+        $options = isset($_POST['options']) && is_array($_POST['options'])
+            ? wp_unslash($_POST['options'])
+            : [];
+
+        Site_Builder_Theme_Generator::set_module_options($options);
+        wp_send_json_success(['options' => Site_Builder_Theme_Generator::get_module_options()]);
     }
 
     /**

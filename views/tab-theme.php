@@ -7,6 +7,7 @@ $th_headers = Site_Builder_Theme_Generator::list_variants('headers');
 $th_footers = Site_Builder_Theme_Generator::list_variants('footers');
 $th_styles  = Site_Builder_Theme_Generator::list_variants('styles');
 $th_current = Site_Builder_Theme_Generator::get_current_choices();
+$th_module_options = Site_Builder_Theme_Generator::get_module_options();
 $th_active  = (get_stylesheet() === Site_Builder_Theme_Generator::THEME_SLUG);
 ?>
 <div class="sb-theme-tab">
@@ -54,6 +55,29 @@ $th_active  = (get_stylesheet() === Site_Builder_Theme_Generator::THEME_SLUG);
                 <?php endif; ?>
             </div>
         <?php endforeach; ?>
+
+        <div class="sb-form-card">
+            <h2>Дополнительные элементы</h2>
+            <p class="description">Переключатели работают <strong>мгновенно</strong> — не нужно повторно генерировать тему. Настройки хранятся в базе и применяются на всех страницах сайта.</p>
+
+            <table class="form-table" role="presentation">
+                <tr>
+                    <th scope="row"><label for="sb-theme-opt-breadcrumbs">Хлебные крошки</label></th>
+                    <td>
+                        <label>
+                            <input type="checkbox"
+                                   id="sb-theme-opt-breadcrumbs"
+                                   class="sb-theme-module-option"
+                                   data-option-key="show_breadcrumbs"
+                                   <?php checked(!empty($th_module_options['show_breadcrumbs'])); ?>>
+                            Выводить хлебные крошки перед заголовком страницы
+                        </label>
+                        <p class="description">На главной странице крошки не выводятся никогда. На остальных — цепочка <em>Главная → предки → текущая страница</em>.</p>
+                        <span class="sb-theme-opt-status" aria-live="polite"></span>
+                    </td>
+                </tr>
+            </table>
+        </div>
 
         <p class="submit">
             <button type="button" class="button button-primary button-large" id="sb-theme-build-btn">

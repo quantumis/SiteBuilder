@@ -208,6 +208,43 @@ class Site_Builder_Theme_Generator {
         ];
     }
 
+    /**
+     * Runtime toggle-able options for theme-side modules (inc/*.php). Stored
+     * separately from theme choices because they can be changed without
+     * regenerating the theme — modules read the option from DB on each request
+     * and skip rendering if the flag is false.
+     *
+     * To add a new toggle: append the key + default value to $defaults here,
+     * then have the module check `get_option('site_builder_theme_module_options')`
+     * before rendering. The UI on tab-theme.php will pick up the new option
+     * automatically once a corresponding checkbox is added.
+     */
+    public static function get_module_options(): array {
+        $defaults = [
+            'show_breadcrumbs' => true,
+        ];
+        $saved = get_option('site_builder_theme_module_options', []);
+        if (!is_array($saved)) $saved = [];
+        // Merge with defaults so newly-added keys automatically get their
+        // default values on existing installations.
+        return array_merge($defaults, $saved);
+    }
+
+    public static function set_module_options(array $options): void {
+        // Only accept known keys — reject unexpected input from tampered AJAX
+        $known = array_keys(self::get_module_options());
+        $clean = [];
+        foreach ($known as $k) {
+            if (array_key_exists($k, $options)) {
+                $clean[$k] = (bool)$options[$k];
+            }
+        }
+        // Keep already-saved values for keys the caller didn't send
+        $existing = get_option('site_builder_theme_module_options', []);
+        if (!is_array($existing)) $existing = [];
+        update_option('site_builder_theme_module_options', array_merge($existing, $clean));
+    }
+
     private function variant_exists(string $category, string $slug): bool {
         $ext = $category === 'styles' ? 'css' : 'php';
         return is_file(SITE_BUILDER_PATH . 'templates/theme/' . $category . '/' . $slug . '.' . $ext);
