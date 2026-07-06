@@ -649,9 +649,10 @@ class Site_Builder_FSR_Importer {
             }
             $stats['messages'][] = 'Страница Sitemap уже существует (ID=' . $sitemap_id . ') — помечена';
         } else {
+            $sitemap_title = self::localize_sitemap_title();
             $sitemap_id = wp_insert_post([
                 'post_type'    => 'page',
-                'post_title'   => 'Sitemap',
+                'post_title'   => $sitemap_title,
                 'post_name'    => $sitemap_slug,
                 'post_status'  => 'publish',
                 'post_content' => '[sb_sitemap]',
@@ -668,12 +669,14 @@ class Site_Builder_FSR_Importer {
                 update_post_meta($sitemap_id, 'fsr_no_index',      1);
                 update_post_meta($sitemap_id, 'fsr_flags_summary', 'F U');
 
-                // [F] flag — add to the footer menu if it exists
+                // [F] flag — add to the footer menu if it exists. The menu
+                // label uses the same localized title so the label in the
+                // footer matches the page name.
                 if ($this->menu_footer_id > 0) {
                     $this->add_to_menu(
                         $this->menu_footer_id,
                         (int)$sitemap_id,
-                        'Sitemap',
+                        $sitemap_title,
                         null,     // no explicit order — footer menu order is by insertion
                         [],       // no ancestors (top-level in footer menu)
                         'footer'
@@ -681,11 +684,56 @@ class Site_Builder_FSR_Importer {
                 }
 
                 $this->tracker->track_item($this->import_id, 'page', (int)$sitemap_id);
-                $stats['messages'][] = 'Создана страница Sitemap (ID=' . $sitemap_id . ')';
+                $stats['messages'][] = 'Создана страница «' . $sitemap_title . '» (ID=' . $sitemap_id . ')';
             }
         }
 
         return $stats;
+    }
+
+    /**
+     * Return a localized display name for the auto-generated "Sitemap" page,
+     * based on the current WordPress locale (get_locale()). Used both for
+     * post_title and for the label in the footer menu, so the page name in the
+     * menu and its title match.
+     *
+     * The dictionary is deliberately kept small (single string × ~40 locales) —
+     * duplicating the whole theme i18n system in the plugin would be overkill
+     * for one label. Locales absent from the dictionary fall back to English.
+     *
+     * If the WP locale is later changed by the user, the already-created
+     * post_title stays in the original locale (post rows are immutable through
+     * this path). To re-localize, the user can either edit the page title
+     * manually or delete the page and re-run the FSR import.
+     */
+    private static function localize_sitemap_title(): string {
+        $t = [
+            'ru_RU' => 'Карта сайта',
+            'pt_PT' => 'Mapa do site',   'pt_BR' => 'Mapa do site',
+            'it_IT' => 'Mappa del sito',
+            'es_ES' => 'Mapa del sitio', 'es_PE' => 'Mapa del sitio',
+            'fr_FR' => 'Plan du site',
+            'pl_PL' => 'Mapa strony',
+            'cs_CZ' => 'Mapa stránek',
+            'el'    => 'Χάρτης ιστότοπου',
+            'ro_RO' => 'Harta site-ului',
+            'sv_SE' => 'Webbplatskarta',
+            'fi_FI' => 'Sivustokartta',
+            'bg_BG' => 'Карта на сайта',
+            'et_EE' => 'Saidikaart',
+            'sl_SI' => 'Zemljevid strani',
+            'sk_SK' => 'Mapa stránok',
+            'hr_HR' => 'Karta stranice',
+            'hu_HU' => 'Webhelytérkép',
+            'is_IS' => 'Vefkort',
+            'lv'    => 'Vietnes karte',
+            'nb_NO' => 'Nettstedskart',
+            'tr_TR' => 'Site haritası',
+            // Sitemap is understood as-is in these locales, no translation needed:
+            // en_*, de_*, nl_*, da_DK, lb_LU
+        ];
+        $locale = function_exists('get_locale') ? get_locale() : 'en_US';
+        return $t[$locale] ?? 'Sitemap';
     }
 
     /**

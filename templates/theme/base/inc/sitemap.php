@@ -86,7 +86,6 @@ if (!function_exists('sb_sitemap_shortcode')) {
         // Link to the section page itself (parent page has content too)
         $overview_label = function_exists('sb_t') ? sb_t('section_overview') : 'Section overview';
         $out .= '    <a class="sb-sitemap-parent-link" href="' . $url . '">'
-              . '<span class="sb-sitemap-parent-icon" aria-hidden="true">↗</span> '
               . esc_html($overview_label) . ' — ' . $title . "</a>\n";
         // Children
         foreach ($children as $child) {
@@ -210,7 +209,6 @@ if (!function_exists('sb_sitemap_shortcode')) {
                 background: rgba(29, 78, 216, 0.1);
                 text-decoration: none;
             }
-            .sb-sitemap-parent-icon { font-size: 0.9em; }
 
             /* Leaf links (no children) */
             .sb-sitemap-leaf {
