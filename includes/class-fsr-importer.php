@@ -619,6 +619,47 @@ class Site_Builder_FSR_Importer {
             $stats['messages'][] = 'styles.css в архиве не найден';
         }
 
+        // Ensure a Sitemap page exists — an HTML sitemap page (distinct from
+        // wp-sitemap.xml which WordPress emits for search engines). It hosts
+        // the [sb_sitemap] shortcode; the theme's sitemap.php module renders
+        // the actual hierarchy. If a page with slug 'sitemap' already exists
+        // (from a prior import, from the user, or from another plugin), we
+        // leave it alone and only tag it with fsr_is_sitemap so the theme
+        // recognizes it.
+        $sitemap_slug = 'sitemap';
+        $existing = get_posts([
+            'post_type'      => 'page',
+            'name'           => $sitemap_slug,
+            'post_status'    => ['publish', 'draft', 'private'],
+            'posts_per_page' => 1,
+            'fields'         => 'ids',
+        ]);
+        if (!empty($existing)) {
+            $sitemap_id = (int)$existing[0];
+            // Tag if not already tagged — no track_item, we didn't create it
+            if ((int)get_post_meta($sitemap_id, 'fsr_is_sitemap', true) !== 1) {
+                update_post_meta($sitemap_id, 'fsr_is_sitemap', 1);
+            }
+            $stats['messages'][] = 'Страница Sitemap уже существует (ID=' . $sitemap_id . ') — помечена';
+        } else {
+            $sitemap_id = wp_insert_post([
+                'post_type'    => 'page',
+                'post_title'   => 'Sitemap',
+                'post_name'    => $sitemap_slug,
+                'post_status'  => 'publish',
+                'post_content' => '[sb_sitemap]',
+                'post_author'  => get_current_user_id() ?: 1,
+            ], true);
+            if (is_wp_error($sitemap_id) || !$sitemap_id) {
+                $stats['messages'][] = 'Не удалось создать страницу Sitemap';
+            } else {
+                update_post_meta($sitemap_id, 'fsr_is_sitemap', 1);
+                update_post_meta($sitemap_id, 'fsr_no_index', 1);  // no need for search engines
+                $this->tracker->track_item($this->import_id, 'page', (int)$sitemap_id);
+                $stats['messages'][] = 'Создана страница Sitemap (ID=' . $sitemap_id . ')';
+            }
+        }
+
         return $stats;
     }
 

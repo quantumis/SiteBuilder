@@ -19,7 +19,7 @@ if (!defined('ABSPATH')) exit;
 // (and header/footer templates) may call sb_t(). Each module wraps its
 // functions in function_exists() guards so duplicate loads are safe.
 $sb_inc_dir = __DIR__ . '/inc';
-foreach (['i18n.php', 'similar-post.php', 'geo-shortcodes.php', 'articles-grid.php', 'breadcrumbs.php', 'seo.php', 'back-to-top.php'] as $sb_inc_file) {
+foreach (['i18n.php', 'similar-post.php', 'geo-shortcodes.php', 'articles-grid.php', 'breadcrumbs.php', 'external-links.php', 'sitemap.php', 'seo.php', 'back-to-top.php'] as $sb_inc_file) {
     $sb_inc_path = $sb_inc_dir . '/' . $sb_inc_file;
     if (file_exists($sb_inc_path)) require_once $sb_inc_path;
 }

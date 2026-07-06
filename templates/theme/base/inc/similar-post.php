@@ -479,6 +479,24 @@ function render_child_pages_showcase($children, $post_type = 'page', $current_la
     }
     
     $out = '
+    <style>
+        .child-pages-small-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+        }
+        @media (max-width: 768px) {
+            .child-pages-small-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 12px;
+            }
+        }
+        @media (max-width: 480px) {
+            .child-pages-small-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
     <div class="child-pages-showcase" style="max-width: 900px;
         margin: 50px auto 30px;
         font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif;
