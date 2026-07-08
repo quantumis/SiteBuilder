@@ -263,136 +263,35 @@ class Site_Builder_Theme_Generator {
     }
 
     /**
-     * Generate a simple schematic SVG preview for a variant card. Keeps the
-     * theme tab visually informative without shipping real screenshots for
-     * every variant (which would have to be updated on every design tweak).
+     * Generate a simple SVG palette-preview for a style variant card. Headers
+     * and footers no longer render previews here — their card is a text-only
+     * summary of name + description (SVG schematics were removed in v1.1.4-beta2
+     * because a schematic layout hint conveys less than the description itself).
+     * If we later want interactive previews, they should be full iframes with
+     * the actual theme rendered against sample content — not hand-drawn SVGs.
      */
     public static function render_preview_svg(string $category, string $preview_type, string $slug, ?array $palette = null): string {
-        $w = 260; $h = 100;
-        $bg = '#f9fafb'; $fg = '#111827'; $accent = '#2563eb'; $muted = '#9ca3af';
+        if ($category !== 'styles') return '';
 
-        // Use variant palette if provided (styles) — first 4 entries are bg/bgAlt/text/link
+        $w = 260; $h = 100;
+        $bg = '#f9fafb'; $fg = '#111827'; $muted = '#9ca3af';
+
         if (is_array($palette) && count($palette) >= 3) {
             $bg = $palette[0] ?? $bg;
             $fg = $palette[2] ?? $fg;
-            $accent = $palette[3] ?? $accent;
         }
 
         $svg  = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' . $w . ' ' . $h . '" width="100%" height="100%" preserveAspectRatio="xMidYMid meet" aria-hidden="true">';
         $svg .= '<rect width="' . $w . '" height="' . $h . '" fill="' . esc_attr($bg) . '"/>';
 
-        if ($category === 'headers') {
-            switch ($preview_type) {
-                case 'sticky-horizontal':
-                    // Thin bar, logo left, menu items right, subtle underline for sticky feel
-                    $svg .= '<rect x="0" y="0" width="' . $w . '" height="18" fill="' . esc_attr($accent) . '" opacity="0.05"/>';
-                    $svg .= '<rect x="0" y="17" width="' . $w . '" height="1" fill="' . esc_attr($accent) . '" opacity="0.3"/>';
-                    $svg .= '<rect x="12" y="6" width="34" height="6" rx="1" fill="' . esc_attr($fg) . '"/>';
-                    for ($i = 0; $i < 4; $i++) $svg .= '<rect x="' . (150 + $i * 24) . '" y="8" width="18" height="3" fill="' . esc_attr($fg) . '" opacity="0.7"/>';
-                    // hint: content below
-                    $svg .= '<rect x="12" y="35" width="140" height="4" fill="' . esc_attr($muted) . '" opacity="0.3"/>';
-                    $svg .= '<rect x="12" y="45" width="180" height="4" fill="' . esc_attr($muted) . '" opacity="0.3"/>';
-                    $svg .= '<rect x="12" y="55" width="120" height="4" fill="' . esc_attr($muted) . '" opacity="0.3"/>';
-                    break;
-                case 'off-canvas':
-                    // Burger + logo, then a slide-out panel hint on the left
-                    $svg .= '<rect x="0" y="0" width="' . $w . '" height="24" fill="' . esc_attr($bg) . '"/>';
-                    $svg .= '<rect x="0" y="23" width="' . $w . '" height="1" fill="' . esc_attr($muted) . '" opacity="0.3"/>';
-                    // burger
-                    for ($i = 0; $i < 3; $i++) $svg .= '<rect x="12" y="' . (8 + $i * 4) . '" width="14" height="2" fill="' . esc_attr($fg) . '"/>';
-                    // logo
-                    $svg .= '<rect x="36" y="8" width="46" height="8" rx="1" fill="' . esc_attr($fg) . '"/>';
-                    // off-canvas panel (dashed hint)
-                    $svg .= '<rect x="0" y="24" width="72" height="76" fill="' . esc_attr($accent) . '" opacity="0.06"/>';
-                    $svg .= '<line x1="72" y1="24" x2="72" y2="100" stroke="' . esc_attr($accent) . '" stroke-dasharray="2 2" opacity="0.5"/>';
-                    for ($i = 0; $i < 5; $i++) $svg .= '<rect x="10" y="' . (34 + $i * 10) . '" width="52" height="3" fill="' . esc_attr($fg) . '" opacity="0.6"/>';
-                    break;
-                case 'two-row':
-                    // Top row: logo + utility. Bottom row: full menu bar.
-                    $svg .= '<rect x="0" y="0" width="' . $w . '" height="20" fill="' . esc_attr($accent) . '" opacity="0.05"/>';
-                    $svg .= '<rect x="12" y="6" width="34" height="8" rx="1" fill="' . esc_attr($fg) . '"/>';
-                    $svg .= '<rect x="200" y="8" width="12" height="3" fill="' . esc_attr($fg) . '" opacity="0.6"/>';
-                    $svg .= '<rect x="216" y="8" width="12" height="3" fill="' . esc_attr($fg) . '" opacity="0.6"/>';
-                    $svg .= '<rect x="232" y="8" width="16" height="3" fill="' . esc_attr($fg) . '" opacity="0.6"/>';
-                    $svg .= '<rect x="0" y="20" width="' . $w . '" height="1" fill="' . esc_attr($accent) . '" opacity="0.2"/>';
-                    // menu row
-                    $svg .= '<rect x="0" y="21" width="' . $w . '" height="20" fill="' . esc_attr($bg) . '"/>';
-                    for ($i = 0; $i < 5; $i++) $svg .= '<rect x="' . (12 + $i * 40) . '" y="29" width="26" height="3" fill="' . esc_attr($fg) . '" opacity="0.7"/>';
-                    $svg .= '<rect x="0" y="41" width="' . $w . '" height="1" fill="' . esc_attr($muted) . '" opacity="0.3"/>';
-                    break;
-                default:
-                    // Generic horizontal menu
-                    $svg .= '<rect x="12" y="8" width="34" height="8" rx="1" fill="' . esc_attr($fg) . '"/>';
-                    for ($i = 0; $i < 4; $i++) $svg .= '<rect x="' . (150 + $i * 24) . '" y="10" width="18" height="3" fill="' . esc_attr($fg) . '" opacity="0.7"/>';
-                    $svg .= '<rect x="0" y="24" width="' . $w . '" height="1" fill="' . esc_attr($muted) . '" opacity="0.3"/>';
-                    break;
-            }
-        } elseif ($category === 'footers') {
-            switch ($preview_type) {
-                case 'columns-4':
-                    $svg .= '<rect x="0" y="6" width="' . $w . '" height="1" fill="' . esc_attr($muted) . '" opacity="0.3"/>';
-                    for ($c = 0; $c < 4; $c++) {
-                        $x = 12 + $c * 60;
-                        $svg .= '<rect x="' . $x . '" y="20" width="26" height="3" fill="' . esc_attr($fg) . '" opacity="0.8"/>';
-                        for ($r = 0; $r < 4; $r++) $svg .= '<rect x="' . $x . '" y="' . (32 + $r * 8) . '" width="46" height="3" fill="' . esc_attr($muted) . '" opacity="0.5"/>';
-                    }
-                    $svg .= '<rect x="0" y="80" width="' . $w . '" height="1" fill="' . esc_attr($muted) . '" opacity="0.3"/>';
-                    $svg .= '<rect x="90" y="86" width="80" height="4" fill="' . esc_attr($muted) . '" opacity="0.5"/>';
-                    break;
-                case 'newsletter':
-                    // Big signup col left, 3 narrow cols right
-                    $svg .= '<rect x="0" y="6" width="' . $w . '" height="1" fill="' . esc_attr($muted) . '" opacity="0.3"/>';
-                    // signup col
-                    $svg .= '<rect x="12" y="20" width="26" height="3" fill="' . esc_attr($fg) . '" opacity="0.8"/>';
-                    $svg .= '<rect x="12" y="28" width="90" height="5" fill="' . esc_attr($fg) . '"/>';
-                    $svg .= '<rect x="12" y="40" width="80" height="4" fill="' . esc_attr($muted) . '" opacity="0.4"/>';
-                    $svg .= '<rect x="12" y="52" width="70" height="10" rx="2" fill="' . esc_attr($bg) . '" stroke="' . esc_attr($muted) . '" opacity="0.6"/>';
-                    $svg .= '<rect x="86" y="52" width="26" height="10" rx="2" fill="' . esc_attr($accent) . '"/>';
-                    // 3 link cols
-                    for ($c = 0; $c < 3; $c++) {
-                        $x = 128 + $c * 42;
-                        $svg .= '<rect x="' . $x . '" y="20" width="22" height="3" fill="' . esc_attr($fg) . '" opacity="0.8"/>';
-                        for ($r = 0; $r < 4; $r++) $svg .= '<rect x="' . $x . '" y="' . (32 + $r * 7) . '" width="32" height="3" fill="' . esc_attr($muted) . '" opacity="0.5"/>';
-                    }
-                    $svg .= '<rect x="0" y="78" width="' . $w . '" height="1" fill="' . esc_attr($muted) . '" opacity="0.3"/>';
-                    $svg .= '<rect x="90" y="85" width="80" height="4" fill="' . esc_attr($muted) . '" opacity="0.5"/>';
-                    break;
-                case 'divided-3':
-                    $svg .= '<rect x="0" y="0" width="' . $w . '" height="2" fill="' . esc_attr($accent) . '"/>';
-                    for ($c = 0; $c < 3; $c++) {
-                        $x = 12 + $c * 82;
-                        // bullet + heading
-                        $svg .= '<circle cx="' . ($x + 3) . '" cy="18" r="3" fill="' . esc_attr($accent) . '"/>';
-                        $svg .= '<rect x="' . ($x + 12) . '" y="16" width="30" height="4" fill="' . esc_attr($fg) . '"/>';
-                        for ($r = 0; $r < 3; $r++) $svg .= '<rect x="' . $x . '" y="' . (30 + $r * 9) . '" width="66" height="3" fill="' . esc_attr($muted) . '" opacity="0.6"/>';
-                    }
-                    // social icons hint
-                    for ($i = 0; $i < 3; $i++) $svg .= '<circle cx="' . (180 + $i * 12) . '" cy="62" r="4" fill="' . esc_attr($muted) . '" opacity="0.5"/>';
-                    $svg .= '<rect x="0" y="78" width="' . $w . '" height="1" fill="' . esc_attr($muted) . '" opacity="0.3"/>';
-                    $svg .= '<rect x="90" y="85" width="80" height="4" fill="' . esc_attr($muted) . '" opacity="0.5"/>';
-                    break;
-                default:
-                    // Generic columns
-                    for ($c = 0; $c < 3; $c++) {
-                        $x = 12 + $c * 80;
-                        $svg .= '<rect x="' . $x . '" y="20" width="30" height="4" fill="' . esc_attr($fg) . '"/>';
-                        for ($r = 0; $r < 3; $r++) $svg .= '<rect x="' . $x . '" y="' . (32 + $r * 9) . '" width="60" height="3" fill="' . esc_attr($muted) . '" opacity="0.5"/>';
-                    }
-                    break;
-            }
-        } elseif ($category === 'styles') {
-            // Show palette as color chips + preview text
-            $chips = is_array($palette) ? array_slice($palette, 0, 5) : [$bg, $fg, $accent];
-            $chip_w = 40; $chip_h = 40; $gap = 6;
-            $total_w = count($chips) * ($chip_w + $gap) - $gap;
-            $start_x = ($w - $total_w) / 2;
-            foreach ($chips as $i => $c) {
-                $svg .= '<rect x="' . ($start_x + $i * ($chip_w + $gap)) . '" y="14" width="' . $chip_w . '" height="' . $chip_h . '" rx="4" fill="' . esc_attr($c) . '" stroke="' . esc_attr($muted) . '" stroke-opacity="0.2"/>';
-            }
-            // Sample "Aa" caption at bottom
-            $svg .= '<text x="' . ($w / 2) . '" y="82" text-anchor="middle" font-family="Georgia, serif" font-size="14" font-weight="700" fill="' . esc_attr($fg) . '">Aa</text>';
+        $chips = is_array($palette) ? array_slice($palette, 0, 5) : [$bg, $fg];
+        $chip_w = 40; $chip_h = 40; $gap = 6;
+        $total_w = count($chips) * ($chip_w + $gap) - $gap;
+        $start_x = ($w - $total_w) / 2;
+        foreach ($chips as $i => $c) {
+            $svg .= '<rect x="' . ($start_x + $i * ($chip_w + $gap)) . '" y="14" width="' . $chip_w . '" height="' . $chip_h . '" rx="4" fill="' . esc_attr($c) . '" stroke="' . esc_attr($muted) . '" stroke-opacity="0.2"/>';
         }
-
+        $svg .= '<text x="' . ($w / 2) . '" y="82" text-anchor="middle" font-family="Georgia, serif" font-size="14" font-weight="700" fill="' . esc_attr($fg) . '">Aa</text>';
         $svg .= '</svg>';
         return $svg;
     }

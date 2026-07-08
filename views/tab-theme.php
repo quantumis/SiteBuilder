@@ -49,17 +49,19 @@ $th_active  = (get_stylesheet() === Site_Builder_Theme_Generator::THEME_SLUG);
                                 $preview_type = $variant['preview_type'] ?? '';
                                 $palette = $variant['palette'] ?? null;
                                 ?>
-                                <label class="sb-theme-variant <?php echo $is_selected ? 'sb-theme-variant-selected' : ''; ?>"
+                                <label class="sb-theme-variant <?php echo $is_selected ? 'sb-theme-variant-selected' : ''; ?> sb-theme-variant-<?php echo esc_attr($section['cat']); ?>"
                                        data-slug="<?php echo esc_attr($variant['slug']); ?>">
                                     <input type="radio"
                                            name="sb-theme-<?php echo esc_attr($section['key']); ?>"
                                            value="<?php echo esc_attr($variant['slug']); ?>"
                                            <?php checked($section['current'], $variant['slug']); ?>>
-                                    <div class="sb-theme-variant-preview">
-                                        <?php echo Site_Builder_Theme_Generator::render_preview_svg(
-                                            $section['cat'], $preview_type, $variant['slug'], $palette
-                                        ); ?>
-                                    </div>
+                                    <?php if ($section['cat'] === 'styles'): ?>
+                                        <div class="sb-theme-variant-preview">
+                                            <?php echo Site_Builder_Theme_Generator::render_preview_svg(
+                                                $section['cat'], $preview_type, $variant['slug'], $palette
+                                            ); ?>
+                                        </div>
+                                    <?php endif; ?>
                                     <div class="sb-theme-variant-body">
                                         <strong><?php echo esc_html($variant['name']); ?></strong>
                                         <p><?php echo esc_html($variant['description']); ?></p>
