@@ -132,9 +132,25 @@ class Site_Builder_FSR_Importer {
             if ($raw === '') {
                 return ['ok' => false, 'title' => $slug, 'message' => 'index-файл пустой'];
             }
+            // Container-block warnings (unknown blocks, max_per_page violations)
+            // surface via reference so we can log them per-page below.
+            $block_warnings = [];
             $parsed = $ext === 'md'
-                ? $this->parse_md_file($raw)
+                ? $this->parse_md_file($raw, $block_warnings)
                 : $this->parse_html_file($raw);
+
+            // Log block warnings against this page's context — the journal
+            // shows them with the file path so QA can find the offending
+            // markdown quickly.
+            if (!empty($block_warnings)) {
+                foreach ($block_warnings as $warn) {
+                    $this->tracker->append_error(
+                        $this->import_id,
+                        $warn . ' (' . $index_file . ')',
+                        ['kind' => 'fsr_block_syntax']
+                    );
+                }
+            }
         } else {
             // Container page — empty content, title from flag label or slug
             $parsed = [
@@ -846,7 +862,7 @@ class Site_Builder_FSR_Importer {
     /**
      * Parse an index.md: split YAML frontmatter from body, then run md→html.
      */
-    private function parse_md_file(string $raw): array {
+    private function parse_md_file(string $raw, array &$block_warnings = []): array {
         $title = $description = $headline = $headimg = '';
         $body  = $raw;
 
@@ -871,6 +887,16 @@ class Site_Builder_FSR_Importer {
 
         // Strip the first H1 (it's redundant with the page title)
         $body = preg_replace('/^\s*#\s+[^\n]+\n/', '', $body, 1);
+
+        // Process container blocks (::: name ... :::) BEFORE the markdown
+        // parser runs — this converts them to HTML that the outer parser will
+        // pass through untouched. Blocks may span multiple lines and contain
+        // markdown themselves, which the renderer expands. Any warnings
+        // (unknown block names, max_per_page violations) are collected via
+        // reference so import_page() can log them against this specific page.
+        if (class_exists('Site_Builder_Blocks_Parser')) {
+            $body = Site_Builder_Blocks_Parser::parse($body, $block_warnings);
+        }
 
         $content = $this->md_to_html($body);
 
