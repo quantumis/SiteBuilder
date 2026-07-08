@@ -193,6 +193,20 @@ class Site_Builder_FSR_Importer {
             }
         }
 
+        // 2.6. Convert every relative <a href="..."> in the page HTML into a
+        // $$LINK slug | text$$ inline shortcode. The theme's link-resolver
+        // module resolves these at render time against the current site's
+        // published pages — if the target page exists, it becomes a real
+        // link; if it doesn't yet (e.g. a DLY-scheduled page still in future
+        // status), it renders as plain text. Once the target page publishes,
+        // the theme's cache invalidates and the link starts working
+        // automatically. External URLs (http://, mailto:, tel:, etc.) are
+        // left untouched — the theme's external-links module handles them
+        // separately.
+        if ($parsed['content'] !== '') {
+            $parsed['content'] = $this->convert_internal_links_to_shortcodes($parsed['content']);
+        }
+
         // 3. Determine page parent (chain through previous segments)
         $parent_id = $is_root ? 0 : $this->resolve_parent_id(array_slice($segments, 0, -1));
         if ($parent_id === null) {
@@ -1190,6 +1204,77 @@ class Site_Builder_FSR_Importer {
      * shortcode approach lets the theme localize on-the-fly using the site's
      * front-end locale, so an ES-content site with a RU-admin WP shows dates
      * in Spanish, not Russian.
+     */
+    /**
+     * Convert every relative <a href="..."> in the given HTML into a $$LINK
+     * slug | text $$ inline shortcode that the theme's link-resolver module
+     * resolves at render time.
+     *
+     * Why: FSR archives contain cross-links between pages that are imported
+     * in the same batch. If page A links to page B but B is scheduled for
+     * publication next week ([DLY] flag), a normal <a href="/b/"> would 404
+     * for readers who click it before B publishes. Converting to a shortcode
+     * lets the theme render the link only when the target is actually live.
+     *
+     * External URLs (http/https/mailto/tel/anchors/protocol-relative) are
+     * left as-is — the theme's external-links module adds target="_blank"
+     * and rel="nofollow noopener" to them at render time.
+     *
+     * The slug extraction takes the last path segment and strips any file
+     * extension: /statistics/nba/ → "nba", /articles/foo.html → "foo".
+     * WordPress ensures post_name (slug) uniqueness, so this is unambiguous.
+     */
+    private function convert_internal_links_to_shortcodes(string $html): string {
+        if (strpos($html, '<a ') === false) return $html;
+
+        return preg_replace_callback(
+            '#<a\s+([^>]*?)href=(["\'])([^"\']+)\2([^>]*)>(.*?)</a>#is',
+            function ($m) {
+                $href = $m[3];
+                $text = $m[5];
+
+                // External / non-http-relative → leave untouched
+                if ($href === '' || $href[0] === '#') return $m[0];
+                if (preg_match('#^(https?://|mailto:|tel:|javascript:|ftp:|sms:|data:|//)#i', $href)) {
+                    return $m[0];
+                }
+
+                // Relative → extract the trailing slug
+                $path = trim((string)parse_url($href, PHP_URL_PATH), '/');
+                if ($path === '') return $m[0]; // href was just "/"
+
+                $segments = explode('/', $path);
+                $last = end($segments);
+                // Strip file extension (e.g. .html) if present
+                $slug = pathinfo($last, PATHINFO_FILENAME);
+                if ($slug === '') return $m[0];
+
+                // The <a>...</a> body may contain inline HTML (bold, italic).
+                // Strip tags for the shortcode form — the target page's title
+                // isn't preserved through markup anyway.
+                $link_text = trim(strip_tags($text));
+                if ($link_text === '') return $m[0];
+
+                // Guard against pipe/dollar characters inside the text that
+                // would break the shortcode grammar. Replace with harmless
+                // alternatives — losing a literal '|' in a link text is
+                // acceptable compared to breaking the shortcode.
+                $link_text = str_replace(['|', '$$'], ['/', '$'], $link_text);
+
+                return '$$LINK ' . $slug . ' | ' . $link_text . '$$';
+            },
+            $html
+        );
+    }
+
+    /**
+     * Replace $$SITE_NAME$$, $$CURRENT_DATE$$, $$CURRENT_DATE_ISO$$, $$CY$$.
+     *
+     * $$SITE_NAME$$ and $$CURRENT_DATE_ISO$$ are substituted with literal
+     * values at import time. $$CURRENT_DATE$$ and $$CY$$ are converted to
+     * shortcodes ([sb_date] and [sb_year]) that the theme resolves at render
+     * time — see the docstring on the theme's shortcodes.php module for the
+     * rationale (localization mismatches between WP admin and content).
      */
     private function replace_inline_shortcodes(string $text): string {
         if ($text === '' || strpos($text, '$$') === false) return $text;
