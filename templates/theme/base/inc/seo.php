@@ -99,6 +99,14 @@ if (!function_exists('sb_seo_should_run')) {
         if ($social === '') $social = trim((string)get_post_meta($post_id, 'fsr_headline', true));
         if ($social === '') $social = $seo_title;
 
+        // Resolve shortcodes ([sb_year], [sb_date]) in any of the fields —
+        // meta values are read raw and don't pass through the_title filters.
+        // Guarded on '[sb_' prefix so plain text with brackets isn't touched.
+        foreach ([&$seo_title, &$seo_desc, &$social] as &$v) {
+            if (is_string($v) && strpos($v, '[sb_') !== false) $v = do_shortcode($v);
+        }
+        unset($v);
+
         // Hero image: featured thumbnail → fsr_headimg from frontmatter
         $img_url = get_the_post_thumbnail_url($post_id, 'full');
         if (!$img_url) {

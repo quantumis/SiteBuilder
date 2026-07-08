@@ -60,3 +60,39 @@ if (!function_exists('sb_shortcode_year')) {
     }
     add_shortcode('sb_year', 'sb_shortcode_year');
 }
+
+/**
+ * Apply do_shortcode() to titles across WordPress surfaces where WP doesn't
+ * do it automatically. WP core only runs shortcode processing on the_content;
+ * post_title, menu item labels, and the document <title> are passed as-is, so
+ * any [sb_year] or [sb_date] in them stays as literal text.
+ *
+ * We gate on strpos($str, '[sb_') so this filter is a no-op for the 99% of
+ * titles that don't contain our shortcodes — avoids any surprise interaction
+ * with plain-text titles that happen to have square brackets.
+ */
+if (!function_exists('sb_apply_shortcodes_to_title')) {
+    function sb_apply_shortcodes_to_title($text) {
+        if (!is_string($text) || strpos($text, '[sb_') === false) return $text;
+        return do_shortcode($text);
+    }
+    // Post title as rendered by the_title() / get_the_title() — covers page
+    // headings, breadcrumbs, sitemap, similar-posts, articles-grid cards, and
+    // the wp-admin post list.
+    add_filter('the_title', 'sb_apply_shortcodes_to_title', 10);
+    // Menu item labels (nav menus assembled by wp_nav_menu()).
+    add_filter('nav_menu_item_title', 'sb_apply_shortcodes_to_title', 10);
+    // The document <title> tag emitted by wp_head().
+    add_filter('document_title_parts', function ($parts) {
+        foreach ($parts as $k => $v) {
+            $parts[$k] = sb_apply_shortcodes_to_title($v);
+        }
+        return $parts;
+    }, 10);
+    add_filter('wp_title', 'sb_apply_shortcodes_to_title', 10);
+    // Post excerpt (used in cards / OG description if no custom SEO desc).
+    add_filter('the_excerpt', 'sb_apply_shortcodes_to_title', 10);
+    add_filter('get_the_excerpt', 'sb_apply_shortcodes_to_title', 10);
+    // Widget titles (in case admins put a shortcode in a widget heading).
+    add_filter('widget_title', 'sb_apply_shortcodes_to_title', 10);
+}
