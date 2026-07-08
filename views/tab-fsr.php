@@ -31,11 +31,11 @@ if (!defined('ABSPATH')) {
                     <th scope="row"><label for="sb-fsr-schedule-mode">Расписание для <code>[DLY]</code></label></th>
                     <td>
                         <select id="sb-fsr-schedule-mode">
-                            <option value="instant">Публиковать всё сразу (игнорировать DLY)</option>
+                            <option value="instant">Публиковать <code>[DLY]</code> сразу (жёсткие даты <code>[DLY=дата]</code> работают как обычно)</option>
                             <option value="one_day">По одной DLY-странице в день</option>
                             <option value="period">Растянуть по N дней</option>
                         </select>
-                        <p class="description">Применяется только к страницам с флагом <code>[DLY]</code> без даты. Страницы с <code>[DLY=YYYY-MM-DD]</code> публикуются на указанную дату.</p>
+                        <p class="description">Применяется только к страницам с флагом <code>[DLY]</code> без даты. Страницы с <code>[DLY=YYYY-MM-DD]</code> публикуются на указанную дату независимо от режима.</p>
                     </td>
                 </tr>
                 <tr id="sb-fsr-days-row" style="display:none">

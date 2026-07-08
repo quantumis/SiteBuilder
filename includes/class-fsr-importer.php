@@ -240,10 +240,18 @@ class Site_Builder_FSR_Importer {
         $post_date   = '';
         if (!empty($flags['dly'])) {
             if (!empty($flags['dly_date'])) {
-                $dt = $flags['dly_date'] . ' 00:00:00';
-                if (strtotime($dt) > time()) {
-                    $post_status = 'future';
-                    $post_date   = $dt;
+                // Explicit date — randomize time-of-day within the specified day
+                // so it doesn't look robotic. Deterministic per-page (same date
+                // on re-import) via crc32 seed of dly_date + slug.
+                $seed = crc32('sb-dly-fixed-' . $flags['dly_date'] . '-' . $slug);
+                $daytime_seconds = 9 * 3600 + ($seed % (13 * 3600)); // [9:00, 22:00)
+                $day_ts = strtotime($flags['dly_date'] . ' 00:00:00');
+                if ($day_ts !== false) {
+                    $ts = $day_ts + $daytime_seconds;
+                    if ($ts > time()) {
+                        $post_status = 'future';
+                        $post_date   = date('Y-m-d H:i:s', $ts);
+                    }
                 }
             } else {
                 $dly_seq = (int)($data['dly_seq'] ?? 0);
@@ -793,7 +801,17 @@ class Site_Builder_FSR_Importer {
 
         if ($wait_week) $offset_seconds += 7 * 86400;
 
-        return ['date' => date('Y-m-d H:i:s', $start_ts + $offset_seconds)];
+        // Randomize the time-of-day so posts don't all appear at midnight
+        // (which looks robotic). Distribute across daytime hours (9:00–22:00)
+        // deterministically per-page so re-running the import produces the
+        // same schedule.
+        $seed = crc32('sb-dly-' . $dly_seq . '-' . $start_ts);
+        $daytime_seconds = 9 * 3600 + ($seed % (13 * 3600)); // [9:00, 22:00)
+        // Snap to the day, then apply the daytime offset
+        $day_ts = strtotime(date('Y-m-d 00:00:00', $start_ts + $offset_seconds));
+        $final_ts = $day_ts + $daytime_seconds;
+
+        return ['date' => date('Y-m-d H:i:s', $final_ts)];
     }
 
     private function find_branded_file(string $archive_root, string $stem): ?string {
@@ -1161,17 +1179,27 @@ class Site_Builder_FSR_Importer {
 
     /**
      * Replace $$SITE_NAME$$, $$CURRENT_DATE$$, $$CURRENT_DATE_ISO$$, $$CY$$.
-     * Replacement happens at import time (not at page render), so the substituted
-     * values are baked into post_content / post_title.
+     *
+     * $$SITE_NAME$$ and $$CURRENT_DATE_ISO$$ are substituted with literal
+     * values at import time — they don't need to change afterwards.
+     *
+     * $$CURRENT_DATE$$ and $$CY$$ are converted to shortcodes ([sb_date] and
+     * [sb_year]) that the theme resolves at render time. Reason: static
+     * substitution formats dates using the WordPress admin locale, but archive
+     * content is usually in a different language than the WP interface. The
+     * shortcode approach lets the theme localize on-the-fly using the site's
+     * front-end locale, so an ES-content site with a RU-admin WP shows dates
+     * in Spanish, not Russian.
      */
     private function replace_inline_shortcodes(string $text): string {
         if ($text === '' || strpos($text, '$$') === false) return $text;
         $now = current_time('timestamp');
         $replacements = [
             '$$SITE_NAME$$'         => (string)get_bloginfo('name'),
-            '$$CURRENT_DATE$$'      => date_i18n(get_option('date_format', 'F j, Y'), $now),
             '$$CURRENT_DATE_ISO$$'  => gmdate('Y-m-d\TH:i:s\Z'),
-            '$$CY$$'                => date('Y', $now),
+            // These become shortcodes — resolved by the theme at render time.
+            '$$CURRENT_DATE$$'      => '[sb_date]',
+            '$$CY$$'                => '[sb_year]',
         ];
         return strtr($text, $replacements);
     }

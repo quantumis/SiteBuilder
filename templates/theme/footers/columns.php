@@ -27,7 +27,7 @@ if (!defined('ABSPATH')) exit;
 
             <?php if (has_nav_menu('footer')) : ?>
                 <div class="sb-footer-col sb-footer-menu-col">
-                    <h4 class="sb-footer-heading"><?php echo esc_html(sb_t('navigation')); ?></h4>
+                    <h2 class="sb-footer-heading"><?php echo esc_html(sb_t('navigation')); ?></h2>
                     <nav aria-label="<?php echo esc_attr(sb_t('footer_menu')); ?>">
                         <?php
                         wp_nav_menu([
@@ -42,7 +42,7 @@ if (!defined('ABSPATH')) exit;
             <?php endif; ?>
 
             <div class="sb-footer-col sb-footer-info">
-                <h4 class="sb-footer-heading"><?php echo esc_html(sb_t('site')); ?></h4>
+                <h2 class="sb-footer-heading"><?php echo esc_html(sb_t('site')); ?></h2>
                 <ul class="sb-footer-info-list">
                     <li><a href="<?php echo esc_url(home_url('/')); ?>"><?php echo esc_html(sb_t('home')); ?></a></li>
                     <?php $sb_privacy_url = get_privacy_policy_url(); ?>
