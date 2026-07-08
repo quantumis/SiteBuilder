@@ -1,0 +1,83 @@
+/* brand-statement — крупный брендовый блок слева + 3 узкие колонки справа */
+.sb-footer-bs {
+    background: var(--sb-color-bg-alt, #f8f9fa);
+    border-top: 1px solid var(--sb-color-border, #e5e7eb);
+    padding: 52px 20px 24px;
+    color: var(--sb-color-text, #111);
+    margin-top: 48px;
+}
+.sb-footer-bs-inner {
+    max-width: var(--sb-content-max-width, 920px);
+    margin: 0 auto;
+}
+.sb-footer-bs-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 1fr;
+    gap: 40px;
+    margin-bottom: 36px;
+}
+.sb-footer-bs-brand-col { padding-right: 24px; }
+.sb-footer-bs-brand-col img {
+    max-height: 44px;
+    width: auto;
+    margin-bottom: 14px;
+    display: block;
+}
+.sb-footer-bs-name {
+    font-weight: 700;
+    font-size: 1.4em;
+    color: var(--sb-color-text);
+    margin-bottom: 12px;
+    letter-spacing: -0.01em;
+}
+.sb-footer-bs-desc {
+    margin: 0 0 16px;
+    color: var(--sb-color-muted, #6b7280);
+    font-size: 0.95em;
+    line-height: 1.65;
+    max-width: 42ch;
+}
+.sb-footer-bs-domain {
+    display: inline-block;
+    color: var(--sb-color-link, #2563eb);
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 0.95em;
+}
+.sb-footer-bs-domain:hover { text-decoration: underline; }
+.sb-footer-bs-col { font-size: 0.9em; }
+.sb-footer-bs-heading {
+    margin: 0 0 14px;
+    font-size: 0.75em;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--sb-color-muted, #6b7280);
+    font-weight: 700;
+}
+.sb-footer-bs-list, .sb-footer-bs .sb-menu {
+    list-style: none; padding: 0; margin: 0;
+    display: flex; flex-direction: column; gap: 8px;
+}
+.sb-footer-bs-list a, .sb-footer-bs .sb-menu a {
+    color: var(--sb-color-text);
+    text-decoration: none;
+    transition: color 0.15s;
+}
+.sb-footer-bs-list a:hover, .sb-footer-bs .sb-menu a:hover {
+    color: var(--sb-color-link);
+    text-decoration: underline;
+}
+.sb-footer-bs-copyright {
+    padding-top: 20px;
+    border-top: 1px solid var(--sb-color-border, #e5e7eb);
+    color: var(--sb-color-muted, #6b7280);
+    font-size: 0.85em;
+    text-align: center;
+}
+@media (max-width: 800px) {
+    .sb-footer-bs-grid { grid-template-columns: 1fr 1fr; gap: 32px; }
+    .sb-footer-bs-brand-col { grid-column: 1 / -1; padding-right: 0; }
+}
+@media (max-width: 480px) {
+    .sb-footer-bs-grid { grid-template-columns: 1fr; gap: 28px; }
+}

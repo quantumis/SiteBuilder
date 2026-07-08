@@ -1,0 +1,58 @@
+/* Graphite Mono — тёмная монохромная схема, единственный янтарный акцент */
+:root {
+    --sb-color-bg:              #171717;    /* graphite */
+    --sb-color-bg-alt:          #212121;    /* lighter graphite */
+    --sb-color-text:            #ededed;    /* near-white */
+    --sb-color-muted:           #8a8a8a;    /* neutral gray */
+    --sb-color-link:            #f59e0b;    /* amber */
+    --sb-color-link-hover:      #fbbf24;    /* brighter amber */
+    --sb-color-border:          #2e2e2e;    /* subtle separator */
+    --sb-color-accent:          #ededed;    /* white accent */
+
+    --sb-font-body:             -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', system-ui, sans-serif;
+    --sb-font-heading:          -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', system-ui, sans-serif;
+    --sb-font-size:             16px;
+    --sb-line-height:           1.65;
+    --sb-content-max-width:     920px;
+}
+
+body.sb-site {
+    background: var(--sb-color-bg);
+    color: var(--sb-color-text);
+    font-family: var(--sb-font-body);
+    font-size: var(--sb-font-size);
+    line-height: var(--sb-line-height);
+}
+body.sb-site h1, body.sb-site h2, body.sb-site h3, body.sb-site h4 {
+    font-family: var(--sb-font-heading);
+    color: var(--sb-color-text);
+    font-weight: 700;
+    letter-spacing: -0.015em;
+}
+body.sb-site a {
+    color: var(--sb-color-link);
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+    transition: color 0.15s, border-color 0.15s;
+}
+body.sb-site a:hover {
+    color: var(--sb-color-link-hover);
+    border-bottom-color: currentColor;
+}
+body.sb-site strong { color: var(--sb-color-accent); }
+body.sb-site blockquote {
+    border-left: 3px solid var(--sb-color-link);
+    padding: 12px 20px;
+    background: var(--sb-color-bg-alt);
+    border-radius: 0 6px 6px 0;
+    color: var(--sb-color-muted);
+}
+body.sb-site code {
+    background: var(--sb-color-bg-alt);
+    color: var(--sb-color-link);
+    padding: 2px 6px;
+    border-radius: 4px;
+    border: 1px solid var(--sb-color-border);
+    font-size: 0.9em;
+    font-family: ui-monospace, 'SF Mono', Monaco, monospace;
+}

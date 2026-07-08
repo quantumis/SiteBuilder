@@ -1,0 +1,136 @@
+/* bordered-boxed — плавающая карточка-шапка со скруглением и рамкой, 3 уровня */
+.sb-header-bb {
+    background: var(--sb-color-bg, #fff);
+    padding: 14px 20px 0;
+}
+.sb-header-bb-card {
+    max-width: var(--sb-content-max-width, 920px);
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px 8px 18px;
+    height: 56px;
+    background: var(--sb-color-bg, #fff);
+    border: 1px solid var(--sb-color-border, #e5e7eb);
+    border-radius: 14px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04);
+    position: relative;
+}
+.sb-header-bb-brand { margin: 0; font-size: 1.05em; font-weight: 700; line-height: 1; }
+.sb-header-bb-brand a, .sb-header-bb-name {
+    color: var(--sb-color-text, #111);
+    text-decoration: none;
+}
+.sb-header-bb-brand img { max-height: 34px; width: auto; display: block; }
+
+/* Nav */
+.sb-header-bb-nav > ul { list-style: none; margin: 0; padding: 0; display: flex; gap: 2px; }
+.sb-header-bb-nav > ul > li { position: relative; }
+.sb-header-bb-nav a {
+    display: block;
+    padding: 8px 13px;
+    color: var(--sb-color-text, #111);
+    text-decoration: none;
+    font-size: 0.9em;
+    font-weight: 500;
+    border-radius: 8px;
+    transition: background 0.15s, color 0.15s;
+}
+.sb-header-bb-nav > ul > li > a:hover,
+.sb-header-bb-nav .current-menu-item > a {
+    color: var(--sb-color-link, #2563eb);
+    background: var(--sb-color-bg-alt, #f9fafb);
+}
+.sb-header-bb-nav .menu-item-has-children > a::after {
+    content: "\25BE";
+    display: inline-block;
+    margin-left: 5px;
+    font-size: 0.7em;
+    opacity: 0.6;
+}
+
+/* Dropdowns (2nd + 3rd level) */
+.sb-header-bb-nav .sub-menu {
+    position: absolute;
+    top: calc(100% + 8px); left: 0;
+    min-width: 200px;
+    background: var(--sb-color-bg, #fff);
+    border: 1px solid var(--sb-color-border, #e5e7eb);
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+    padding: 6px;
+    display: none;
+    flex-direction: column;
+    gap: 2px;
+    list-style: none;
+    margin: 0;
+    z-index: 100;
+}
+.sb-header-bb-nav li:hover > .sub-menu,
+.sb-header-bb-nav li:focus-within > .sub-menu { display: flex; }
+.sb-header-bb-nav .sub-menu .sub-menu { top: -6px; left: 100%; margin-left: 8px; }
+.sb-header-bb-nav .sub-menu a {
+    padding: 8px 12px;
+    font-size: 0.88em;
+    font-weight: 400;
+    border-radius: 8px;
+    white-space: nowrap;
+}
+.sb-header-bb-nav .sub-menu a:hover {
+    background: var(--sb-color-bg-alt, #f9fafb);
+    color: var(--sb-color-link, #2563eb);
+}
+.sb-header-bb-nav .sub-menu .menu-item-has-children > a::after {
+    content: "\25B8"; float: right; margin-left: 8px;
+}
+
+/* Burger — hidden on desktop */
+.sb-header-bb-burger {
+    display: none;
+    background: transparent; border: none;
+    padding: 8px; cursor: pointer;
+    flex-direction: column; gap: 4px;
+    width: 34px; height: 34px;
+    justify-content: center; align-items: center;
+}
+.sb-header-bb-burger span {
+    display: block; width: 18px; height: 2px;
+    background: var(--sb-color-text, #111);
+    transition: transform 0.2s, opacity 0.2s;
+}
+.sb-header-bb-burger[aria-expanded="true"] span:nth-child(1) { transform: translateY(6px) rotate(45deg); }
+.sb-header-bb-burger[aria-expanded="true"] span:nth-child(2) { opacity: 0; }
+.sb-header-bb-burger[aria-expanded="true"] span:nth-child(3) { transform: translateY(-6px) rotate(-45deg); }
+
+/* Mobile */
+@media (max-width: 800px) {
+    .sb-header-bb-burger { display: flex; }
+    .sb-header-bb-nav {
+        display: none;
+        position: absolute;
+        top: calc(100% + 8px); left: 0; right: 0;
+        background: var(--sb-color-bg, #fff);
+        border: 1px solid var(--sb-color-border, #e5e7eb);
+        border-radius: 14px;
+        padding: 12px;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+        max-height: calc(100vh - 90px);
+        overflow-y: auto;
+        z-index: 100;
+    }
+    .sb-header-bb-nav.sb-bb-open { display: block; }
+    .sb-header-bb-nav > ul { flex-direction: column; gap: 2px; }
+    .sb-header-bb-nav .sub-menu {
+        position: static;
+        display: block;
+        box-shadow: none;
+        border: none;
+        border-radius: 0;
+        padding: 0 0 0 16px;
+        min-width: 0;
+        margin: 0;
+    }
+    .sb-header-bb-nav .sub-menu .sub-menu { margin-left: 0; }
+    .sb-header-bb-nav .menu-item-has-children > a::after { content: "\25BE"; float: right; }
+}

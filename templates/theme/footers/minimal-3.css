@@ -1,0 +1,73 @@
+/* minimal-3 — три сдержанные колонки с большим воздухом */
+.sb-footer-min {
+    background: var(--sb-color-bg, #fff);
+    border-top: 1px solid var(--sb-color-border, #e5e7eb);
+    padding: 56px 20px 28px;
+    color: var(--sb-color-text, #111);
+    margin-top: 56px;
+}
+.sb-footer-min-inner {
+    max-width: var(--sb-content-max-width, 920px);
+    margin: 0 auto;
+}
+.sb-footer-min-grid {
+    display: grid;
+    grid-template-columns: 1.5fr 1fr 1fr;
+    gap: 56px;
+    margin-bottom: 44px;
+}
+.sb-footer-min-col { font-size: 0.9em; }
+.sb-footer-min-col img {
+    max-height: 36px;
+    width: auto;
+    margin-bottom: 12px;
+    display: block;
+}
+.sb-footer-min-name {
+    font-weight: 700;
+    font-size: 1.1em;
+    color: var(--sb-color-text);
+    margin-bottom: 10px;
+    letter-spacing: -0.01em;
+}
+.sb-footer-min-tagline {
+    margin: 0;
+    color: var(--sb-color-muted, #6b7280);
+    font-size: 0.95em;
+    line-height: 1.7;
+    max-width: 30ch;
+}
+.sb-footer-min-heading {
+    margin: 0 0 16px;
+    font-size: 0.8em;
+    color: var(--sb-color-text);
+    font-weight: 600;
+}
+.sb-footer-min-list, .sb-footer-min .sb-menu {
+    list-style: none; padding: 0; margin: 0;
+    display: flex; flex-direction: column; gap: 11px;
+}
+.sb-footer-min-list a, .sb-footer-min .sb-menu a {
+    color: var(--sb-color-muted, #6b7280);
+    text-decoration: none;
+    font-size: 0.95em;
+    transition: color 0.15s;
+}
+.sb-footer-min-list a:hover, .sb-footer-min .sb-menu a:hover {
+    color: var(--sb-color-link);
+}
+.sb-footer-min-copyright {
+    padding-top: 24px;
+    border-top: 1px solid var(--sb-color-border, #e5e7eb);
+    color: var(--sb-color-muted, #6b7280);
+    font-size: 0.83em;
+    text-align: center;
+    letter-spacing: 0.02em;
+}
+@media (max-width: 800px) {
+    .sb-footer-min-grid { grid-template-columns: 1fr 1fr; gap: 36px; }
+    .sb-footer-min-col:first-child { grid-column: 1 / -1; }
+}
+@media (max-width: 480px) {
+    .sb-footer-min-grid { grid-template-columns: 1fr; gap: 32px; }
+}
