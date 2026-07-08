@@ -1,6 +1,6 @@
 {
-    "name": "Минимальный",
-    "description": "Компактная однострочная шапка без рамок и фона: логотип слева, текстовое меню справа. Подходит для контент-ориентированных сайтов с коротким меню.",
-    "category": "header",
-    "css": ".sb-header-minimal { background: transparent; padding: 24px 20px; } .sb-header-minimal .sb-header-inner { max-width: var(--sb-content-max-width, 920px); margin: 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 32px; } .sb-header-minimal .sb-header-logo img { max-height: 36px; width: auto; } .sb-header-minimal .sb-site-title { font-size: 1.05em; font-weight: 600; color: var(--sb-color-text); text-decoration: none; } .sb-header-minimal .sb-menu { display: flex; gap: 22px; list-style: none; margin: 0; padding: 0; } .sb-header-minimal .sb-menu a { color: var(--sb-color-muted, #6b7280); padding: 2px 0; font-size: 0.9em; font-weight: 500; border-bottom: 1px solid transparent; transition: color 0.15s, border-color 0.15s; } .sb-header-minimal .sb-menu a:hover { color: var(--sb-color-text); border-bottom-color: var(--sb-color-link); text-decoration: none; } .sb-header-minimal .sb-menu .current-menu-item > a { color: var(--sb-color-text); } @media (max-width: 600px) { .sb-header-minimal .sb-header-inner { flex-direction: column; align-items: flex-start; gap: 12px; } .sb-header-minimal .sb-menu { flex-wrap: wrap; gap: 14px; } }"
+  "name": "Минимальный",
+  "description": "Компактная однострочная шапка без рамок и фона: логотип слева, текстовое меню справа. Подходит для контент-ориентированных сайтов с коротким меню.",
+  "category": "header",
+  "preview_type": "horizontal"
 }

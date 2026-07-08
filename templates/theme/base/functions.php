@@ -50,6 +50,16 @@ if (!function_exists('sb_theme_enqueue')) {
         $stylesheet_path = get_stylesheet_directory() . '/style.css';
         $ver = file_exists($stylesheet_path) ? (string)filemtime($stylesheet_path) : '1.0';
         wp_enqueue_style('sb-theme-style', $stylesheet_uri, [], $ver);
+        // Theme JS is assembled from header/footer variant .js files by the
+        // plugin's theme generator. It's only emitted if at least one variant
+        // shipped a JS companion; otherwise the file is absent and we skip
+        // enqueueing to keep the page lean.
+        $js_path = get_stylesheet_directory() . '/assets/theme.js';
+        if (file_exists($js_path)) {
+            $js_uri = get_stylesheet_directory_uri() . '/assets/theme.js';
+            $js_ver = (string)filemtime($js_path);
+            wp_enqueue_script('sb-theme-js', $js_uri, [], $js_ver, true); // in footer
+        }
     }
     add_action('wp_enqueue_scripts', 'sb_theme_enqueue');
 }

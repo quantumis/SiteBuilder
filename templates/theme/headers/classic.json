@@ -1,6 +1,6 @@
 {
-    "name": "Классический",
-    "description": "Логотип слева, меню справа, тонкая граница снизу. Универсальный вариант для большинства типов сайтов.",
-    "category": "header",
-    "css": ".sb-header-classic { border-bottom: 1px solid var(--sb-color-border, #e2e8f0); background: var(--sb-color-bg, #fff); padding: 14px 20px; } .sb-header-classic .sb-header-inner { max-width: var(--sb-content-max-width, 920px); margin: 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 24px; } .sb-header-classic .sb-header-logo img { max-height: 48px; width: auto; } .sb-header-classic .sb-site-title { font-size: 1.2em; font-weight: 700; color: var(--sb-color-text); text-decoration: none; } .sb-header-classic .sb-menu { display: flex; gap: 20px; list-style: none; margin: 0; padding: 0; flex-wrap: wrap; } .sb-header-classic .sb-menu a { color: var(--sb-color-text); padding: 4px 6px; font-weight: 500; } .sb-header-classic .sb-menu a:hover { color: var(--sb-color-link); text-decoration: none; } @media (max-width: 600px) { .sb-header-classic .sb-header-inner { flex-direction: column; align-items: flex-start; } }"
+  "name": "Классический",
+  "description": "Логотип слева, меню справа, тонкая граница снизу. Универсальный вариант для большинства типов сайтов.",
+  "category": "header",
+  "preview_type": "horizontal"
 }

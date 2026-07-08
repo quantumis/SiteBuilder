@@ -28,29 +28,46 @@ $th_active  = (get_stylesheet() === Site_Builder_Theme_Generator::THEME_SLUG);
 
     <form id="sb-theme-form">
         <?php foreach ([
-            ['key' => 'header', 'label' => 'Шапка (header)',        'items' => $th_headers, 'current' => $th_current['header']],
-            ['key' => 'footer', 'label' => 'Подвал (footer)',       'items' => $th_footers, 'current' => $th_current['footer']],
-            ['key' => 'style',  'label' => 'Цветовая схема и шрифты', 'items' => $th_styles,  'current' => $th_current['style']],
+            ['key' => 'header', 'label' => 'Шапка (header)',        'items' => $th_headers, 'current' => $th_current['header'], 'cat' => 'headers'],
+            ['key' => 'footer', 'label' => 'Подвал (footer)',       'items' => $th_footers, 'current' => $th_current['footer'], 'cat' => 'footers'],
+            ['key' => 'style',  'label' => 'Цветовая схема и шрифты', 'items' => $th_styles,  'current' => $th_current['style'],  'cat' => 'styles'],
         ] as $section): ?>
             <div class="sb-form-card">
-                <h2><?php echo esc_html($section['label']); ?></h2>
+                <div class="sb-theme-section-head">
+                    <h2><?php echo esc_html($section['label']); ?></h2>
+                    <span class="sb-theme-section-count"><?php echo count($section['items']); ?></span>
+                </div>
                 <?php if (empty($section['items'])): ?>
                     <p class="description">Нет доступных вариантов в этой категории.</p>
                 <?php else: ?>
-                    <div class="sb-theme-variants">
-                        <?php foreach ($section['items'] as $variant): ?>
-                            <label class="sb-theme-variant <?php echo $section['current'] === $variant['slug'] ? 'sb-theme-variant-selected' : ''; ?>">
-                                <input type="radio"
-                                       name="sb-theme-<?php echo esc_attr($section['key']); ?>"
-                                       value="<?php echo esc_attr($variant['slug']); ?>"
-                                       <?php checked($section['current'], $variant['slug']); ?>>
-                                <div class="sb-theme-variant-body">
-                                    <strong><?php echo esc_html($variant['name']); ?></strong>
-                                    <code class="sb-theme-variant-slug"><?php echo esc_html($variant['slug']); ?></code>
-                                    <p><?php echo esc_html($variant['description']); ?></p>
-                                </div>
-                            </label>
-                        <?php endforeach; ?>
+                    <div class="sb-theme-scroller" data-cat="<?php echo esc_attr($section['cat']); ?>">
+                        <button type="button" class="sb-theme-scroll-arrow sb-theme-scroll-left" aria-label="Прокрутить влево">‹</button>
+                        <div class="sb-theme-variants-row">
+                            <?php foreach ($section['items'] as $variant): ?>
+                                <?php
+                                $is_selected = $section['current'] === $variant['slug'];
+                                $preview_type = $variant['preview_type'] ?? '';
+                                $palette = $variant['palette'] ?? null;
+                                ?>
+                                <label class="sb-theme-variant <?php echo $is_selected ? 'sb-theme-variant-selected' : ''; ?>"
+                                       data-slug="<?php echo esc_attr($variant['slug']); ?>">
+                                    <input type="radio"
+                                           name="sb-theme-<?php echo esc_attr($section['key']); ?>"
+                                           value="<?php echo esc_attr($variant['slug']); ?>"
+                                           <?php checked($section['current'], $variant['slug']); ?>>
+                                    <div class="sb-theme-variant-preview">
+                                        <?php echo Site_Builder_Theme_Generator::render_preview_svg(
+                                            $section['cat'], $preview_type, $variant['slug'], $palette
+                                        ); ?>
+                                    </div>
+                                    <div class="sb-theme-variant-body">
+                                        <strong><?php echo esc_html($variant['name']); ?></strong>
+                                        <p><?php echo esc_html($variant['description']); ?></p>
+                                    </div>
+                                </label>
+                            <?php endforeach; ?>
+                        </div>
+                        <button type="button" class="sb-theme-scroll-arrow sb-theme-scroll-right" aria-label="Прокрутить вправо">›</button>
                     </div>
                 <?php endif; ?>
             </div>

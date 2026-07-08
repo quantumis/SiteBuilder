@@ -916,6 +916,36 @@
             });
         });
 
+        // Horizontal scroller: arrow buttons + disable when at edge
+        $('.sb-theme-scroller').each(function () {
+            var $scroller = $(this);
+            var $row = $scroller.find('.sb-theme-variants-row');
+            var $left = $scroller.find('.sb-theme-scroll-left');
+            var $right = $scroller.find('.sb-theme-scroll-right');
+            var updateArrows = function () {
+                var el = $row[0];
+                if (!el) return;
+                $left.prop('disabled', el.scrollLeft <= 4);
+                $right.prop('disabled', el.scrollLeft + el.clientWidth >= el.scrollWidth - 4);
+                // Hide entirely if content fits
+                var fits = el.scrollWidth <= el.clientWidth + 4;
+                $left.toggle(!fits);
+                $right.toggle(!fits);
+            };
+            $left.on('click', function () { $row[0].scrollBy({ left: -260, behavior: 'smooth' }); });
+            $right.on('click', function () { $row[0].scrollBy({ left: 260, behavior: 'smooth' }); });
+            $row.on('scroll', updateArrows);
+            $(window).on('resize', updateArrows);
+            updateArrows();
+            // Scroll selected variant into view initially
+            var $selected = $scroller.find('.sb-theme-variant-selected');
+            if ($selected.length) {
+                var offset = $selected[0].offsetLeft - $row[0].clientWidth / 2 + $selected[0].clientWidth / 2;
+                $row[0].scrollLeft = Math.max(0, offset);
+                setTimeout(updateArrows, 50);
+            }
+        });
+
         $buildBtn.on('click', function () {
             $status.removeClass('sb-theme-error sb-theme-success').text('Генерация…');
             $buildBtn.prop('disabled', true);

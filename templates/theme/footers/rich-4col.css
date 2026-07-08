@@ -1,0 +1,87 @@
+/* rich-4col — четырёхколоночный подвал с брендом и меню */
+.sb-footer-rich {
+    background: var(--sb-color-bg-alt, #f8f9fa);
+    border-top: 1px solid var(--sb-color-border, #e5e7eb);
+    padding: 48px 20px 24px;
+    color: var(--sb-color-text, #111);
+    margin-top: 48px;
+}
+.sb-footer-rich-inner {
+    max-width: var(--sb-content-max-width, 920px);
+    margin: 0 auto;
+}
+.sb-footer-rich-grid {
+    display: grid;
+    grid-template-columns: 1.4fr 1fr 1fr 1fr;
+    gap: 32px;
+    margin-bottom: 32px;
+}
+.sb-footer-rich-col {
+    font-size: 0.9em;
+}
+.sb-footer-rich-heading {
+    margin: 0 0 14px;
+    font-size: 0.75em;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--sb-color-muted, #6b7280);
+    font-weight: 700;
+}
+.sb-footer-rich-name {
+    display: block;
+    font-weight: 700;
+    font-size: 1.15em;
+    color: var(--sb-color-text);
+    text-decoration: none;
+    margin-bottom: 6px;
+}
+.sb-footer-rich-brand-col img {
+    max-height: 40px;
+    width: auto;
+    margin-bottom: 8px;
+}
+.sb-footer-rich-tagline {
+    margin: 8px 0 0;
+    color: var(--sb-color-muted);
+    font-size: 0.92em;
+    line-height: 1.55;
+}
+.sb-footer-rich-list, .sb-footer-rich .sb-menu {
+    list-style: none; padding: 0; margin: 0;
+    display: flex; flex-direction: column; gap: 8px;
+}
+.sb-footer-rich-list a, .sb-footer-rich .sb-menu a {
+    color: var(--sb-color-text);
+    text-decoration: none;
+    transition: color 0.15s;
+}
+.sb-footer-rich-list a:hover, .sb-footer-rich .sb-menu a:hover {
+    color: var(--sb-color-link);
+    text-decoration: underline;
+}
+.sb-footer-rich-contact-line {
+    margin: 0;
+    color: var(--sb-color-muted);
+}
+.sb-footer-rich-contact-line a {
+    color: var(--sb-color-link);
+    text-decoration: none;
+    font-weight: 500;
+}
+.sb-footer-rich-contact-line a:hover { text-decoration: underline; }
+.sb-footer-rich-copyright {
+    padding-top: 20px;
+    border-top: 1px solid var(--sb-color-border, #e5e7eb);
+    color: var(--sb-color-muted, #6b7280);
+    font-size: 0.85em;
+    text-align: center;
+}
+@media (max-width: 800px) {
+    .sb-footer-rich-grid {
+        grid-template-columns: 1fr 1fr;
+        gap: 28px;
+    }
+}
+@media (max-width: 480px) {
+    .sb-footer-rich-grid { grid-template-columns: 1fr; gap: 24px; }
+}
