@@ -47,7 +47,7 @@ if (!defined('ABSPATH')) exit;
                 </ul>
             </div>
             <div class="sb-footer-cta-col">
-                <h3 class="sb-footer-cta-heading">Legal</h3>
+                <h3 class="sb-footer-cta-heading"><?php echo esc_html(sb_t('legal')); ?></h3>
                 <ul class="sb-footer-cta-list">
                     <?php
                     $utility_pages = get_pages(['parent' => 0, 'sort_column' => 'menu_order']);

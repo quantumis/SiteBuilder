@@ -4,7 +4,7 @@ Tags: import, content, automation
 Requires at least: 6.0
 Tested up to: 6.6
 Requires PHP: 8.0
-Stable tag: 1.1.4-beta2
+Stable tag: 1.1.4-beta3
 
 Внутренний инструмент массового импорта контента в WordPress.
 
@@ -30,6 +30,14 @@ Site Builder — это плагин для автоматического ра�
 4. В сайдбаре админки появится пункт меню «Site Builder».
 
 == Changelog ==
+
+= 1.1.4-beta3 =
+* **Локализация заголовков колонок футеров.** Ревизия по всем 8 существующим футерам обнаружила несколько захардкоженных на английском заголовков ("Legal", "Contact") в 6 файлах — они одинаково показывались на всех сайтах независимо от языка. Теперь:
+  * Все "Legal" в `brand-statement`, `cta-band`, `newsletter-highlight`, `seo-columns` заменены на `sb_t('legal')`
+  * Все "Contact" в `card-columns`, `rich-4col`, `seo-columns` заменены на `sb_t('contact')`
+  * `aria-label="Close"` в off-canvas хедере заменён на `sb_t('close')` — важно для screen readers на не-английских сайтах
+* **Три новых ключа в i18n.php**: `legal`, `contact`, `close`. Каждый переведён на все 36 поддерживаемых локалей (pt_PT, pt_BR, it_IT, de_DE, de_AT, de_CH, es_ES, es_PE, fr_FR, pl_PL, cs_CZ, da_DK, nl_NL, nl_BE, el, ro_RO, sv_SE, fi_FI, bg_BG, en_IE, en_CA, en_AU, en_US, en_GB, en_NZ, et_EE, sl_SI, sk_SK, hr_HR, hu_HU, is_IS, lb_LU, lv, nb_NO, tr_TR + default fallback).
+* **Работает на существующих сайтах после перегенерации темы** — обновлённый `i18n.php` попадёт в тему при следующем нажатии «Сгенерировать и активировать».
 
 = 1.1.4-beta2 =
 * **Убраны SVG-превью карточек Header и Footer.** Схематичное изображение расположения элементов не давало полезной информации — оно только повторяло то, что уже написано в описании. Карточки Header и Footer теперь чисто текстовые: жирное название + описание в 5 строк. **Превью для цветовых схем осталось** — там оно действительно полезно, показывает реальную палитру одним взглядом. В будущем можно вернуться к теме и сделать полноценный live-preview через iframe с рендером реальной темы.

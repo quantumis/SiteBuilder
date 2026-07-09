@@ -71,29 +71,6 @@
     font-weight: 500;
 }
 .sb-footer-md-contact a:hover { text-decoration: underline; }
-
-/* Social icons */
-.sb-footer-md-social {
-    display: flex;
-    gap: 10px;
-}
-.sb-footer-md-social-link {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 36px; height: 36px;
-    border-radius: 50%;
-    background: var(--sb-color-bg-alt, #f3f4f6);
-    color: var(--sb-color-muted, #6b7280);
-    text-decoration: none;
-    transition: background 0.15s, color 0.15s, transform 0.15s;
-}
-.sb-footer-md-social-link:hover {
-    background: var(--sb-color-link, #2563eb);
-    color: #fff;
-    transform: translateY(-2px);
-}
-
 .sb-footer-md-copyright {
     color: var(--sb-color-muted, #6b7280);
     font-size: 0.85em;

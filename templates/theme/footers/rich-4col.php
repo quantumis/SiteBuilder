@@ -53,7 +53,7 @@ if (!defined('ABSPATH')) exit;
                 </ul>
             </div>
             <div class="sb-footer-rich-col">
-                <h2 class="sb-footer-rich-heading">Contact</h2>
+                <h2 class="sb-footer-rich-heading"><?php echo esc_html(sb_t('contact')); ?></h2>
                 <p class="sb-footer-rich-contact-line">
                     <a href="<?php echo esc_url(home_url('/')); ?>"><?php echo esc_html((string)parse_url(home_url(), PHP_URL_HOST)); ?></a>
                 </p>

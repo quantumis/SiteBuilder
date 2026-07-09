@@ -17,13 +17,6 @@ if (!defined('ABSPATH')) exit;
                     echo '<div class="sb-footer-nl-name">' . esc_html(get_bloginfo('name')) . '</div>';
                 }
                 ?>
-                <h2 class="sb-footer-nl-signup-title">Stay in the loop</h2>
-                <p class="sb-footer-nl-signup-desc"><?php echo esc_html(get_bloginfo('description')); ?></p>
-                <form class="sb-footer-nl-signup-form" onsubmit="return false" aria-label="Newsletter">
-                    <input type="email" class="sb-footer-nl-input" placeholder="your@email.com" aria-label="Email" required />
-                    <button type="submit" class="sb-footer-nl-btn">Subscribe</button>
-                </form>
-                <p class="sb-footer-nl-signup-tiny">We respect your inbox. Unsubscribe anytime.</p>
             </div>
             <div class="sb-footer-nl-col">
                 <h3 class="sb-footer-nl-heading"><?php echo esc_html(sb_t('navigation')); ?></h3>
@@ -53,7 +46,7 @@ if (!defined('ABSPATH')) exit;
                 </ul>
             </div>
             <div class="sb-footer-nl-col">
-                <h3 class="sb-footer-nl-heading">Legal</h3>
+                <h3 class="sb-footer-nl-heading"><?php echo esc_html(sb_t('legal')); ?></h3>
                 <ul class="sb-footer-nl-list">
                     <?php
                     // Utility pages (privacy, cookies, legal, etc)

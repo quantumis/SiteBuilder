@@ -69,25 +69,6 @@
     font-weight: 500;
 }
 .sb-footer-card-contact a:hover { text-decoration: underline; }
-/* Social icons */
-.sb-footer-card-social { display: flex; gap: 10px; }
-.sb-footer-card-social-link {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 36px; height: 36px;
-    border-radius: 50%;
-    background: var(--sb-color-bg, #fff);
-    border: 1px solid var(--sb-color-border, #e5e7eb);
-    color: var(--sb-color-muted, #6b7280);
-    text-decoration: none;
-    transition: background 0.15s, color 0.15s, transform 0.15s;
-}
-.sb-footer-card-social-link:hover {
-    background: var(--sb-color-link, #2563eb);
-    color: #fff;
-    transform: translateY(-2px);
-}
 .sb-footer-card-copyright {
     padding-top: 20px;
     border-top: 1px solid var(--sb-color-border, #e5e7eb);

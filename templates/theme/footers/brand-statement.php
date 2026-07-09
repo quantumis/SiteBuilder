@@ -51,7 +51,7 @@ if (!defined('ABSPATH')) exit;
                 </ul>
             </div>
             <div class="sb-footer-bs-col">
-                <h2 class="sb-footer-bs-heading">Legal</h2>
+                <h2 class="sb-footer-bs-heading"><?php echo esc_html(sb_t('legal')); ?></h2>
                 <ul class="sb-footer-bs-list">
                     <?php
                     $utility_pages = get_pages(['parent' => 0, 'sort_column' => 'menu_order']);

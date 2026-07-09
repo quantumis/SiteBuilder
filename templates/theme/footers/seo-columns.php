@@ -53,7 +53,7 @@ if (!defined('ABSPATH')) exit;
                 </ul>
             </div>
             <div class="sb-footer-seo-col">
-                <h2 class="sb-footer-seo-heading">Legal</h2>
+                <h2 class="sb-footer-seo-heading"><?php echo esc_html(sb_t('legal')); ?></h2>
                 <ul class="sb-footer-seo-list">
                     <?php
                     $utility_pages = get_pages(['parent' => 0, 'sort_column' => 'menu_order']);
@@ -66,7 +66,7 @@ if (!defined('ABSPATH')) exit;
                 </ul>
             </div>
             <div class="sb-footer-seo-col">
-                <h2 class="sb-footer-seo-heading">Contact</h2>
+                <h2 class="sb-footer-seo-heading"><?php echo esc_html(sb_t('contact')); ?></h2>
                 <p class="sb-footer-seo-contact-line">
                     <a href="<?php echo esc_url(home_url('/')); ?>"><?php echo esc_html((string)parse_url(home_url(), PHP_URL_HOST)); ?></a>
                 </p>

@@ -34,7 +34,7 @@ if (!defined('ABSPATH')) exit;
 <aside id="sb-oc-panel" class="sb-header-oc-panel" hidden aria-hidden="true" aria-label="<?php echo esc_attr(sb_t('primary_menu')); ?>">
     <div class="sb-header-oc-panel-head">
         <span class="sb-header-oc-panel-title"><?php echo esc_html(sb_t('primary_menu')); ?></span>
-        <button class="sb-header-oc-panel-close" type="button" aria-label="Close">×</button>
+        <button class="sb-header-oc-panel-close" type="button" aria-label="<?php echo esc_attr(sb_t('close')); ?>">×</button>
     </div>
     <nav class="sb-header-oc-nav" aria-label="<?php echo esc_attr(sb_t('primary_menu')); ?>">
         <?php
