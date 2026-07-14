@@ -185,13 +185,17 @@ if (!function_exists('sb_seo_should_run')) {
         }
         unset($v);
 
-        // Hero image: featured thumbnail → mapped OG image → fsr_headimg
-        $img_url = get_the_post_thumbnail_url($post_id, 'full');
+        // Hero image — same fallback logic as title/description:
+        //   1. Manual custom_seo_og_image (metabox override) — highest
+        //   2. Mapped SEO-plugin OG image keys the importer writes to
+        //   3. Featured thumbnail (WP standard)
+        //   4. fsr_headimg from frontmatter (only if already absolute URL)
+        $img_url = sb_seo_first_meta($post_id, array_merge(
+            ['_custom_seo_og_image'],        // manual
+            $known['og_image']               // mapped
+        ));
         if (!$img_url) {
-            $img_url = sb_seo_first_meta($post_id, array_merge(
-                ['_custom_seo_og_image'],
-                $known['og_image']
-            ));
+            $img_url = get_the_post_thumbnail_url($post_id, 'full');
         }
         if (!$img_url) {
             $img_url = trim((string)get_post_meta($post_id, 'fsr_headimg', true));

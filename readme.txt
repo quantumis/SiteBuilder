@@ -4,7 +4,7 @@ Tags: import, content, automation
 Requires at least: 6.0
 Tested up to: 6.6
 Requires PHP: 8.0
-Stable tag: 1.1.4-beta4
+Stable tag: 1.1.4-beta5
 
 Внутренний инструмент массового импорта контента в WordPress.
 
@@ -30,6 +30,12 @@ Site Builder — это плагин для автоматического ра�
 4. В сайдбаре админки появится пункт меню «Site Builder».
 
 == Changelog ==
+
+= 1.1.4-beta5 =
+* **Фикс: Custom OG Image URL из metabox не применялся.** Регрессия из 1.1.4-beta4. Причина: в приоритетах чтения OG-картинки Featured Image проверялся **первым** — а после FSR-импорта у большинства статей уже есть Featured Image, поэтому код никогда не доходил до проверки `_custom_seo_og_image` из metabox. Ручная правка Custom OG Image URL молча игнорировалась.
+* **Правильный порядок** приведён к тому же виду, что и у Title/Description: (1) ручная правка `_custom_seo_og_image` → (2) mapped SEO-plugin OG image keys → (3) Featured Image → (4) fsr_headimg (только если это абсолютный URL). Теперь ручная правка перезаписывает Featured Image.
+
+= 1.1.4-beta4 =
 
 = 1.1.4-beta4 =
 **Полная переработка SEO-цепочки чтения и записи мета-полей.** Пофикшена критическая проблема: разработчики не могли отредактировать SEO поля через админку, потому что импорт писал данные в один набор ключей (Yoast/RankMath), а тема читала совсем другой (`_custom_seo_*`, которых никто не создавал). В итоге правка Yoast-ключей ни на что не влияла, а поле `description` из frontmatter вообще терялось на пути до тега `<meta description>` если Yoast не установлен.
