@@ -331,6 +331,14 @@ class Site_Builder_FSR_Importer {
             update_post_meta($post_id, 'fsr_flags', $flags);
             update_post_meta($post_id, 'fsr_flags_summary', self::flags_to_summary($flags));
         }
+        // Guaranteed SEO fallback keys — always write frontmatter values into
+        // our own fsr_* meta regardless of Field_Mapping. If the site later
+        // switches Yoast/RankMath on/off, or the mapping is reconfigured,
+        // these ensure the theme still has canonical frontmatter values to
+        // fall back to. Distinct from Field_Mapping (which writes to
+        // Yoast/RankMath keys the site may or may not read).
+        update_post_meta($post_id, 'fsr_title',       $parsed['title']);
+        update_post_meta($post_id, 'fsr_description', $parsed['description']);
         if ($parsed['headline'] !== '') {
             update_post_meta($post_id, 'fsr_headline', $parsed['headline']);
         }

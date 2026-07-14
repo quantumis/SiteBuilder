@@ -68,6 +68,55 @@ if (!function_exists('sb_seo_should_run')) {
     }
 
     /**
+     * Read the first non-empty value from a list of meta keys on a given post.
+     * Used to walk the fallback chain: manual custom → mapped SEO-plugin keys
+     * → fsr_* frontmatter fallbacks.
+     */
+    function sb_seo_first_meta($post_id, array $keys) {
+        foreach ($keys as $k) {
+            $v = trim((string)get_post_meta($post_id, $k, true));
+            if ($v !== '') return $v;
+        }
+        return '';
+    }
+
+    /**
+     * Known meta keys that popular WordPress SEO plugins use. The importer's
+     * Field_Mapping writes into these — so even when those plugins aren't
+     * active on the site, the values are in the DB and we should read them.
+     * Order within each slot doesn't matter (first non-empty wins), but keeps
+     * Yoast/RankMath first because they're the most common.
+     */
+    function sb_seo_known_keys() {
+        return [
+            'title' => [
+                '_yoast_wpseo_title', 'rank_math_title', '_aioseop_title', '_aioseo_title',
+                '_genesis_title', '_seopress_titles_title', '_su_meta_title',
+                'meta_title', 'seo_title',
+            ],
+            'desc' => [
+                '_yoast_wpseo_metadesc', 'rank_math_description', '_aioseop_description', '_aioseo_description',
+                '_genesis_description', '_seopress_titles_desc', '_su_meta_description',
+                'meta_description', 'seo_description',
+            ],
+            'og_title' => [
+                '_yoast_wpseo_opengraph-title', 'rank_math_facebook_title', '_aioseop_opengraph_settings_title',
+                '_aioseo_og_title', '_seopress_social_fb_title', 'og_title', 'og_meta_title', 'social_headline',
+            ],
+            'og_desc' => [
+                '_yoast_wpseo_opengraph-description', 'rank_math_facebook_description',
+                '_aioseop_opengraph_settings_description', '_aioseo_og_description',
+                '_seopress_social_fb_desc', 'og_description', 'og_meta_description',
+            ],
+            'og_image' => [
+                '_yoast_wpseo_opengraph-image', 'rank_math_facebook_image',
+                '_aioseop_opengraph_settings_customimg', '_aioseo_og_image_custom_url',
+                '_seopress_social_fb_img', 'og_image', 'og_meta_image', 'featured_image_url',
+            ],
+        ];
+    }
+
+    /**
      * Main SEO output: <title>, meta description, OG/Twitter, JSON-LD graph.
      * Singular-only; archives/lists fall through to WordPress defaults.
      */
@@ -80,13 +129,32 @@ if (!function_exists('sb_seo_should_run')) {
         $permalink = get_permalink($post_id);
         $locale    = get_locale();
 
-        // Title: manual override → post_title
-        $seo_title = trim((string)get_post_meta($post_id, '_custom_seo_title', true));
+        $known = sb_seo_known_keys();
+
+        // === Fallback chain for each field ===
+        //   1. Manual custom (edited via Site Builder SEO metabox) — highest
+        //   2. Mapped SEO-plugin keys the importer wrote to (Yoast/RankMath/etc.)
+        //   3. fsr_* frontmatter fallback keys (guaranteed by importer)
+        //   4. Standard WP fields (post_title, post_excerpt) or auto-generated
+        //
+        // Values are trimmed and empty strings are skipped in sb_seo_first_meta.
+
+        // Title
+        $seo_title = sb_seo_first_meta($post_id, array_merge(
+            ['_custom_seo_title'],           // manual
+            $known['title'],                 // mapped
+            ['fsr_title']                    // frontmatter fallback
+        ));
         if ($seo_title === '') $seo_title = get_the_title($post_id);
 
-        // Description: manual override → post_excerpt → auto-generated from content
-        $seo_desc = trim((string)get_post_meta($post_id, '_custom_seo_desc', true));
+        // Description
+        $seo_desc = sb_seo_first_meta($post_id, array_merge(
+            ['_custom_seo_desc'],            // manual
+            $known['desc'],                  // mapped
+            ['fsr_description']              // frontmatter fallback
+        ));
         if ($seo_desc === '') {
+            // Last resort: auto-generate from content
             $seo_desc = (string)$post->post_excerpt;
             if ($seo_desc === '') {
                 $seo_desc = wp_strip_all_tags(get_the_excerpt($post_id));
@@ -94,27 +162,47 @@ if (!function_exists('sb_seo_should_run')) {
         }
         $seo_desc = wp_trim_words($seo_desc, 30, '');
 
-        // Social headline: manual → fsr_headline (FSR frontmatter) → seo_title
-        $social = trim((string)get_post_meta($post_id, '_custom_seo_headline', true));
-        if ($social === '') $social = trim((string)get_post_meta($post_id, 'fsr_headline', true));
+        // Social headline (og:title)
+        $social = sb_seo_first_meta($post_id, array_merge(
+            ['_custom_seo_headline'],        // manual
+            $known['og_title'],              // mapped
+            ['fsr_headline']                 // frontmatter fallback
+        ));
         if ($social === '') $social = $seo_title;
+
+        // OG description — usually mirrors description but can be overridden
+        $og_desc = sb_seo_first_meta($post_id, array_merge(
+            ['_custom_seo_og_desc'],
+            $known['og_desc']
+        ));
+        if ($og_desc === '') $og_desc = $seo_desc;
 
         // Resolve shortcodes ([sb_year], [sb_date]) in any of the fields —
         // meta values are read raw and don't pass through the_title filters.
         // Guarded on '[sb_' prefix so plain text with brackets isn't touched.
-        foreach ([&$seo_title, &$seo_desc, &$social] as &$v) {
+        foreach ([&$seo_title, &$seo_desc, &$social, &$og_desc] as &$v) {
             if (is_string($v) && strpos($v, '[sb_') !== false) $v = do_shortcode($v);
         }
         unset($v);
 
-        // Hero image: featured thumbnail → fsr_headimg from frontmatter
+        // Hero image: featured thumbnail → mapped OG image → fsr_headimg
         $img_url = get_the_post_thumbnail_url($post_id, 'full');
+        if (!$img_url) {
+            $img_url = sb_seo_first_meta($post_id, array_merge(
+                ['_custom_seo_og_image'],
+                $known['og_image']
+            ));
+        }
         if (!$img_url) {
             $img_url = trim((string)get_post_meta($post_id, 'fsr_headimg', true));
             // fsr_headimg is a relative path like "IMAGES/foo.webp" — useless
             // as an absolute URL. Only emit it if it's already absolute.
             if ($img_url && !preg_match('#^https?://#i', $img_url)) $img_url = '';
         }
+
+        // noindex flag — set via metabox, forces robots meta and skips JSON-LD
+        $noindex = (int)get_post_meta($post_id, '_custom_seo_noindex', true) === 1
+                || (int)get_post_meta($post_id, 'fsr_no_index', true) === 1;
 
         // Logo for Organization schema
         $logo_url = '';
@@ -126,8 +214,11 @@ if (!function_exists('sb_seo_should_run')) {
         $is_grid    = (int)get_post_meta($post_id, 'fsr_articles_grid', true) === 1;
         $is_article = !$is_utility && !$is_grid;
 
-        // --- HEAD output: title / description ---
+        // --- HEAD output: title / description / robots ---
         echo "\n<title>" . esc_html($seo_title) . "</title>\n";
+        if ($noindex) {
+            echo '<meta name="robots" content="noindex,nofollow">' . "\n";
+        }
         if ($seo_desc !== '') {
             echo '<meta name="description" content="' . esc_attr($seo_desc) . "\" />\n";
         }
@@ -139,8 +230,8 @@ if (!function_exists('sb_seo_should_run')) {
         echo '<meta property="og:url" content="' . esc_url($permalink) . "\" />\n";
         echo '<meta property="og:site_name" content="' . esc_attr($site_name) . "\" />\n";
         echo '<meta property="og:locale" content="' . esc_attr($locale) . "\" />\n";
-        if ($seo_desc !== '') {
-            echo '<meta property="og:description" content="' . esc_attr($seo_desc) . "\" />\n";
+        if ($og_desc !== '') {
+            echo '<meta property="og:description" content="' . esc_attr($og_desc) . "\" />\n";
         }
         if ($img_url) {
             echo '<meta property="og:image" content="' . esc_url($img_url) . "\" />\n";
@@ -150,9 +241,13 @@ if (!function_exists('sb_seo_should_run')) {
             echo '<meta name="twitter:card" content="summary" />' . "\n";
         }
         echo '<meta name="twitter:title" content="' . esc_attr($social) . "\" />\n";
-        if ($seo_desc !== '') {
-            echo '<meta name="twitter:description" content="' . esc_attr($seo_desc) . "\" />\n";
+        if ($og_desc !== '') {
+            echo '<meta name="twitter:description" content="' . esc_attr($og_desc) . "\" />\n";
         }
+
+        // Skip JSON-LD entirely on noindex pages — no reason to feed schema
+        // to a page we're telling crawlers to ignore.
+        if ($noindex) return;
 
         // --- JSON-LD schema graph ---
         $graph = [];

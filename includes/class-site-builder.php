@@ -42,6 +42,7 @@ class Site_Builder {
         require_once $base . 'class-theme-generator.php';
         require_once $base . 'class-fsr-importer.php';
         require_once $base . 'class-blocks-parser.php';
+        require_once $base . 'class-seo-metabox.php';
         require_once $base . 'class-ajax-handler.php';
         require_once $base . 'class-frontend.php';
         require_once $base . 'class-admin.php';
@@ -53,6 +54,10 @@ class Site_Builder {
         if (is_admin()) {
             new Site_Builder_Admin();
             new Site_Builder_Ajax_Handler();
+            // The SEO metabox is registered via static hooks — no instance needed.
+            // Registration is idempotent (WP dedupes actions by callable), so
+            // calling it once here is enough.
+            Site_Builder_SEO_Metabox::register();
         }
     }
 
