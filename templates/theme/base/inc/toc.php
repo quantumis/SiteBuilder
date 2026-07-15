@@ -34,14 +34,19 @@ if (!function_exists('sb_toc_should_render')) {
      */
     function sb_toc_should_render($post_id) {
         if (is_admin() || !is_main_query()) return false;
-        if (is_front_page() || is_home())    return false;
         // Category flags mapped from FSR folder markers:
         //   [U] → fsr_utility        (privacy, cookies, legal — no TOC needed)
         //   [A] → fsr_articles_grid  (grid of cards, not a readable article)
-        //   [W] → fsr_about          (About / front-page-alternative pages)
+        //
+        // NOT excluded:
+        //   - Front page (is_front_page()) — front page may have long content
+        //     with h2/h3 that deserves a TOC
+        //   - [W] / fsr_about — this is just a semantic marker for "About Us"
+        //     pages (usually combined with [U]). If it's utility, the fsr_utility
+        //     check above handles it; if it's not, it's a regular content page
+        //     that deserves a TOC like any other.
         if ((int)get_post_meta($post_id, 'fsr_utility', true)        === 1) return false;
         if ((int)get_post_meta($post_id, 'fsr_articles_grid', true)  === 1) return false;
-        if ((int)get_post_meta($post_id, 'fsr_about', true)          === 1) return false;
         // Individual per-page opt-out (an editor can hide TOC on a specific page)
         if ((int)get_post_meta($post_id, '_sb_hide_toc', true)       === 1) return false;
         return true;
@@ -163,9 +168,15 @@ if (!function_exists('sb_toc_extract_and_inject')) {
         $toc_html .= str_repeat("    </ol>\n", $depth);
         $toc_html .= "  </ol>\n</nav>\n";
 
-        // Placement: after </div> of sb-geo-shortcodes → after </h1> → at start
-        if (preg_match('#<div class="sb-geo-shortcodes">.*?</div>#s', $content, $m, PREG_OFFSET_CAPTURE)) {
-            $offset = $m[0][1] + strlen($m[0][0]);
+        // Placement: after the sb-geo-shortcodes marker comment → after </h1>
+        // → at start. Using a marker rather than regex-matching </div> is
+        // essential because the geo-shortcodes block contains nested <div>s
+        // (prediction cards, geo info cards) — a naive regex would find one
+        // of those inner </div>s and inject the TOC mid-shortcode.
+        $marker = '<!--/sb-geo-shortcodes-->';
+        $pos = strpos($content, $marker);
+        if ($pos !== false) {
+            $offset = $pos + strlen($marker);
             return substr($content, 0, $offset) . "\n" . $toc_html . substr($content, $offset);
         }
         if (preg_match('#</h1\s*>#i', $content, $m, PREG_OFFSET_CAPTURE)) {

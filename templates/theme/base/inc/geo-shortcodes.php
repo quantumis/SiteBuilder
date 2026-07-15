@@ -37,17 +37,24 @@ if (!function_exists('sb_geo_inject_shortcodes')) {
         // insert the block. The spec guarantees every non-utility page has at
         // least one h1 and at least one image after it, so we don't bother
         // with edge-case fallbacks here.
+        //
+        // The <!--/sb-geo-shortcodes--> comment marker after the closing div
+        // exists so downstream filters (like inc/toc.php) can reliably find
+        // where our block ends. Regex-matching a closing </div> is fragile —
+        // the injected shortcode HTML often contains its own nested divs,
+        // and a non-greedy match latches onto the first inner </div>. The
+        // marker eliminates that ambiguity.
         if (preg_match('#</h1\s*>#i', $content, $m, PREG_OFFSET_CAPTURE)) {
             $offset = $m[0][1] + strlen($m[0][0]);
             return substr($content, 0, $offset)
-                . "\n<div class=\"sb-geo-shortcodes\">\n" . $injection . "\n</div>\n"
+                . "\n<div class=\"sb-geo-shortcodes\">\n" . $injection . "\n</div><!--/sb-geo-shortcodes-->\n"
                 . substr($content, $offset);
         }
 
         // No h1 found — degrade gracefully by injecting at the very start.
         // Should not happen for valid FSR content but keeps the page from
         // losing the GEO block if a page is malformed.
-        return "<div class=\"sb-geo-shortcodes\">\n" . $injection . "\n</div>\n" . $content;
+        return "<div class=\"sb-geo-shortcodes\">\n" . $injection . "\n</div><!--/sb-geo-shortcodes-->\n" . $content;
     }
     // Priority 12 — after WordPress's default content filters (10), and after
     // any markdown-style processors that may have run.
