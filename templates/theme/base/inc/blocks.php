@@ -267,13 +267,23 @@ if (!function_exists('sb_blocks_styles')) {
 }
 .sb-block-faq-question {
     padding: 14px 44px 14px 18px;
-    font-weight: 600;
-    color: var(--sb-color-text, #111);
     cursor: pointer;
     position: relative;
     list-style: none;
+    margin: 0;
 }
 .sb-block-faq-question::-webkit-details-marker { display: none; }
+.sb-block-faq-question-text {
+    /* h3 inside <summary> — reset its browser defaults so it doesn't add
+       extra margins or size differently from the summary line. Semantic
+       heading level for SEO, visual weight from the summary styling. */
+    margin: 0;
+    font-size: inherit;
+    font-weight: 600;
+    color: var(--sb-color-text, #111);
+    line-height: 1.4;
+    display: inline;
+}
 .sb-block-faq-question::after {
     content: "+";
     position: absolute;

@@ -213,8 +213,13 @@ class Site_Builder_Blocks_Parser {
                             $question = trim($m[1]);
                             $answer = trim(preg_replace('/^\s*##\s+.+$/m', '', $item, 1));
                         }
+                        // Wrap question text in <h3> inside <summary> so search
+                        // engines get a proper heading hierarchy (main h1 →
+                        // section h2 → faq questions h3) and Rich Snippets
+                        // FAQPage schema picks it up correctly. The h3 lives
+                        // inside <summary> — that's a valid structure in HTML5.
                         $html .= '<details class="sb-block-faq-item">'
-                              .   '<summary class="sb-block-faq-question">' . esc_html($question) . '</summary>'
+                              .   '<summary class="sb-block-faq-question"><h3 class="sb-block-faq-question-text">' . esc_html($question) . '</h3></summary>'
                               .   '<div class="sb-block-faq-answer">' . self::inner_markdown($answer) . '</div>'
                               . '</details>';
                     }

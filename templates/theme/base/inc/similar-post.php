@@ -511,7 +511,7 @@ function render_child_pages_showcase($children, $post_type = 'page', $current_la
                 margin: 0;
                 font-size: 26px;
                 font-weight: 700;
-                color: #1a1a1a;
+                color: var(--sb-color-text, #1a1a1a);
                 letter-spacing: -0.3px;
             ">' . esc_html($block_title) . '</h2>
         </div>';

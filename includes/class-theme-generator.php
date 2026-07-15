@@ -95,10 +95,12 @@ class Site_Builder_Theme_Generator {
             }
         }
 
-        // 3. Copy base files (functions.php, index.php, page.php, front-page.php).
+        // 3. Copy base files (functions.php, index.php, page.php, front-page.php, 404.php).
         // style.css is built separately below — it's a template needing substitution.
+        // 404.php uses WordPress template hierarchy: it's picked up automatically
+        // for any request that doesn't resolve to a post/page.
         $base = SITE_BUILDER_PATH . 'templates/theme/base/';
-        foreach (['functions.php', 'index.php', 'page.php', 'front-page.php'] as $file) {
+        foreach (['functions.php', 'index.php', 'page.php', 'front-page.php', '404.php'] as $file) {
             $src = $base . $file;
             if (!file_exists($src)) {
                 return ['ok' => false, 'message' => 'Отсутствует базовый файл темы: ' . $file];
