@@ -60,24 +60,30 @@ if (!function_exists('sb_404_styles')) {
                 line-height: 1.6;
                 color: var(--sb-color-muted, #6b7280);
             }
-            .sb-404-action {
+            /* Higher-specificity selectors (0,2,0) so the button styles win
+               against body.sb-site a (0,1,2), which every color-scheme file
+               defines to give links their branded color + underline. Without
+               this, the color-scheme's link styling wins and the button reads
+               as a regular in-content link. .sb-404-page is the wrapper set
+               by the 404.php template — always present, so scoping is safe. */
+            .sb-404-page .sb-404-action {
                 display: inline-flex;
                 align-items: center;
                 gap: 8px;
                 padding: 12px 24px;
                 background: var(--sb-color-link, #2563eb);
-                color: #fff;
+                color: var(--sb-color-text, #111);
                 text-decoration: none;
                 border-radius: 8px;
                 font-weight: 600;
                 font-size: 15px;
                 transition: opacity 0.15s, transform 0.15s;
             }
-            .sb-404-action:hover {
+            .sb-404-page .sb-404-action:hover {
                 opacity: 0.9;
                 transform: translateX(-2px);
                 text-decoration: none;
-                color: #fff;
+                color: var(--sb-color-text, #111);
             }
             .sb-404-action-arrow {
                 transition: transform 0.15s;
