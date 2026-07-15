@@ -76,6 +76,7 @@ class Site_Builder_SEO_Metabox {
         $headline = (string)get_post_meta($post_id, '_custom_seo_headline', true);
         $og_desc  = (string)get_post_meta($post_id, '_custom_seo_og_desc',  true);
         $og_img   = (string)get_post_meta($post_id, '_custom_seo_og_image', true);
+        $h1       = (string)get_post_meta($post_id, '_custom_seo_h1',       true);
         $noindex  = (int)get_post_meta($post_id, '_custom_seo_noindex', true) === 1;
 
         // Placeholders — show what would be used if the field is left empty.
@@ -95,6 +96,10 @@ class Site_Builder_SEO_Metabox {
         $ph_og_img   = self::first_meta_or_post($post_id, [
             '_yoast_wpseo_opengraph-image', 'rank_math_facebook_image'
         ], '(будет использовано изображение записи)');
+        // H1 fallback shown as placeholder: fsr_headline (Social Headline import) →
+        // post_title (the WP admin Title field). Keeps behavior transparent —
+        // admin sees exactly what will be used if H1 override is left empty.
+        $ph_h1 = self::first_meta_or_post($post_id, ['fsr_headline'], $post->post_title);
 
         ?>
         <style>
@@ -180,6 +185,15 @@ class Site_Builder_SEO_Metabox {
                 </td>
             </tr>
             <tr>
+                <th><label for="sb-seo-h1">H1 заголовок</label></th>
+                <td>
+                    <input type="text" id="sb-seo-h1" name="sb_seo[h1]"
+                           value="<?php echo esc_attr($h1); ?>"
+                           placeholder="<?php echo esc_attr($ph_h1); ?>" />
+                    <div class="sb-seo-metabox-hint">Главный заголовок статьи, отображаемый на странице (тег <code>&lt;h1&gt;</code>). Не влияет на <code>&lt;title&gt;</code> вкладки браузера, крошки и меню — там используется поле «Title» редактора. Если оставить пустым — сработает fallback: Social Headline (frontmatter <code>headline</code>) → поле «Title» редактора.</div>
+                </td>
+            </tr>
+            <tr>
                 <th>Индексация</th>
                 <td>
                     <label>
@@ -234,6 +248,7 @@ class Site_Builder_SEO_Metabox {
             'headline' => '_custom_seo_headline',
             'og_desc'  => '_custom_seo_og_desc',
             'og_image' => '_custom_seo_og_image',
+            'h1'       => '_custom_seo_h1',
         ];
         foreach ($map as $input_key => $meta_key) {
             $value = isset($input[$input_key]) ? trim((string)wp_unslash($input[$input_key])) : '';

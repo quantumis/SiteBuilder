@@ -35,9 +35,16 @@ if (!defined('ABSPATH')) exit;
         if (have_posts()) {
             while (have_posts()) {
                 the_post();
-                $sb_headline = (string)get_post_meta(get_the_ID(), 'fsr_headline', true);
-                if ($sb_headline !== '') {
-                    echo '<h1>' . esc_html($sb_headline) . '</h1>';
+                // H1 fallback chain (same as page.php):
+                //   1. _custom_seo_h1 (Site Builder SEO metabox override)
+                //   2. fsr_headline (Social Headline from FSR frontmatter)
+                //   3. post_title (WordPress admin Title field)
+                $sb_h1 = trim((string)get_post_meta(get_the_ID(), '_custom_seo_h1', true));
+                if ($sb_h1 === '') {
+                    $sb_h1 = trim((string)get_post_meta(get_the_ID(), 'fsr_headline', true));
+                }
+                if ($sb_h1 !== '') {
+                    echo '<h1>' . esc_html(do_shortcode($sb_h1)) . '</h1>';
                 } else {
                     the_title('<h1>', '</h1>');
                 }
