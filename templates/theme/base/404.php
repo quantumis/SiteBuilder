@@ -3,15 +3,19 @@
  * Site Builder — 404 template.
  *
  * WordPress falls back to this template when a request doesn't match any
- * post or page. The layout uses the theme's standard wrapper structure
- * (sb-site-content > sb-content) so it inherits max-width, padding, and
- * typography rules that page.php and index.php get — otherwise the 404
- * would sprawl across the full viewport with no theme styling.
+ * post or page. It uses the same HTML wrapper pattern as page.php /
+ * index.php / front-page.php: the full <!doctype><html><head>...
+ * <body class="sb-site"> shell lives here, not in header.php. That's a
+ * deliberate architecture choice — header.php in this theme is only the
+ * <header> element (the site chrome), not the HTML document envelope.
  *
- * All copy runs through sb_t() for 36-locale coverage. Styles live in
- * inc/404-styles.php (registered as inline CSS via wp_enqueue_scripts) —
- * putting <style> in body works but is unreliable across CSS loaders and
- * validators, so we register through the standard WP mechanism.
+ * If you forget to open <html>/<head>/<body> here, wp_head() never runs,
+ * meaning no stylesheets are enqueued (style.css doesn't load), body_class
+ * doesn't get 'sb-site' (so the flex layout stops working), and the page
+ * renders unstyled. That's exactly what beta7 and beta8 accidentally shipped.
+ *
+ * All copy runs through sb_t() for 36-locale coverage. Styles are inline
+ * via wp_add_inline_style — see inc/404-styles.php.
  *
  * Design intent: bold "404" mark with gradient fill from the theme's
  * accent colors, a short sentence, one action button. No search box or
@@ -19,8 +23,17 @@
  * lands on the recovery action.
  */
 if (!defined('ABSPATH')) exit;
-
-get_header(); ?>
+?>
+<!doctype html>
+<html <?php language_attributes(); ?>>
+<head>
+    <meta charset="<?php bloginfo('charset'); ?>">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <?php wp_head(); ?>
+</head>
+<body <?php body_class('sb-site'); ?>>
+<?php wp_body_open(); ?>
+<?php get_header(); ?>
 
 <main class="sb-site-content">
     <div class="sb-content sb-404-page">
@@ -37,3 +50,6 @@ get_header(); ?>
 </main>
 
 <?php get_footer(); ?>
+<?php wp_footer(); ?>
+</body>
+</html>
