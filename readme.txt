@@ -4,7 +4,7 @@ Tags: import, content, automation
 Requires at least: 6.0
 Tested up to: 6.6
 Requires PHP: 8.0
-Stable tag: 1.1.5
+Stable tag: 1.1.6
 
 Внутренний инструмент массового импорта контента в WordPress.
 
@@ -30,6 +30,23 @@ Site Builder — это плагин для автоматического ра�
 4. В сайдбаре админки появится пункт меню «Site Builder».
 
 == Changelog ==
+
+= 1.1.6 =
+* **Микроразметка Schema.org полностью переработана под ТЗ SEO-команды 14/07/2026.** Вместо отдельных разрозненных сущностей теперь единый связанный @graph со сквозными @id references — поисковики (включая LLM-парсеры) видят иерархию Organization → WebSite → WebPage → Article, а не набор несвязанных блоков.
+* **Разграничение по типам страниц строго по ТЗ:**
+  * **[U] utility** (privacy / cookies / legal) — микроразметка **не выводится вообще**. Экономия краулинг-бюджета, чистота HTML.
+  * **[A] articles-grid** — только Organization + WebSite + **CollectionPage** с hasPart массивом дочерних статей. Никаких Article/Article/FAQ/Breadcrumb — это транзитная страница-листинг.
+  * **Front page** (главная сайта) — Organization + WebSite + WebPage + Article + FAQPage(если есть). WebPage главной без description и без breadcrumb (по ТЗ).
+  * **Обычные страницы** — Organization + WebSite + WebPage + BreadcrumbList(если крошек ≥ 2) + Article + FAQPage(если есть).
+* **Автоматическое извлечение FAQ из post_content.** Плагин парсит блок `::: faq ... :::` из сырого контента, разбивает по `---`, извлекает `## Вопрос` и ответ, чистит markdown-разметку (`**bold**`, `*italic*`, `[link](url)`, `\`code\``, HTML-теги) в plain-текст — FAQPage.mainEntity формируется автоматически. Пустой FAQPage не выводится (по ТЗ).
+* **Organization с полным logo-блоком** — `@id`, `contentUrl`, `caption`, `inLanguage` — все поля из ТЗ.
+* **Article приведён к формату ТЗ**: `headline` = H1 (не Social Headline, как раньше), `author` — inline Organization с name, `publisher` — @id reference, добавлены `isPartOf` и `description`. Убраны кастомные поля (`wordCount`) — только то что в ТЗ.
+* **WebPage.@id** = URL страницы (без суффикса `#webpage`), как в ТЗ. Article ссылается через `mainEntityOfPage` и `isPartOf` на этот @id.
+* **BreadcrumbList** — выводится только если крошек **больше одной**. Пустые/одиночные не эмитируются.
+* **Пустые поля не сериализуются** — если description пустой, image не задана, hasPart пуст — соответствующий ключ отсутствует. Validator.schema.org больше не должен показывать warnings о пустых значениях.
+* **noindex по-прежнему пропускает** весь JSON-LD целиком — если страница скрыта от поисковиков через SEO metabox, не имеет смысла отдавать им schema.
+
+= 1.1.5 =
 
 = 1.1.5 =
 🎉 **Релизная версия.** Крупный шаг: заканчивается серия 1.1.4-beta1..10 (тема, SEO metabox, TOC, 404, разделение H1/крошек, локализация [W]) — все накопленные фиксы стабилизированы, добавлена финальная функция.

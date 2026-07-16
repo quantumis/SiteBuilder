@@ -50,10 +50,16 @@ if (!function_exists('sb_seo_should_run')) {
     });
 
     /**
-     * Custom canonical that accounts for content pagination (?page=N for
-     * pages with <!--nextpage--> splits and /page/N/ for paginated archives).
-     * The default WP rel_canonical strips the page parameter, which makes
-     * paginated content all point at page 1 and harms SEO.
+     * Custom canonical that accounts for pagination:
+     *   - ?page=N (WP <!--nextpage--> splits inside a singular post)
+     *   - /page/N/ (paginated archives — post_type_archive etc.)
+     *   - ?gp=N (this theme's articles-grid pagination — see articles-grid.php)
+     *
+     * The default WP rel_canonical strips all query params, which for our
+     * articles-grid would make page 2, 3, ... all canonical-point to page 1
+     * (bad for SEO — Google sees them as duplicates). We include ?gp=N in
+     * the canonical when we're on a paginated grid view so each pagination
+     * page has its own canonical URL matching its actual URL.
      */
     function sb_seo_canonical() {
         if (!is_singular()) return;
@@ -63,6 +69,17 @@ if (!function_exists('sb_seo_should_run')) {
         if ($page > 1 || $paged > 1) {
             $n = max($page, $paged);
             $link = trailingslashit($link) . 'page/' . $n . '/';
+        }
+        // Articles-grid pagination: include ?gp=N when present and > 1.
+        // We check the meta directly rather than a helper because canonical
+        // runs early (before we might have loaded FSR-aware helpers).
+        $post_id = get_the_ID();
+        if ($post_id && isset($_GET['gp'])) {
+            $gp = max(1, (int)$_GET['gp']);
+            $is_grid = (int)get_post_meta($post_id, 'fsr_articles_grid', true) === 1;
+            if ($is_grid && $gp >= 2) {
+                $link = add_query_arg('gp', $gp, $link);
+            }
         }
         echo '<link rel="canonical" href="' . esc_url($link) . "\" />\n";
     }
@@ -114,6 +131,54 @@ if (!function_exists('sb_seo_should_run')) {
                 '_seopress_social_fb_img', 'og_image', 'og_meta_image', 'featured_image_url',
             ],
         ];
+    }
+
+    /**
+     * Extract FAQ items from raw post_content by scanning for the `::: faq ... :::`
+     * container block. Each item is separated by a `---` line inside the block,
+     * with the question on a `## ...` line and the rest being the answer.
+     *
+     * Runs on the raw markdown/HTML in post_content — the_content filter hasn't
+     * fired yet at wp_head time, so we can't inspect the rendered DOM. This is
+     * fine because block source syntax is stable and easier to parse than HTML.
+     *
+     * Returns [] if no faq block or no valid items — the caller uses that to
+     * decide whether to emit the FAQPage entity at all (spec says: skip when
+     * empty, never emit empty arrays).
+     */
+    function sb_seo_extract_faq($post_content) {
+        if (strpos($post_content, '::: faq') === false) return [];
+        if (!preg_match('/^:::\s*faq\s*$(.*?)^:::\s*$/ms', $post_content, $m)) return [];
+
+        $body = trim($m[1]);
+        // Split by `---` on its own line (fence between items)
+        $chunks = preg_split('/^\s*---\s*$/m', $body);
+        $items = [];
+        foreach ($chunks as $chunk) {
+            if (!preg_match('/^\s*##\s+(.+)$/m', $chunk, $qm)) continue;
+            $question = trim($qm[1]);
+            $answer_raw = trim(preg_replace('/^\s*##\s+.+$/m', '', $chunk, 1));
+            // Answers may contain markdown (bold, italic, links) — strip
+            // formatting characters and tags for the schema text field, which
+            // must be plain readable prose. Google's FAQPage guidelines
+            // explicitly allow limited HTML but plain text is safer for
+            // validator.schema.org (which flags unknown markup in text nodes).
+            $answer_plain = wp_strip_all_tags($answer_raw);
+            // Now strip markdown syntax that wp_strip_all_tags doesn't know
+            // about: bold **x**/__x__, italic *x*/_x_, inline `code`, and
+            // link syntax [text](url) → text.
+            $answer_plain = preg_replace('/\*\*(.+?)\*\*/s', '$1', $answer_plain); // **bold**
+            $answer_plain = preg_replace('/__(.+?)__/s',     '$1', $answer_plain); // __bold__
+            $answer_plain = preg_replace('/(?<![*])\*(?![*])(.+?)(?<![*])\*(?![*])/s', '$1', $answer_plain); // *italic*
+            $answer_plain = preg_replace('/(?<![_])_(?![_])(.+?)(?<![_])_(?![_])/s',   '$1', $answer_plain); // _italic_
+            $answer_plain = preg_replace('/`([^`]+)`/', '$1', $answer_plain);      // `code`
+            $answer_plain = preg_replace('/\[([^\]]+)\]\([^)]+\)/', '$1', $answer_plain); // [text](url) → text
+            $answer_plain = preg_replace('/\s+/', ' ', $answer_plain);
+            $answer_plain = trim($answer_plain);
+            if ($question === '' || $answer_plain === '') continue;
+            $items[] = ['q' => $question, 'a' => $answer_plain];
+        }
+        return $items;
     }
 
     /**
@@ -177,6 +242,45 @@ if (!function_exists('sb_seo_should_run')) {
         ));
         if ($og_desc === '') $og_desc = $seo_desc;
 
+        // Classify the page — moved up here (used to be below noindex) because
+        // the pagination-suffix block below needs $is_grid, and JSON-LD later
+        // uses all three. Reading three meta values once is cheap.
+        $is_utility = (int)get_post_meta($post_id, 'fsr_utility', true) === 1;
+        $is_grid    = (int)get_post_meta($post_id, 'fsr_articles_grid', true) === 1;
+        $is_article = !$is_utility && !$is_grid;
+
+        // Pagination suffix — for articles-grid pages on page ≥ 2, append a
+        // localized " – Page N" to title and description. Prevents Google
+        // from treating page 2, 3, … as duplicates of page 1 (they share the
+        // same permalink, only differ by ?gp=N query param), and gives users
+        // clear context about which page they're viewing.
+        //
+        // Only articles-grid pages have pagination in this theme (via ?gp=N in
+        // articles-grid.php). Regular content pages don't paginate, so no
+        // suffix is needed there.
+        //
+        // Applied to all four surface fields (title, desc, social, og_desc)
+        // so <title>, <meta description>, og:title, og:description, and the
+        // JSON-LD graph all stay consistent. WebPage.name / CollectionPage.name
+        // will also carry the suffix, which is correct — page 2 is a distinct
+        // resource from page 1 as far as search engines are concerned.
+        if ($is_grid && isset($_GET['gp'])) {
+            $current_page = max(1, (int)$_GET['gp']);
+            if ($current_page >= 2) {
+                $page_label = function_exists('sb_t')
+                    ? sprintf(sb_t('page_n'), $current_page)
+                    : sprintf('Page %d', $current_page);
+                // En-dash separator — works cleanly across all Latin/Cyrillic
+                // locales. Not localized because typographic dashes don't vary
+                // per language the way, say, quotes do.
+                $suffix = ' – ' . $page_label;
+                if ($seo_title !== '') $seo_title .= $suffix;
+                if ($seo_desc  !== '') $seo_desc  .= $suffix;
+                if ($social    !== '') $social    .= $suffix;
+                if ($og_desc   !== '') $og_desc   .= $suffix;
+            }
+        }
+
         // Resolve shortcodes ([sb_year], [sb_date]) in any of the fields —
         // meta values are read raw and don't pass through the_title filters.
         // Guarded on '[sb_' prefix so plain text with brackets isn't touched.
@@ -213,11 +317,6 @@ if (!function_exists('sb_seo_should_run')) {
         $logo_id  = (int)get_theme_mod('custom_logo');
         if ($logo_id) $logo_url = (string)wp_get_attachment_image_url($logo_id, 'full');
 
-        // Classify the page for schema type selection
-        $is_utility = (int)get_post_meta($post_id, 'fsr_utility', true) === 1;
-        $is_grid    = (int)get_post_meta($post_id, 'fsr_articles_grid', true) === 1;
-        $is_article = !$is_utility && !$is_grid;
-
         // --- HEAD output: title / description / robots ---
         echo "\n<title>" . esc_html($seo_title) . "</title>\n";
         if ($noindex) {
@@ -253,94 +352,206 @@ if (!function_exists('sb_seo_should_run')) {
         // to a page we're telling crawlers to ignore.
         if ($noindex) return;
 
-        // --- JSON-LD schema graph ---
+        // Page-type priority: [A] beats [U]. A page marked both articles-grid
+        // and utility (e.g. a "list of policies" hub) still deserves a
+        // CollectionPage schema — hub-of-links transit pages are exactly the
+        // case where a linked entity graph helps discovery. Only pages that
+        // are utility AND NOT grid get skipped entirely.
+        if ($is_utility && !$is_grid) return;
+
+        // --- JSON-LD graph ---
+        //
+        // Single @graph with all entities linked by @id references, per the
+        // 2026-07 SEO team spec. Structure by page type (checked in priority
+        // order — first match wins):
+        //
+        //   [A] (articles-grid)    → Organization + WebSite + CollectionPage(hasPart=children)
+        //   [U] (utility, no [A])  → nothing (early return above)
+        //   Front page             → Organization + WebSite + WebPage + Article + FAQPage?
+        //   Regular content pages  → Organization + WebSite + WebPage + BreadcrumbList? + Article + FAQPage?
+        //
+        // [A] takes precedence over [U]: a page marked as both an
+        // articles-grid AND utility (rare but valid — e.g. a "list of
+        // policies" hub) still gets CollectionPage schema. The [A] intent to
+        // present a hub-of-links overrides the [U] intent to hide from search.
+        //
+        // "?" means the entity only appears when the underlying data exists:
+        //   - BreadcrumbList: only when get_my_breadcrumbs_items() returns >= 2 items
+        //   - FAQPage: only when the post_content contains a ::: faq ::: block
+        //     with at least one Q/A pair
+        //
+        // Empty strings and false values are never emitted — schema.org
+        // validators warn on those, and spec calls them out as forbidden.
+
+        $home_url = home_url('/');
         $graph = [];
 
-        // Organization
+        // --- Organization (shared identity of the publisher) ---
         $org = [
             '@type' => 'Organization',
-            '@id'   => home_url('/#organization'),
+            '@id'   => $home_url . '#organization',
             'name'  => $site_name,
-            'url'   => home_url('/'),
+            'url'   => $home_url,
         ];
-        if ($logo_url) $org['logo'] = ['@type' => 'ImageObject', 'url' => $logo_url];
+        if ($logo_url) {
+            $org['logo'] = [
+                '@type'      => 'ImageObject',
+                '@id'        => $home_url . '#logo',
+                'url'        => $logo_url,
+                'contentUrl' => $logo_url,
+                'caption'    => $site_name,
+                'inLanguage' => $locale,
+            ];
+        }
         $graph[] = $org;
 
-        // WebSite
+        // --- WebSite (shared, with publisher pointing back at Organization) ---
         $graph[] = [
             '@type'      => 'WebSite',
-            '@id'        => home_url('/#website'),
-            'url'        => home_url('/'),
+            '@id'        => $home_url . '#website',
+            'url'        => $home_url,
             'name'       => $site_name,
-            'publisher'  => ['@id' => home_url('/#organization')],
+            'publisher'  => ['@id' => $home_url . '#organization'],
             'inLanguage' => $locale,
         ];
 
-        // Breadcrumbs (if our breadcrumbs module is loaded)
-        $breadcrumb_items = [];
-        if (function_exists('get_my_breadcrumbs_items')) {
-            foreach (get_my_breadcrumbs_items() as $i => $item) {
-                $breadcrumb_items[] = [
-                    '@type'    => 'ListItem',
-                    'position' => $i + 1,
-                    'name'     => $item['name'],
-                    'item'     => $item['url'],
+        if ($is_grid) {
+            // --- Articles-grid page → CollectionPage with hasPart list ---
+            // The children query mirrors what articles-grid.php shows on-page:
+            // published child pages, ordered by menu_order then title.
+            $children = get_posts([
+                'post_type'        => 'page',
+                'post_parent'      => $post_id,
+                'posts_per_page'   => -1,
+                'orderby'          => ['menu_order' => 'ASC', 'title' => 'ASC'],
+                'post_status'      => 'publish',
+                'suppress_filters' => false,
+            ]);
+            $has_part = [];
+            foreach ($children as $child) {
+                $has_part[] = [
+                    '@type' => 'WebPage',
+                    'url'   => get_permalink($child),
+                    'name'  => get_the_title($child),
                 ];
             }
-        }
-
-        // WebPage / CollectionPage
-        $webpage_type = $is_grid ? 'CollectionPage' : 'WebPage';
-        $webpage = [
-            '@type'         => $webpage_type,
-            '@id'           => $permalink . '#webpage',
-            'url'           => $permalink,
-            'name'          => $seo_title,
-            'isPartOf'      => ['@id' => home_url('/#website')],
-            'datePublished' => get_the_date('c', $post_id),
-            'dateModified'  => get_the_modified_date('c', $post_id),
-            'inLanguage'    => $locale,
-        ];
-        if ($img_url) {
-            $webpage['primaryImageOfPage'] = ['@type' => 'ImageObject', 'url' => $img_url];
-        }
-        if ($breadcrumb_items) {
-            $webpage['breadcrumb'] = ['@id' => $permalink . '#breadcrumb'];
-        }
-        $graph[] = $webpage;
-
-        // BreadcrumbList
-        if ($breadcrumb_items) {
-            $graph[] = [
-                '@type'           => 'BreadcrumbList',
-                '@id'             => $permalink . '#breadcrumb',
-                'itemListElement' => $breadcrumb_items,
+            $collection = [
+                '@type'      => 'CollectionPage',
+                '@id'        => $permalink,
+                'url'        => $permalink,
+                'name'       => $seo_title,
+                'isPartOf'   => ['@id' => $home_url . '#website'],
+                'inLanguage' => $locale,
             ];
-        }
+            if ($seo_desc)       $collection['description'] = $seo_desc;
+            if (!empty($has_part)) $collection['hasPart']    = $has_part;
+            $graph[] = $collection;
 
-        // Article — only for actual content pages
-        if ($is_article) {
-            $content_plain = wp_strip_all_tags((string)get_post_field('post_content', $post_id));
-            // Unicode-aware word counter: \p{L} covers Latin/Cyrillic/Greek/etc.
-            $words = preg_split('~[^\p{L}\p{N}]+~u', $content_plain, -1, PREG_SPLIT_NO_EMPTY);
-            $word_count = is_array($words) ? count($words) : 0;
+        } else {
+            // --- Regular content page → WebPage + Article + (FAQPage) + (BreadcrumbList) ---
 
+            // Breadcrumbs — only present on non-front singular pages, and only
+            // when there are >= 2 items (Home + at least one deeper level).
+            $breadcrumb_items = function_exists('get_my_breadcrumbs_items')
+                ? get_my_breadcrumbs_items()
+                : [];
+            $has_breadcrumbs = count($breadcrumb_items) >= 2;
+
+            // H1 for Article headline uses the same fallback chain as page.php:
+            // _custom_seo_h1 (Site Builder SEO metabox override) → fsr_headline
+            // → post title. This is distinct from $seo_title (which is <title>
+            // tag text) so an editor can decouple the two.
+            $h1 = trim((string)get_post_meta($post_id, '_custom_seo_h1', true));
+            if ($h1 === '') $h1 = trim((string)get_post_meta($post_id, 'fsr_headline', true));
+            if ($h1 === '') $h1 = get_the_title($post_id);
+
+            // FAQ block extracted from raw post_content
+            $faq_items = sb_seo_extract_faq((string)get_post_field('post_content', $post_id));
+
+            // WebPage
+            $webpage = [
+                '@type'      => 'WebPage',
+                '@id'        => $permalink,
+                'url'        => $permalink,
+                'name'       => $seo_title,
+                'isPartOf'   => ['@id' => $home_url . '#website'],
+                'inLanguage' => $locale,
+            ];
+            // Description: front page's WebPage traditionally omits it (the
+            // description belongs to the Organization). Regular pages include it.
+            if (!is_front_page() && $seo_desc) {
+                $webpage['description'] = $seo_desc;
+            }
+            if ($has_breadcrumbs) {
+                $webpage['breadcrumb'] = ['@id' => $permalink . '#breadcrumb'];
+            }
+            $graph[] = $webpage;
+
+            // BreadcrumbList
+            if ($has_breadcrumbs) {
+                $breadcrumb_list = [];
+                foreach ($breadcrumb_items as $i => $item) {
+                    $breadcrumb_list[] = [
+                        '@type'    => 'ListItem',
+                        'position' => $i + 1,
+                        'name'     => $item['name'],
+                        'item'     => $item['url'],
+                    ];
+                }
+                $graph[] = [
+                    '@type'           => 'BreadcrumbList',
+                    '@id'             => $permalink . '#breadcrumb',
+                    'itemListElement' => $breadcrumb_list,
+                ];
+            }
+
+            // Article
             $article = [
                 '@type'            => 'Article',
                 '@id'              => $permalink . '#article',
-                'headline'         => $social,
-                'author'           => ['@id' => home_url('/#organization')],
-                'publisher'        => ['@id' => home_url('/#organization')],
+                'isPartOf'         => ['@id' => $permalink],
+                'mainEntityOfPage' => [
+                    '@type' => 'WebPage',
+                    '@id'   => $permalink,
+                ],
+                'headline'         => $h1,
                 'datePublished'    => get_the_date('c', $post_id),
                 'dateModified'     => get_the_modified_date('c', $post_id),
-                'mainEntityOfPage' => ['@id' => $permalink . '#webpage'],
-                'inLanguage'       => $locale,
-                'wordCount'        => $word_count,
+                'author'           => [
+                    '@type' => 'Organization',
+                    'name'  => $site_name,
+                ],
+                'publisher'        => ['@id' => $home_url . '#organization'],
             ];
+            if ($seo_desc) $article['description'] = $seo_desc;
             if ($img_url) {
-                $article['image'] = ['@type' => 'ImageObject', 'url' => $img_url];
+                $article['image'] = [
+                    '@type' => 'ImageObject',
+                    'url'   => $img_url,
+                ];
             }
             $graph[] = $article;
+
+            // FAQPage — only when there's actually a FAQ block on the page
+            if (!empty($faq_items)) {
+                $questions = [];
+                foreach ($faq_items as $faq) {
+                    $questions[] = [
+                        '@type' => 'Question',
+                        'name'  => $faq['q'],
+                        'acceptedAnswer' => [
+                            '@type' => 'Answer',
+                            'text'  => $faq['a'],
+                        ],
+                    ];
+                }
+                $graph[] = [
+                    '@type'      => 'FAQPage',
+                    '@id'        => $permalink . '#faq',
+                    'isPartOf'   => ['@id' => $permalink],
+                    'mainEntity' => $questions,
+                ];
+            }
         }
 
         $schema = [
