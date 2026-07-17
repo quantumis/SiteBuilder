@@ -717,6 +717,57 @@
     border-radius: 999px;
 }
 
+/* Random checkbox in the section header — sits on the right side, opposite
+   the section title. Native browser tooltip is used via the `title` attr
+   on the wrapping <label>, so hover explains the intent without extra CSS. */
+.sb-theme-random-toggle {
+    margin-left: auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    font-size: 12px;
+    color: #4b5563;
+    cursor: pointer;
+    border-radius: 6px;
+    transition: background 0.15s, color 0.15s;
+    user-select: none;
+}
+.sb-theme-random-toggle:hover {
+    background: #f3f4f6;
+    color: #111827;
+}
+.sb-theme-random-toggle input[type=checkbox] {
+    margin: 0;
+    cursor: pointer;
+}
+.sb-theme-random-toggle input[type=checkbox]:checked + span {
+    color: #4338ca;
+    font-weight: 600;
+}
+
+/* "Выбрать случайные варианты" shortcut button that lives just below the
+   intro info box. Sets all three category checkboxes and scrolls to the
+   generation button. */
+.sb-theme-randomize-shortcut {
+    margin: 16px 0 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+.sb-theme-randomize-shortcut .description {
+    margin: 0;
+    font-size: 12px;
+    color: #6b7280;
+    flex: 1;
+    min-width: 200px;
+}
+.sb-theme-randomize-shortcut .dashicons {
+    vertical-align: middle;
+    margin-right: 4px;
+}
+
 /* Horizontal scroller */
 .sb-theme-scroller {
     position: relative;

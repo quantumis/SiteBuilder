@@ -265,6 +265,57 @@ class Site_Builder_Theme_Generator {
     }
 
     /**
+     * Random-choice flags — per-category toggle that, when enabled, causes the
+     * generator to pick a random variant from list_variants() instead of the
+     * one the user has selected. Useful for "surprise me" workflows and for
+     * batch operations across many sites where consistent look is not required.
+     *
+     * Defaults:
+     *   header → false (users usually have a preferred site chrome)
+     *   footer → false (same reason)
+     *   style  → true  (color scheme is the safest thing to randomize —
+     *                   it's purely visual, no layout implications)
+     */
+    public static function get_random_choices(): array {
+        $defaults = [
+            'header' => false,
+            'footer' => false,
+            'style'  => true,
+        ];
+        $saved = get_option('site_builder_theme_random_choices', null);
+        // null means the option was never set — use full defaults. Empty array
+        // (["}"] } false in PHP context) would also fall into this branch if
+        // is_array check fails, keeping behavior safe.
+        if (!is_array($saved)) return $defaults;
+        return array_merge($defaults, $saved);
+    }
+
+    public static function set_random_choices(array $choices): void {
+        $known = ['header', 'footer', 'style'];
+        $clean = [];
+        foreach ($known as $k) {
+            if (array_key_exists($k, $choices)) {
+                $clean[$k] = (bool)$choices[$k];
+            }
+        }
+        $existing = get_option('site_builder_theme_random_choices', []);
+        if (!is_array($existing)) $existing = [];
+        update_option('site_builder_theme_random_choices', array_merge($existing, $clean));
+    }
+
+    /**
+     * Pick a random variant slug from the given category. Returns empty string
+     * if no variants are available (should never happen in a valid install).
+     * Used by theme_build when the random-choice flag is set for a category.
+     */
+    public static function pick_random_variant(string $category): string {
+        $variants = self::list_variants($category);
+        if (empty($variants)) return '';
+        $picked = $variants[array_rand($variants)];
+        return (string)($picked['slug'] ?? '');
+    }
+
+    /**
      * Generate a simple SVG palette-preview for a style variant card. Headers
      * and footers no longer render previews here — their card is a text-only
      * summary of name + description (SVG schematics were removed in v1.1.4-beta2

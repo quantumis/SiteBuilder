@@ -958,7 +958,14 @@
                     nonce: SiteBuilderData.nonce,
                     header: $('input[name="sb-theme-header"]:checked').val() || '',
                     footer: $('input[name="sb-theme-footer"]:checked').val() || '',
-                    style:  $('input[name="sb-theme-style"]:checked').val() || ''
+                    style:  $('input[name="sb-theme-style"]:checked').val() || '',
+                    // Random-choice flags per category. When on, backend ignores
+                    // the header/footer/style values above and picks randomly
+                    // from list_variants(). The user's selection is still sent
+                    // as the fallback for when the box is off.
+                    random_header: $('.sb-theme-random-checkbox[data-key="header"]').is(':checked') ? 1 : 0,
+                    random_footer: $('.sb-theme-random-checkbox[data-key="footer"]').is(':checked') ? 1 : 0,
+                    random_style:  $('.sb-theme-random-checkbox[data-key="style"]').is(':checked')  ? 1 : 0
                 }
             }).done(function (resp) {
                 $buildBtn.prop('disabled', false);
@@ -974,6 +981,38 @@
                 $buildBtn.prop('disabled', false);
                 $status.addClass('sb-theme-error').text('✗ Ошибка сети');
             });
+        });
+
+        // Persist the random-choice checkboxes on change so state survives page
+        // reload. Save silently — no visible status, this is a low-stakes
+        // preference and error would only manifest at next generation anyway.
+        $('.sb-theme-random-checkbox').on('change', function () {
+            var choices = {};
+            $('.sb-theme-random-checkbox').each(function () {
+                choices[$(this).data('key')] = $(this).is(':checked') ? 1 : 0;
+            });
+            $.ajax({
+                url: ajaxurl,
+                method: 'POST',
+                data: {
+                    action: 'site_builder_theme_random_choices',
+                    nonce: SiteBuilderData.nonce,
+                    choices: choices
+                }
+            });
+        });
+
+        // "Выбрать случайные варианты" shortcut — check all three random
+        // boxes, fire their change event so state persists, then smooth-scroll
+        // to the build button so the user's next tap is on it.
+        $('#sb-theme-randomize-all-btn').on('click', function () {
+            $('.sb-theme-random-checkbox').prop('checked', true).trigger('change');
+            var $target = $('#sb-theme-build-btn');
+            if ($target.length) {
+                $('html, body').animate({
+                    scrollTop: $target.offset().top - 80
+                }, 400);
+            }
         });
 
         // Instant save for module option checkboxes (breadcrumbs etc). No theme

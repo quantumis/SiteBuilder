@@ -20,6 +20,7 @@ class Site_Builder_Ajax_Handler {
         add_action('wp_ajax_site_builder_fsr_save_mapping', [$this, 'fsr_save_mapping']);
         add_action('wp_ajax_site_builder_theme_build',      [$this, 'theme_build']);
         add_action('wp_ajax_site_builder_theme_module_options', [$this, 'theme_module_options']);
+        add_action('wp_ajax_site_builder_theme_random_choices', [$this, 'theme_random_choices']);
         add_action('wp_ajax_site_builder_fsr_get_mapping',  [$this, 'fsr_get_mapping']);
         add_action('wp_ajax_site_builder_rollback_start',   [$this, 'rollback_start']);
         add_action('wp_ajax_site_builder_process_batch',    [$this, 'process_batch']);
@@ -738,6 +739,20 @@ class Site_Builder_Ajax_Handler {
         $footer = isset($_POST['footer']) ? sanitize_key(wp_unslash($_POST['footer'])) : '';
         $style  = isset($_POST['style'])  ? sanitize_key(wp_unslash($_POST['style']))  : '';
 
+        // Per-category "random" flags. When on, we pick a random variant from
+        // list_variants() regardless of what the user selected in the UI —
+        // useful for randomizing across many sites in a batch. Flags are also
+        // persisted so the UI checkboxes remember state across sessions.
+        $random = [
+            'header' => !empty($_POST['random_header']),
+            'footer' => !empty($_POST['random_footer']),
+            'style'  => !empty($_POST['random_style']),
+        ];
+        Site_Builder_Theme_Generator::set_random_choices($random);
+        if ($random['header']) $header = Site_Builder_Theme_Generator::pick_random_variant('headers');
+        if ($random['footer']) $footer = Site_Builder_Theme_Generator::pick_random_variant('footers');
+        if ($random['style'])  $style  = Site_Builder_Theme_Generator::pick_random_variant('styles');
+
         $generator = new Site_Builder_Theme_Generator();
         $result = $generator->build([
             'header' => $header,
@@ -746,6 +761,10 @@ class Site_Builder_Ajax_Handler {
         ], true);
 
         if (!empty($result['ok'])) {
+            // Echo back the actual picks so the frontend can surface what
+            // random rolled — useful when the user set "random style" and
+            // wants to see what came up before regenerating.
+            $result['picked'] = ['header' => $header, 'footer' => $footer, 'style' => $style];
             wp_send_json_success($result);
         } else {
             wp_send_json_error(['message' => $result['message'] ?? 'Не удалось сгенерировать тему']);
@@ -766,6 +785,24 @@ class Site_Builder_Ajax_Handler {
 
         Site_Builder_Theme_Generator::set_module_options($options);
         wp_send_json_success(['options' => Site_Builder_Theme_Generator::get_module_options()]);
+    }
+
+    /**
+     * Endpoint: persist the per-category "random pick" checkboxes on the theme
+     * tab. Called on change so the state survives page reloads. Separate from
+     * theme_build because it's just a preference save — no theme regeneration
+     * triggered. The build endpoint reads the same option too, so if the user
+     * regenerates without changing the boxes, their saved preference applies.
+     */
+    public function theme_random_choices(): void {
+        $this->authorize();
+
+        $choices = isset($_POST['choices']) && is_array($_POST['choices'])
+            ? wp_unslash($_POST['choices'])
+            : [];
+
+        Site_Builder_Theme_Generator::set_random_choices($choices);
+        wp_send_json_success(['choices' => Site_Builder_Theme_Generator::get_random_choices()]);
     }
 
     /**

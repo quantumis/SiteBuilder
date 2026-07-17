@@ -9,6 +9,7 @@ $th_styles  = Site_Builder_Theme_Generator::list_variants('styles');
 $th_current = Site_Builder_Theme_Generator::get_current_choices();
 $th_module_options = Site_Builder_Theme_Generator::get_module_options();
 $th_active  = (get_stylesheet() === Site_Builder_Theme_Generator::THEME_SLUG);
+$th_random  = Site_Builder_Theme_Generator::get_random_choices();
 ?>
 <div class="sb-theme-tab">
 
@@ -26,6 +27,14 @@ $th_active  = (get_stylesheet() === Site_Builder_Theme_Generator::THEME_SLUG);
         <?php endif; ?>
     </div>
 
+    <p class="sb-theme-randomize-shortcut">
+        <button type="button" class="button button-secondary" id="sb-theme-randomize-all-btn">
+            <span class="dashicons dashicons-randomize"></span>
+            Выбрать случайные варианты
+        </button>
+        <span class="description">Прожимает чекбоксы случайного выбора у всех блоков и прокручивает к кнопке генерации.</span>
+    </p>
+
     <form id="sb-theme-form">
         <?php foreach ([
             ['key' => 'header', 'label' => 'Шапка (header)',        'items' => $th_headers, 'current' => $th_current['header'], 'cat' => 'headers'],
@@ -36,6 +45,14 @@ $th_active  = (get_stylesheet() === Site_Builder_Theme_Generator::THEME_SLUG);
                 <div class="sb-theme-section-head">
                     <h2><?php echo esc_html($section['label']); ?></h2>
                     <span class="sb-theme-section-count"><?php echo count($section['items']); ?></span>
+                    <label class="sb-theme-random-toggle"
+                           title="При активном чек-боксе плагин выберет случайный вариант при генерации, независимо от того, какой вариант выбран.">
+                        <input type="checkbox"
+                               class="sb-theme-random-checkbox"
+                               data-key="<?php echo esc_attr($section['key']); ?>"
+                               <?php checked(!empty($th_random[$section['key']])); ?>>
+                        <span>Выбрать случайную</span>
+                    </label>
                 </div>
                 <?php if (empty($section['items'])): ?>
                     <p class="description">Нет доступных вариантов в этой категории.</p>
