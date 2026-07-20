@@ -43,6 +43,7 @@ class Site_Builder {
         require_once $base . 'class-fsr-importer.php';
         require_once $base . 'class-blocks-parser.php';
         require_once $base . 'class-seo-metabox.php';
+        require_once $base . 'class-menu-sync.php';
         require_once $base . 'class-ajax-handler.php';
         require_once $base . 'class-frontend.php';
         require_once $base . 'class-admin.php';
@@ -50,6 +51,10 @@ class Site_Builder {
 
     private function init_hooks(): void {
         new Site_Builder_Frontend();
+
+        // Menu title sync — works everywhere (front + admin) because save_post
+        // fires in both contexts. Registered outside the is_admin() branch.
+        Site_Builder_Menu_Sync::register();
 
         if (is_admin()) {
             new Site_Builder_Admin();
@@ -64,8 +69,39 @@ class Site_Builder {
     public static function activate(): void {
         require_once SITE_BUILDER_PATH . 'includes/class-installer.php';
         Site_Builder_Installer::install();
+
+        // One-time migration: tag existing menu items with a title source so
+        // Menu_Sync knows which ones to auto-refresh. We only touch items in
+        // menus this plugin actually manages (Main Auto Menu / Footer Auto
+        // Menu) — arbitrary user-defined menus are left alone.
+        require_once SITE_BUILDER_PATH . 'includes/class-menu-sync.php';
+        self::migrate_menu_title_sources();
+
         update_option('site_builder_version', SITE_BUILDER_VERSION);
         update_option('site_builder_activated_at', current_time('mysql'));
+    }
+
+    /**
+     * Backfill _sb_menu_title_source on existing menu items in our two auto
+     * menus. Items without the meta are assumed to be 'auto' (that's what
+     * the FSR importer effectively did before this system existed). The
+     * migration is idempotent — running it multiple times is a no-op for
+     * items that already have the meta set.
+     */
+    private static function migrate_menu_title_sources(): void {
+        $menu_names = ['Main Auto Menu', 'Footer Auto Menu'];
+        foreach ($menu_names as $menu_name) {
+            $menu_obj = wp_get_nav_menu_object($menu_name);
+            if (!$menu_obj) continue;
+            $items = wp_get_nav_menu_items($menu_obj->term_id, ['update_post_term_cache' => false]);
+            if (!$items) continue;
+            foreach ($items as $item) {
+                $existing = get_post_meta($item->ID, Site_Builder_Menu_Sync::META_KEY, true);
+                if ($existing === '') {
+                    update_post_meta($item->ID, Site_Builder_Menu_Sync::META_KEY, 'auto');
+                }
+            }
+        }
     }
 
     public static function deactivate(): void {

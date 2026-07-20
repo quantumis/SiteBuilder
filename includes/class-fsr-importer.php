@@ -369,28 +369,36 @@ class Site_Builder_FSR_Importer {
         update_post_meta($post_id, 'fsr_events_page',    !empty($flags['events'])   ? 1 : 0);
 
         // (c) Menu placement.
+        // If the flag included an explicit [;label], we pass that verbatim
+        // and mark the menu item as 'label' (Menu_Sync won't overwrite it).
+        // Otherwise we pass the page title and mark as 'auto', so title
+        // edits in the admin will re-sync into the menu.
         $menu_label = $parsed['title'] !== '' ? $parsed['title'] : $slug;
         if (!empty($flags['menu']['main']) && $this->menu_main_id > 0) {
+            $has_explicit_main_label = !empty($flags['menu']['label']);
             $this->add_to_menu(
                 $this->menu_main_id,
                 $post_id,
-                $flags['menu']['label'] ?? $menu_label,
+                $has_explicit_main_label ? $flags['menu']['label'] : $menu_label,
                 $flags['menu']['order'] ?? null,
                 $segments,
-                'main'
+                'main',
+                $has_explicit_main_label
             );
             if (isset($flags['menu']['depth'])) {
                 update_post_meta($post_id, 'fsr_menu_depth', (int)$flags['menu']['depth']);
             }
         }
         if (!empty($flags['footer']['enabled']) && $this->menu_footer_id > 0) {
+            $has_explicit_footer_label = !empty($flags['footer']['label']);
             $this->add_to_menu(
                 $this->menu_footer_id,
                 $post_id,
-                $flags['footer']['label'] ?? $menu_label,
+                $has_explicit_footer_label ? $flags['footer']['label'] : $menu_label,
                 $flags['footer']['order'] ?? null,
                 $segments,
-                'footer'
+                'footer',
+                $has_explicit_footer_label
             );
         }
 
@@ -1430,19 +1438,35 @@ class Site_Builder_FSR_Importer {
      * pages carry the [M] flag. Pages whose ancestors don't have [M] become
      * top-level menu items.
      *
-     * @param int    $menu_id   The nav-menu term id (main or footer).
-     * @param int    $post_id   The page being added.
-     * @param string $label     Display label (from [;label] in the flag, or page title).
-     * @param int|null $order   menu_order — explicit position (lower goes first), or null = auto.
-     * @param array  $segments  URL segments of the page being added.
-     * @param string $menu_kind 'main' or 'footer' — used to pick the right cache.
+     * @param int    $menu_id        The nav-menu term id (main or footer).
+     * @param int    $post_id        The page being added.
+     * @param string $label          Display label — if $has_explicit_label is
+     *                               true, used as-is; otherwise truncated by
+     *                               Menu_Sync::truncate_for_menu().
+     * @param int|null $order        menu_order — explicit position (lower goes
+     *                               first), or null = auto.
+     * @param array  $segments       URL segments of the page being added.
+     * @param string $menu_kind      'main' or 'footer' — used to pick the right cache.
+     * @param bool   $has_explicit_label True when the label came from a
+     *                               [M;label] / [F;label] flag; false when it
+     *                               was derived from post_title. Controls
+     *                               whether Menu_Sync marks the item as
+     *                               'label' (never overwrite) or 'auto'
+     *                               (recompute on post_title changes).
      */
-    private function add_to_menu(int $menu_id, int $post_id, string $label, ?int $order, array $segments, string $menu_kind): void {
+    private function add_to_menu(int $menu_id, int $post_id, string $label, ?int $order, array $segments, string $menu_kind, bool $has_explicit_label = false): void {
         // Find the deepest ancestor that's already in this menu, walking upward.
         $parent_menu_item_id = $this->find_menu_parent_for_segments($menu_id, $segments);
 
+        // If no explicit [;label] was given, truncate the long SEO title for
+        // menu display. Keeps items like "Bet Hjemmesider i Danmark — Komplet
+        // Guide til Danske Betting Sider i 2026" from breaking the layout.
+        $display_title = $has_explicit_label
+            ? $label
+            : Site_Builder_Menu_Sync::truncate_for_menu($label);
+
         $args = [
-            'menu-item-title'     => $label,
+            'menu-item-title'     => $display_title,
             'menu-item-object-id' => $post_id,
             'menu-item-object'    => 'page',
             'menu-item-type'      => 'post_type',
@@ -1455,6 +1479,14 @@ class Site_Builder_FSR_Importer {
 
         $menu_item_id = wp_update_nav_menu_item($menu_id, 0, $args);
         if (is_wp_error($menu_item_id) || !$menu_item_id) return;
+
+        // Tag as 'auto' regardless of whether an explicit label was used.
+        // The label seeds the initial menu title (so first render looks right)
+        // but is NOT sticky — Menu_Sync will overwrite on the next save_post
+        // of the source page. The page's post_title is the source of truth,
+        // per user request: "manual edit of the page title in the admin has
+        // the highest priority".
+        update_post_meta($menu_item_id, Site_Builder_Menu_Sync::META_KEY, 'auto');
 
         $this->tracker->track_item($this->import_id, 'menu_item', (int)$menu_item_id);
     }
