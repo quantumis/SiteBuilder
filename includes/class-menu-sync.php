@@ -54,42 +54,109 @@ class Site_Builder_Menu_Sync {
     }
 
     /**
-     * Cut a title at the first common SEO separator. Returns the trimmed
-     * portion before the separator, or the whole title if no separator.
+     * Fallback default for the menu-item max length. The live value is
+     * pulled from Site_Builder_Settings::menu_max_length() so the admin can
+     * tune it per site on the Settings tab; this constant is used only if
+     * Settings isn't available (e.g. during activation before the class is
+     * loaded).
+     */
+    const MAX_LENGTH = 40;
+
+    /**
+     * Resolve the effective max length. Prefer the Settings value when the
+     * class exists (normal runtime); fall back to the constant otherwise.
+     */
+    private static function max_length(): int {
+        if (class_exists('Site_Builder_Settings') && method_exists('Site_Builder_Settings', 'menu_max_length')) {
+            return Site_Builder_Settings::menu_max_length();
+        }
+        return self::MAX_LENGTH;
+    }
+
+    /**
+     * Cut a title at the first common SEO separator, then apply a hard
+     * character limit as a safety net.
      *
-     * Separators (checked in order — first match wins):
-     *   ":", " — " (em-dash), " – " (en-dash), " - " (hyphen w/ spaces), " | "
+     * Separators (all match earliest-wins, not priority — whichever comes
+     * first in the text wins):
+     *   ":" ,  " — " (em-dash),  " – " (en-dash),  " - " (hyphen w/ spaces),
+     *   " | " (pipe),  ", " (comma + space),  " (" (space + paren)
      *
-     * The hyphen is space-bracketed so "co-op" and "start-up" pass through
-     * intact. The colon is not because "Casino:Guide" without a space is
-     * an intended SEO pattern too (though rare).
+     * The hyphen/paren are space-bracketed so "co-op", "start-up", "$1,000"
+     * and URL-like strings pass through intact. Comma requires a following
+     * space so numbers stay whole.
+     *
+     * After separator-based cutting, if the result is still longer than
+     * MAX_LENGTH characters, it's truncated at the last word boundary and
+     * an ellipsis (…) is appended. Multi-byte aware — mb_* functions handle
+     * Cyrillic/Greek/etc. as characters rather than bytes, so we never cut
+     * mid-character.
      */
     public static function truncate_for_menu(string $title): string {
         $title = trim($title);
         if ($title === '') return '';
 
-        // Ordered by rarity — pattern that's most likely to be an intentional
-        // separator (rather than incidental) goes first. Em/en dashes are
-        // very deliberate SEO choices; hyphen with spaces is a fallback.
+        // Resolve [sb_year], [sb_date], any other [sb_*] shortcodes BEFORE
+        // measuring/cutting. Two reasons: (1) the visible menu title should
+        // show the rendered value ("2026"), not the raw shortcode text
+        // ("[sb_year]"), and (2) length calculations would be wrong if
+        // measured against source markup — [sb_year] is 9 chars, "2026" is 4.
+        // Guarded on '[sb_' prefix so plain text isn't gratuitously piped
+        // through do_shortcode on every call.
+        if (strpos($title, '[sb_') !== false && function_exists('do_shortcode')) {
+            $title = do_shortcode($title);
+            $title = trim($title);
+        }
+
         $separators = [
             ':',
             ' — ',   // U+2014 em-dash
             ' – ',   // U+2013 en-dash
             ' - ',   // hyphen-minus with spaces
             ' | ',
+            ', ',    // comma + space — leaves "$1,000" whole
+            ' (',    // opening paren with leading space — leaves URLs whole
         ];
 
-        $earliest = strlen($title); // "no match found" sentinel
+        // Earliest separator wins. This is byte-position based, which is
+        // safe here: every separator we look for is either pure ASCII or
+        // starts/ends on a UTF-8 character boundary (em-dash and en-dash
+        // are single multi-byte characters flanked by ASCII spaces).
+        $earliest = strlen($title);
         foreach ($separators as $sep) {
             $pos = strpos($title, $sep);
             if ($pos !== false && $pos < $earliest && $pos > 0) {
                 $earliest = $pos;
             }
         }
-
         if ($earliest < strlen($title)) {
             $title = rtrim(substr($title, 0, $earliest));
         }
+
+        // Hard-limit safety net. Kicks in when either no separator matched
+        // ("Полный подробный обзор букмекерских контор в Германии" → no
+        // separators, still 55 chars) or when the pre-separator segment is
+        // itself over the limit.
+        //
+        // Uses mb_* when available for character-count-based limits on
+        // Cyrillic/Greek/etc. Falls back to strlen (byte count) on servers
+        // without mbstring — worst case the limit engages a bit earlier
+        // for non-Latin text, which is still better than not engaging.
+        $use_mb  = function_exists('mb_strlen');
+        $strlen  = $use_mb ? 'mb_strlen'  : 'strlen';
+        $substr  = $use_mb ? 'mb_substr'  : 'substr';
+        $strrpos = $use_mb ? 'mb_strrpos' : 'strrpos';
+
+        $max_length = self::max_length();
+        if ($strlen($title) > $max_length) {
+            $cut = $substr($title, 0, $max_length);
+            $lastSpace = $strrpos($cut, ' ');
+            if ($lastSpace !== false && $lastSpace >= 10) {
+                $cut = $substr($cut, 0, $lastSpace);
+            }
+            $title = rtrim($cut, " \t\n\r,.:;-") . '…';
+        }
+
         return $title;
     }
 
@@ -110,14 +177,34 @@ class Site_Builder_Menu_Sync {
      * source. Suppresses the manual-edit detector while doing so. This is
      * the single entry point for both the FSR importer and the save_post
      * sync — using it consistently keeps the meta values honest.
+     *
+     * $full_title is optional. When provided and different from $title, it
+     * gets written to menu-item-attr-title so the browser shows it as a
+     * native tooltip on hover. When empty or equal to $title, attr-title
+     * is cleared — no point tooltipping the same text.
      */
-    public static function set_menu_item_title(int $menu_item_id, string $title, string $source): void {
+    public static function set_menu_item_title(int $menu_item_id, string $title, string $source, string $full_title = ''): void {
         self::$suppress_detection = true;
 
         // Update the menu item — wp_update_nav_menu_item requires the menu id
         $menu_id = self::get_menu_id_for_item($menu_item_id);
         if ($menu_id > 0) {
             $existing = wp_setup_nav_menu_item(get_post($menu_item_id));
+
+            // Resolve [sb_*] shortcodes in the tooltip text too — same
+            // reasoning as in truncate_for_menu(). Browsers render the
+            // title attribute as literal text, so [sb_year] would show up
+            // as source markup in the tooltip if not resolved here.
+            if ($full_title !== '' && strpos($full_title, '[sb_') !== false && function_exists('do_shortcode')) {
+                $full_title = trim(do_shortcode($full_title));
+            }
+
+            // Only emit an attr-title when it adds information. If the menu
+            // title was untouched by truncation (short enough post_title,
+            // no separators, no length limit hit), tooltip would just repeat
+            // the visible text — noise, not signal.
+            $attr_title = ($full_title !== '' && $full_title !== $title) ? $full_title : '';
+
             wp_update_nav_menu_item($menu_id, $menu_item_id, [
                 'menu-item-title'       => $title,
                 'menu-item-object-id'   => $existing->object_id,
@@ -128,7 +215,7 @@ class Site_Builder_Menu_Sync {
                 'menu-item-status'      => 'publish',
                 'menu-item-url'         => $existing->url,
                 'menu-item-description' => $existing->description,
-                'menu-item-attr-title'  => $existing->attr_title,
+                'menu-item-attr-title'  => $attr_title,
                 'menu-item-target'      => $existing->target,
                 'menu-item-classes'     => is_array($existing->classes) ? implode(' ', $existing->classes) : (string)$existing->classes,
                 'menu-item-xfn'         => $existing->xfn,
@@ -162,10 +249,28 @@ class Site_Builder_Menu_Sync {
             // else — 'auto' or unset (legacy items) — gets recomputed.
             if ($source === 'manual') continue;
 
-            $new_title = self::compute_menu_title($item_id, (int)$post_id);
+            $full_title = (string)get_post_field('post_title', $post_id);
+            $new_title  = self::compute_menu_title($item_id, (int)$post_id);
             if ($new_title !== '') {
-                self::set_menu_item_title($item_id, $new_title, 'auto');
+                self::set_menu_item_title($item_id, $new_title, 'auto', $full_title);
             }
+        }
+    }
+
+    /**
+     * Run a callable with the manual-edit detector suppressed. Used by the
+     * FSR importer when it creates menu items — those writes are programmatic,
+     * not human edits, so detect_manual_edit shouldn't fire. Restores the
+     * previous suppression state on exit (finally-block) so nested calls
+     * compose correctly.
+     */
+    public static function without_detection(callable $fn) {
+        $prev = self::$suppress_detection;
+        self::$suppress_detection = true;
+        try {
+            return $fn();
+        } finally {
+            self::$suppress_detection = $prev;
         }
     }
 
@@ -173,17 +278,45 @@ class Site_Builder_Menu_Sync {
      * Fires on every wp_update_nav_menu_item write — including our own. We
      * check the suppression flag first; if the write is programmatic (from
      * FSR import or sync_from_post), we skip. Otherwise it's a human edit
-     * from Appearance → Menus and we flip the source to 'manual' so future
-     * syncs respect their choice.
+     * from Appearance → Menus and we apply the same truncate + shortcode
+     * resolve + tooltip logic that the import/sync paths use. Then flag
+     * the item as 'manual' so future syncs respect their choice.
+     *
+     * The processing applies to ALL menu items, not just FSR-managed ones —
+     * the goal is consistent menu-item formatting across the whole site,
+     * regardless of how a given item ended up in the menu.
      */
     public static function detect_manual_edit($menu_id, $menu_item_id, $args): void {
         if (self::$suppress_detection) return;
-        // Only flag existing items that we manage. First-time item creation
-        // by the FSR importer will call set_menu_item_title right after,
-        // which sets 'label' or 'auto' anyway.
-        $existing_source = get_post_meta($menu_item_id, self::META_KEY, true);
-        if ($existing_source === '') return; // not our menu item, ignore
-        update_post_meta($menu_item_id, self::META_KEY, 'manual');
+
+        // The just-saved title as the editor typed it
+        $user_input = (string)get_post_field('post_title', $menu_item_id);
+        if ($user_input === '') return;
+
+        // Full text with shortcodes resolved but NOT truncated — used for
+        // the tooltip. If the user typed [sb_year] we want the browser to
+        // show "2026" on hover, not the raw shortcode markup.
+        $full_resolved = $user_input;
+        if (strpos($full_resolved, '[sb_') !== false && function_exists('do_shortcode')) {
+            $full_resolved = trim(do_shortcode($full_resolved));
+        }
+
+        // Display: truncated + shortcode-resolved (truncate_for_menu handles
+        // shortcode resolution internally, so we don't need to pre-process).
+        $display = self::truncate_for_menu($user_input);
+
+        if ($display !== $user_input) {
+            // Truncation or shortcode resolution changed the visible title.
+            // Update the item — display gets the new short form, attr-title
+            // gets the full resolved text for tooltip, source flips to
+            // 'manual' so future post_title changes don't overwrite the
+            // editor's action.
+            self::set_menu_item_title($menu_item_id, $display, 'manual', $full_resolved);
+        } else {
+            // Nothing to truncate or render — the editor's input is already
+            // in final form. Just mark it as manual to protect from sync.
+            update_post_meta($menu_item_id, self::META_KEY, 'manual');
+        }
     }
 
     /**

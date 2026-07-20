@@ -1465,19 +1465,40 @@ class Site_Builder_FSR_Importer {
             ? $label
             : Site_Builder_Menu_Sync::truncate_for_menu($label);
 
+        // Full page title — used as native browser tooltip via attr-title
+        // when it differs from the visible menu title. Redundant tooltips
+        // are silenced (see the equality check below). Also resolve any
+        // [sb_year]/[sb_date] shortcodes in the raw title — get_post_field
+        // returns unfiltered content, so shortcodes stay as source markup
+        // unless we run do_shortcode explicitly. truncate_for_menu already
+        // does this for $display_title internally; we do it here for the
+        // parallel $full_title path.
+        $full_title = (string)get_post_field('post_title', $post_id);
+        if ($full_title === '') $full_title = $label; // fallback for exotic cases
+        if (strpos($full_title, '[sb_') !== false && function_exists('do_shortcode')) {
+            $full_title = trim(do_shortcode($full_title));
+        }
+        $attr_title = ($display_title !== $full_title) ? $full_title : '';
+
         $args = [
-            'menu-item-title'     => $display_title,
-            'menu-item-object-id' => $post_id,
-            'menu-item-object'    => 'page',
-            'menu-item-type'      => 'post_type',
-            'menu-item-status'    => 'publish',
-            'menu-item-parent-id' => $parent_menu_item_id,
+            'menu-item-title'      => $display_title,
+            'menu-item-attr-title' => $attr_title,
+            'menu-item-object-id'  => $post_id,
+            'menu-item-object'     => 'page',
+            'menu-item-type'       => 'post_type',
+            'menu-item-status'     => 'publish',
+            'menu-item-parent-id'  => $parent_menu_item_id,
         ];
         if ($order !== null) {
             $args['menu-item-position'] = $order;
         }
 
-        $menu_item_id = wp_update_nav_menu_item($menu_id, 0, $args);
+        // Suppress the manual-edit detector while we create the item — this
+        // is a programmatic write, not a human edit, and detect_manual_edit
+        // would otherwise flag it as 'manual' before we set 'auto' below.
+        $menu_item_id = Site_Builder_Menu_Sync::without_detection(function() use ($menu_id, $args) {
+            return wp_update_nav_menu_item($menu_id, 0, $args);
+        });
         if (is_wp_error($menu_item_id) || !$menu_item_id) return;
 
         // Tag as 'auto' regardless of whether an explicit label was used.

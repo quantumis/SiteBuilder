@@ -46,6 +46,12 @@ class Site_Builder_Settings {
         // of a registered nav menu location in the active theme.
         'menu_location_main'   => '',
         'menu_location_footer' => '',
+        // Maximum character count for menu item titles after auto-truncation.
+        // Menu_Sync's truncate_for_menu() reads this — when the post_title (or
+        // its pre-separator portion) exceeds this, it's cut at a word boundary
+        // and ellipsis-suffixed. Sensible range 15–120. Default 40 fits most
+        // horizontal navigation bars comfortably.
+        'menu_max_length'      => 40,
     ];
 
     /** @var array|null In-process cache of the merged settings. */
@@ -89,6 +95,17 @@ class Site_Builder_Settings {
         return self::sanitize_batch_size((int)self::get('batch_add_flat'), self::DEFAULTS['batch_add_flat']);
     }
 
+    /**
+     * Max character count for auto-truncated menu-item titles. Menu_Sync's
+     * truncate_for_menu() consults this when applying the hard-limit safety net.
+     */
+    public static function menu_max_length(): int {
+        return self::sanitize_menu_max_length(
+            (int)self::get('menu_max_length'),
+            self::DEFAULTS['menu_max_length']
+        );
+    }
+
     public static function articles_title(): string {
         $v = trim((string)self::get('articles_title'));
         return $v !== '' ? $v : self::DEFAULTS['articles_title'];
@@ -130,6 +147,15 @@ class Site_Builder_Settings {
                     continue;
                 }
                 $new[$k] = $n;
+            }
+        }
+
+        if (isset($input['menu_max_length'])) {
+            $n = (int)$input['menu_max_length'];
+            if ($n < 15 || $n > 120) {
+                $errors['menu_max_length'] = 'Максимальная длина названия пункта меню должна быть от 15 до 120';
+            } else {
+                $new['menu_max_length'] = $n;
             }
         }
 
@@ -223,6 +249,18 @@ class Site_Builder_Settings {
 
     private static function sanitize_batch_size(int $n, int $fallback): int {
         if ($n < 1 || $n > 500) return $fallback;
+        return $n;
+    }
+
+    /**
+     * Range 15..120 chosen empirically:
+     *   - below 15, "…" starts consuming more space than useful text
+     *   - above 120, navigation menus visibly break at typical viewport widths
+     * The generous upper bound is for edge cases (sidebar menus, custom themes
+     * with vertical navigation) where longer titles fit.
+     */
+    private static function sanitize_menu_max_length(int $n, int $fallback): int {
+        if ($n < 15 || $n > 120) return $fallback;
         return $n;
     }
 }

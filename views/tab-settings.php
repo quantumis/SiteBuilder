@@ -95,6 +95,22 @@ if (!empty($_GET['sb_settings_errors'])) {
             </table>
         </div>
 
+        <div class="sb-form-card">
+            <h2>Пункты меню</h2>
+            <p class="description">Длинные SEO-заголовки автоматически сокращаются при попадании в главное меню или футер. Сначала обрезка идёт по разделителю (<code>:</code>, <code>—</code>, <code>–</code>, <code>-</code>, <code>|</code>, <code>,</code>, <code>(</code>) — если результат всё ещё длиннее лимита ниже, обрезается по последнему пробелу и добавляется многоточие. Полный заголовок остаётся видимым при наведении курсора (native tooltip).</p>
+
+            <table class="form-table" role="presentation">
+                <tr>
+                    <th scope="row"><label for="sb-menu-max-length">Максимальная длина</label></th>
+                    <td>
+                        <input type="number" id="sb-menu-max-length" name="sb_settings[menu_max_length]"
+                               value="<?php echo esc_attr($st_settings['menu_max_length']); ?>" min="15" max="120" class="small-text" />
+                        <span class="description">символов. Дефолт: <?php echo (int)$st_defaults['menu_max_length']; ?>. Диапазон 15–120. Оптимально: 30–50 для горизонтального меню, 50–100 для sidebar.</span>
+                    </td>
+                </tr>
+            </table>
+        </div>
+
         <?php if ($st_show_add): ?>
         <div class="sb-form-card">
             <h2>Страница «Articles» (для legacy ADD)</h2>
