@@ -61,21 +61,100 @@ if (!function_exists('sb_link_get_slug_map')) {
 
 if (!function_exists('sb_link_invalidate_slug_map')) {
     /**
-     * Drop the cached map so the next request rebuilds from the DB. Bound to
-     * every WP hook that indicates the set of published pages may have changed:
-     *   - save_post: any create/edit, including a scheduled post transitioning
-     *     to publish (WP fires save_post inside future_to_publish too)
-     *   - deleted_post / trashed_post / untrashed_post: obvious
-     *   - future_to_publish: explicit belt-and-braces
+     * Drop the cached map so the next request rebuilds from the DB. The map
+     * (slug → permalink for every published post) is expensive to rebuild —
+     * roughly 1500 × get_permalink() on a large site, i.e. ~500ms — so we
+     * invalidate only when the set of (slug, permalink) pairs can actually
+     * have changed.
+     *
+     * Two-tier hook strategy:
+     *   1. wp_insert_post_data filter — fires BEFORE the DB write, so we can
+     *      compare old vs new post_name and post_status. Only invalidates
+     *      when one of those actually changed. This is the common case
+     *      (edits of published pages) and it now avoids invalidation for the
+     *      overwhelming majority of edits (e.g. post_content changes).
+     *   2. save_post for new posts (when $update === false). No prior version
+     *      to compare against, and a new publish adds a slug so we do invalidate.
+     *   3. delete/trash/untrash/future_to_publish — always affect the map.
+     *
+     * Excluded post types (never affect the front-end slug map):
+     *   nav_menu_item, attachment, revision, customize_changeset, oembed_cache,
+     *   user_request, wp_block, wp_navigation
      */
     function sb_link_invalidate_slug_map() {
         delete_transient('sb_link_slug_map');
     }
-    add_action('save_post',         'sb_link_invalidate_slug_map');
-    add_action('deleted_post',      'sb_link_invalidate_slug_map');
-    add_action('trashed_post',      'sb_link_invalidate_slug_map');
-    add_action('untrashed_post',    'sb_link_invalidate_slug_map');
-    add_action('future_to_publish', 'sb_link_invalidate_slug_map');
+
+    /**
+     * Types that never appear in the resolver's slug→permalink map. Skipping
+     * their save/delete hooks avoids unnecessary invalidation — a huge win
+     * since Menu_Sync (1.1.8) writes nav_menu_item posts on every page save.
+     */
+    function sb_link_is_ignorable_post_type($post_type) {
+        static $ignore = [
+            'nav_menu_item'      => true,
+            'attachment'         => true,
+            'revision'           => true,
+            'customize_changeset'=> true,
+            'oembed_cache'       => true,
+            'user_request'       => true,
+            'wp_block'           => true,
+            'wp_navigation'      => true,
+        ];
+        return isset($ignore[$post_type]);
+    }
+
+    /**
+     * Update path: fires before the DB write. Compares stored slug/status
+     * with the incoming values. Invalidates only when one of them changed.
+     */
+    function sb_link_maybe_invalidate_on_edit($data, $postarr) {
+        // New posts (no ID) — handled by save_post hook below
+        if (empty($postarr['ID'])) return $data;
+        if (sb_link_is_ignorable_post_type($data['post_type'] ?? '')) return $data;
+
+        $old = get_post((int)$postarr['ID']);
+        if (!$old) return $data;
+
+        $slug_changed   = ($old->post_name   !== ($data['post_name']   ?? ''));
+        $status_changed = ($old->post_status !== ($data['post_status'] ?? ''));
+
+        if ($slug_changed || $status_changed) {
+            sb_link_invalidate_slug_map();
+        }
+        return $data;
+    }
+    add_filter('wp_insert_post_data', 'sb_link_maybe_invalidate_on_edit', 10, 2);
+
+    /**
+     * Insert path: new post creation. $update is false only on first save.
+     * Only invalidate when the new post is published (draft/pending/private
+     * aren't in the resolver map either).
+     */
+    function sb_link_invalidate_on_new_publish($post_id, $post, $update) {
+        if ($update) return;
+        if (sb_link_is_ignorable_post_type($post->post_type)) return;
+        if ($post->post_status !== 'publish') return;
+        sb_link_invalidate_slug_map();
+    }
+    add_action('save_post', 'sb_link_invalidate_on_new_publish', 10, 3);
+
+    /**
+     * Deletion / status-transition paths. Same post-type filter.
+     */
+    function sb_link_invalidate_on_delete($post_id) {
+        $post = get_post($post_id);
+        if (!$post || sb_link_is_ignorable_post_type($post->post_type)) return;
+        sb_link_invalidate_slug_map();
+    }
+    add_action('deleted_post',   'sb_link_invalidate_on_delete');
+    add_action('trashed_post',   'sb_link_invalidate_on_delete');
+    add_action('untrashed_post', 'sb_link_invalidate_on_delete');
+    add_action('future_to_publish', function ($post) {
+        if ($post && !sb_link_is_ignorable_post_type($post->post_type)) {
+            sb_link_invalidate_slug_map();
+        }
+    });
 }
 
 if (!function_exists('sb_link_render_shortcodes')) {

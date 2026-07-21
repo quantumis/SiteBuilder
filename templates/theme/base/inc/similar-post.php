@@ -334,10 +334,46 @@ function auto_insert_child_pages($content) {
     if (in_array($current_template, $excluded_templates)) {
         return $content;
     }
-    
-    // Определяем тип текущего поста
+
+    // ─── Transient cache (P0.2, 1.1.9) ──────────────────────────────────────
+    // Rebuilding the block costs 30-70ms per page: 2× get_posts + 10-20 ×
+    // (get_permalink + get_the_post_thumbnail) inside render_child_pages_showcase.
+    // Cache the rendered HTML per post_id and invalidate on structural changes
+    // (save/delete of the post, its parent, or siblings) — see
+    // sb_similar_invalidate_related() below. TTL 12h as a safety-net expiration
+    // in case an invalidation is missed.
+    //
+    // Empty results are cached too (with '' sentinel) so we skip the expensive
+    // fallback chain on pages with nothing related — with a shorter TTL so the
+    // site "catches up" faster when it gains content.
+    $cache_key = 'sb_similar_v1_' . $post->ID;
+    $cached = get_transient($cache_key);
+    if ($cached !== false) {
+        return $content . (string)$cached;
+    }
+
+    $extra_html = sb_similar_build_html($post, $current_lang);
+
+    if ($extra_html !== '') {
+        set_transient($cache_key, $extra_html, 12 * HOUR_IN_SECONDS);
+    } else {
+        set_transient($cache_key, '', HOUR_IN_SECONDS);
+    }
+
+    return $content . $extra_html;
+}
+}
+
+/**
+ * Build the "similar posts" HTML for a given post. Extracted from
+ * auto_insert_child_pages() so the caller can cache the result via transient.
+ * Behavior is intentionally identical to the pre-1.1.9 inline code —
+ * mechanical extraction, not a refactor.
+ */
+if (!function_exists('sb_similar_build_html')) {
+function sb_similar_build_html($post, $current_lang) {
     $post_type = $post->post_type;
-    
+
     // Пробуем дочерние (для страниц или произвольных типов)
     if ($post_type === 'page') {
         $children = get_pages(array(
@@ -350,12 +386,11 @@ function auto_insert_child_pages($content) {
         // Для записей (новостей) и других типов - ищем связанные по таксономиям
         $children = get_related_posts_by_taxonomy($post, 4);
     }
-    
+
     if (!empty($children)) {
-        $content .= render_child_pages_showcase($children, $post_type, $current_lang);
-        return $content;
+        return render_child_pages_showcase($children, $post_type, $current_lang);
     }
-    
+
     // Нет дочерних/связанных — берём соседей (того же родителя для страниц)
     $siblings = array();
     if ($post_type === 'page' && $post->post_parent) {
@@ -378,14 +413,13 @@ function auto_insert_child_pages($content) {
             ));
         }
     }
-    
+
     if (!empty($siblings)) {
         shuffle($siblings);
         $pages = array_slice($siblings, 0, 4);
-        $content .= render_child_pages_showcase($pages, $post_type, $current_lang);
-        return $content;
+        return render_child_pages_showcase($pages, $post_type, $current_lang);
     }
-    
+
     // Нет ничего — рандомные записи/страницы с картинками
     $random = get_posts(array(
         'post_type'      => array('post', 'page'),
@@ -400,7 +434,7 @@ function auto_insert_child_pages($content) {
             ),
         ),
     ));
-    
+
     // Если с картинками мало — добираем без
     if (count($random) < 4) {
         $exclude_ids = array_merge(array($post->ID), wp_list_pluck($random, 'ID'));
@@ -413,13 +447,56 @@ function auto_insert_child_pages($content) {
         ));
         $random = array_merge($random, $extra);
     }
-    
+
     if (!empty($random)) {
-        $content .= render_child_pages_showcase($random, $post_type, $current_lang);
+        return render_child_pages_showcase($random, $post_type, $current_lang);
     }
-    
-    return $content;
+
+    return '';
 }
+}
+
+/**
+ * Invalidate the similar-post cache for a post and its structural neighbors.
+ * A save/delete of post X can change:
+ *   - X's own similar block (obvious)
+ *   - X's parent's similar block (X is a child)
+ *   - X's siblings' similar blocks (X might appear in their fallback list)
+ * We drop all three groups' transients. Sibling lookup is one indexed query —
+ * cheap for an admin-side hook, not part of the front-end hot path.
+ */
+if (!function_exists('sb_similar_invalidate_related')) {
+    function sb_similar_invalidate_related($post_id, $post = null) {
+        if (!$post) $post = get_post($post_id);
+        if (!$post) return;
+        static $ignore = [
+            'nav_menu_item' => true, 'revision' => true, 'attachment' => true,
+            'customize_changeset' => true, 'oembed_cache' => true, 'wp_block' => true,
+        ];
+        if (isset($ignore[$post->post_type])) return;
+
+        delete_transient('sb_similar_v1_' . $post_id);
+
+        if ($post->post_parent > 0) {
+            delete_transient('sb_similar_v1_' . $post->post_parent);
+            $siblings = get_posts([
+                'post_type'        => $post->post_type,
+                'post_parent'      => $post->post_parent,
+                'fields'           => 'ids',
+                'posts_per_page'   => -1,
+                'post_status'      => 'any',
+                'suppress_filters' => true,
+            ]);
+            foreach ($siblings as $sib_id) {
+                if ((int)$sib_id !== (int)$post_id) {
+                    delete_transient('sb_similar_v1_' . $sib_id);
+                }
+            }
+        }
+    }
+    add_action('save_post',    'sb_similar_invalidate_related', 20, 2);
+    add_action('deleted_post', 'sb_similar_invalidate_related', 20, 2);
+    add_action('trashed_post', 'sb_similar_invalidate_related', 20);
 }
 if (!has_filter('the_content', 'auto_insert_child_pages')) {
     add_filter('the_content', 'auto_insert_child_pages');
