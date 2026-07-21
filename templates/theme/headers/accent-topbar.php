@@ -9,7 +9,7 @@
  */
 if (!defined('ABSPATH')) exit;
 ?>
-<header class="sb-header-at" role="banner">
+<header class="sb-header-at">
     <div class="sb-header-at-strip">
         <div class="sb-header-at-strip-inner">
             <span class="sb-header-at-tagline"><?php echo esc_html(get_bloginfo('description')); ?></span>

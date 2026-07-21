@@ -7,7 +7,7 @@
  */
 if (!defined('ABSPATH')) exit;
 ?>
-<footer class="sb-footer-bs" role="contentinfo">
+<footer class="sb-footer-bs">
     <div class="sb-footer-bs-inner">
         <div class="sb-footer-bs-grid">
             <div class="sb-footer-bs-brand-col">

@@ -302,6 +302,25 @@ class Site_Builder_Content_Processor {
             $quoted = preg_quote($src, '/');
             $html = preg_replace('/(src=["\'])' . $quoted . '(["\'])/i', '$1' . $new_url . '$2', $html);
         }
+
+        // Add loading="lazy" to every <img> that doesn't already have a loading
+        // attribute. WordPress adds this automatically via wp_filter_content_tags
+        // for content that goes through the_content, but only starting with the
+        // second image on the page (the first is left eager because it's
+        // typically the LCP). Explicit lazy on all images at import time is
+        // belt-and-braces — it covers cases where the theme bypasses
+        // the_content or the filter is disabled by a caching plugin.
+        //
+        // We skip images that already have loading= to respect whatever the
+        // editor set (e.g. loading="eager" on a deliberate LCP image).
+        $html = preg_replace_callback(
+            '/<img\b(?![^>]*\bloading=)([^>]*)>/i',
+            function ($m) {
+                return '<img loading="lazy"' . $m[1] . '>';
+            },
+            $html
+        );
+
         return $html;
     }
 

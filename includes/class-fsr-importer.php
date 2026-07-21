@@ -586,7 +586,7 @@ class Site_Builder_FSR_Importer {
         }
 
         // --- LOGO ---
-        $logo_path = $this->find_branded_file($archive_root, 'logo');
+        $logo_path = $this->find_branded_file($archive_root, ['logo']);
         if ($logo_path) {
             // We pipe the upload via the resolver's underlying media handler.
             // resolve_and_upload bypasses the multi-level lookup since we already
@@ -606,11 +606,13 @@ class Site_Builder_FSR_Importer {
                 $stats['messages'][] = "Логотип установлен (attachment_id={$attach_id})";
             }
         } else {
-            $stats['messages'][] = 'logo.{png,jpg,svg,ico} в архиве не найден';
+            $stats['messages'][] = 'logo.{webp,avif,png,jpg,svg,ico} не найден (искал в IMAGES/Images/images/img и в корне архива)';
         }
 
         // --- ICON (favicon) ---
-        $icon_path = $this->find_branded_file($archive_root, 'icon');
+        // Try both common naming conventions — favicon.* is the standard,
+        // icon.* is a legacy alias we still support.
+        $icon_path = $this->find_branded_file($archive_root, ['favicon', 'icon']);
         if ($icon_path) {
             $attach_id = $this->image_resolver->resolve_and_upload(basename($icon_path), dirname($icon_path), 'Site icon');
             if ($attach_id) {
@@ -623,7 +625,7 @@ class Site_Builder_FSR_Importer {
                 $stats['messages'][] = "Favicon установлен (attachment_id={$attach_id})";
             }
         } else {
-            $stats['messages'][] = 'icon.{png,jpg,svg,ico} в архиве не найден';
+            $stats['messages'][] = 'favicon.{webp,avif,png,jpg,svg,ico} или icon.{...} не найден (искал в IMAGES/Images/images/img и в корне архива)';
         }
 
         // --- STYLES.CSS ---
@@ -844,12 +846,47 @@ class Site_Builder_FSR_Importer {
         return ['date' => date('Y-m-d H:i:s', $final_ts)];
     }
 
-    private function find_branded_file(string $archive_root, string $stem): ?string {
-        $dir = $archive_root . '/IMAGES';
-        if (!is_dir($dir)) return null;
-        foreach (['png', 'jpg', 'jpeg', 'svg', 'ico'] as $ext) {
-            $p = $dir . '/' . $stem . '.' . $ext;
-            if (is_file($p)) return $p;
+    /**
+     * Search for a branded site asset (logo, favicon) inside the archive.
+     *
+     * Extension order — modern-first (webp/avif get preference when both a
+     * modern and legacy version are present, saving bytes on the front-end):
+     *   webp, avif, png, jpg, jpeg, svg, ico
+     *
+     * Location order — where designers commonly place brand assets. Checked
+     * in priority (first-match wins):
+     *   /IMAGES  (uppercase — legacy FSR archives)
+     *   /Images  (title-case)
+     *   /images  (lowercase — common in modern archives)
+     *   /img
+     *   archive root (fallback — some archives put logo.png right at top level)
+     *
+     * Stem is now an array of aliases — pass ['logo'] for logo, ['favicon', 'icon']
+     * for the favicon (favicon is checked first because it's the standard name,
+     * icon kept as legacy alias).
+     *
+     * @param string   $archive_root Absolute path to the FSR archive root
+     * @param string[] $stems        Filename stems to try, in priority order
+     * @return string|null Path to the found file, or null if not found anywhere
+     */
+    private function find_branded_file(string $archive_root, array $stems): ?string {
+        $dirs = [
+            $archive_root . '/IMAGES',
+            $archive_root . '/Images',
+            $archive_root . '/images',
+            $archive_root . '/img',
+            $archive_root,
+        ];
+        $exts = ['webp', 'avif', 'png', 'jpg', 'jpeg', 'svg', 'ico'];
+
+        foreach ($dirs as $dir) {
+            if (!is_dir($dir)) continue;
+            foreach ($stems as $stem) {
+                foreach ($exts as $ext) {
+                    $p = $dir . '/' . $stem . '.' . $ext;
+                    if (is_file($p)) return $p;
+                }
+            }
         }
         return null;
     }

@@ -145,27 +145,57 @@ if (!function_exists('sb_toc_extract_and_inject')) {
             $content = str_replace($orig, $replacement, $content);
         }
 
-        // Build TOC HTML
+        // Build TOC HTML.
+        //
+        // HTML5 requires that a nested <ol> live INSIDE its parent <li>, not
+        // as a sibling. The pre-1.1.10 code closed the h2 <li> before opening
+        // the h3 sublist, producing:
+        //     <ol><li>h2</li><ol><li>h3</li></ol></ol>   ← invalid, 24 errors in W3C
+        // We rewrite here to:
+        //     <ol><li>h2<ol><li>h3</li></ol></li></ol>   ← valid
+        //
+        // We track two pieces of state:
+        //   $has_open_h2_li — a <li> for an h2 has been opened but not yet
+        //                     closed (deferred because a sublist may follow)
+        //   $in_sublist     — we're currently inside a <ol class="sb-toc-sublist">
         $toc_title = function_exists('sb_t') ? sb_t('toc') : 'Table of contents';
         $toc_html  = "\n<nav class=\"sb-toc\" aria-labelledby=\"sb-toc-heading\">\n";
         $toc_html .= '  <div id="sb-toc-heading" class="sb-toc-title">' . esc_html($toc_title) . "</div>\n";
         $toc_html .= "  <ol class=\"sb-toc-list\">\n";
-        $prev_level = 'h2';
-        $depth = 0;
+        $has_open_h2_li = false;
+        $in_sublist     = false;
         foreach ($items as $item) {
-            if ($item['level'] === 'h3' && $prev_level === 'h2') {
-                $toc_html .= "    <ol class=\"sb-toc-sublist\">\n";
-                $depth++;
-            } elseif ($item['level'] === 'h2' && $prev_level === 'h3') {
-                $toc_html .= str_repeat("    </ol>\n", $depth);
-                $depth = 0;
+            if ($item['level'] === 'h2') {
+                if ($in_sublist) {
+                    $toc_html .= "      </ol>\n";     // close the h3 sublist
+                    $in_sublist = false;
+                }
+                if ($has_open_h2_li) {
+                    $toc_html .= "    </li>\n";       // close previous h2's <li>
+                }
+                // Open the new h2 <li> but DON'T close it — a sublist may
+                // follow before the next h2.
+                $toc_html .= '    <li class="sb-toc-item sb-toc-item-h2">'
+                           . '<a href="#' . esc_attr($item['anchor']) . '">' . esc_html($item['text']) . '</a>';
+                $has_open_h2_li = true;
+            } else { // h3
+                if (!$in_sublist) {
+                    $toc_html .= "\n      <ol class=\"sb-toc-sublist\">\n";
+                    $in_sublist = true;
+                }
+                // h3 items are always fully self-contained
+                $toc_html .= '        <li class="sb-toc-item sb-toc-item-h3">'
+                           . '<a href="#' . esc_attr($item['anchor']) . '">' . esc_html($item['text']) . '</a>'
+                           . "</li>\n";
             }
-            $toc_html .= '    <li class="sb-toc-item sb-toc-item-' . $item['level'] . '">'
-                       . '<a href="#' . esc_attr($item['anchor']) . '">' . esc_html($item['text']) . '</a>'
-                       . "</li>\n";
-            $prev_level = $item['level'];
         }
-        $toc_html .= str_repeat("    </ol>\n", $depth);
+        // Close whatever's still open at end of list
+        if ($in_sublist) {
+            $toc_html .= "      </ol>\n";
+        }
+        if ($has_open_h2_li) {
+            $toc_html .= "    </li>\n";
+        }
         $toc_html .= "  </ol>\n</nav>\n";
 
         // Placement: after the sb-geo-shortcodes marker comment → after </h1>
@@ -212,7 +242,12 @@ if (!function_exists('sb_toc_styles')) {
                 font-weight: 700;
                 text-transform: uppercase;
                 letter-spacing: 0.08em;
-                color: var(--sb-color-muted, #6b7280);
+                /* Contrast fix (accessibility 89 → 90+):
+                   var(--sb-color-muted) is intentionally low-contrast (~4.1:1
+                   on --sb-color-bg-alt), which fails WCAG AA for text of this
+                   size. Use --sb-color-text for the title so it's clearly
+                   readable against the panel background. */
+                color: var(--sb-color-text, #111);
                 margin-bottom: 12px;
             }
             .sb-toc-list, .sb-toc-sublist {
@@ -223,8 +258,7 @@ if (!function_exists('sb_toc_styles')) {
             }
             .sb-toc-sublist {
                 padding-left: 20px;
-                margin-top: 4px;
-                margin-bottom: 4px;
+                margin: 4px 0 4px 22px;
             }
             .sb-toc-item {
                 margin: 6px 0;

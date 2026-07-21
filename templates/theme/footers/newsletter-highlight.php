@@ -6,7 +6,7 @@
  */
 if (!defined('ABSPATH')) exit;
 ?>
-<footer class="sb-footer-nl" role="contentinfo">
+<footer class="sb-footer-nl">
     <div class="sb-footer-nl-inner">
         <div class="sb-footer-nl-grid">
             <div class="sb-footer-nl-signup-col">

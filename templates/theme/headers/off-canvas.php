@@ -9,7 +9,7 @@
  */
 if (!defined('ABSPATH')) exit;
 ?>
-<header class="sb-header-oc" role="banner">
+<header class="sb-header-oc">
     <div class="sb-header-oc-inner">
         <button class="sb-header-oc-burger" type="button" aria-controls="sb-oc-panel" aria-expanded="false" aria-label="<?php echo esc_attr(sb_t('primary_menu')); ?>">
             <span></span><span></span><span></span>

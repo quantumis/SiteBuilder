@@ -556,24 +556,6 @@ function render_child_pages_showcase($children, $post_type = 'page', $current_la
     }
     
     $out = '
-    <style>
-        .child-pages-small-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 16px;
-        }
-        @media (max-width: 768px) {
-            .child-pages-small-grid {
-                grid-template-columns: repeat(2, 1fr);
-                gap: 12px;
-            }
-        }
-        @media (max-width: 480px) {
-            .child-pages-small-grid {
-                grid-template-columns: 1fr;
-            }
-        }
-    </style>
     <div class="child-pages-showcase" style="max-width: 900px;
         margin: 50px auto 30px;
         font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif;
@@ -721,4 +703,40 @@ function get_post_type_label($post_type, $current_lang = 'default') {
     return isset($labels[$post_type]) ? $labels[$post_type] : get_translated_text('material', $current_lang);
 }
 }
+
+
+/**
+ * Enqueue similar-post grid styles. Previously these were injected inline
+ * via a <style> block inside the rendered HTML — but <style> in body is
+ * invalid HTML5 (Nu Html Checker error: "style not allowed as child of div").
+ * Register via wp_add_inline_style so they land in <head> as required.
+ */
+if (!function_exists('sb_similar_post_styles')) {
+    function sb_similar_post_styles() {
+        if (is_admin()) return;
+        wp_register_style('sb-similar-post', false);
+        wp_enqueue_style('sb-similar-post');
+        $css = <<<CSS
+            .child-pages-small-grid {
+                display: grid;
+                grid-template-columns: repeat(3, 1fr);
+                gap: 16px;
+            }
+            @media (max-width: 768px) {
+                .child-pages-small-grid {
+                    grid-template-columns: repeat(2, 1fr);
+                    gap: 12px;
+                }
+            }
+            @media (max-width: 480px) {
+                .child-pages-small-grid {
+                    grid-template-columns: 1fr;
+                }
+            }
+CSS;
+        wp_add_inline_style('sb-similar-post', $css);
+    }
+    add_action('wp_enqueue_scripts', 'sb_similar_post_styles');
+}
+
 ?>

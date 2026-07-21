@@ -8,7 +8,7 @@
  */
 if (!defined('ABSPATH')) exit;
 ?>
-<header class="sb-header-slim" role="banner">
+<header class="sb-header-slim">
     <div class="sb-header-slim-inner">
         <?php
         $logo_html = '';

@@ -9,7 +9,7 @@
  */
 if (!defined('ABSPATH')) exit;
 ?>
-<header class="sb-header-bb" role="banner">
+<header class="sb-header-bb">
     <div class="sb-header-bb-card">
         <?php
         $logo_html = '';

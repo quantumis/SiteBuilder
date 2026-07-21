@@ -7,7 +7,7 @@
  */
 if (!defined('ABSPATH')) exit;
 ?>
-<header class="sb-header-tr" role="banner">
+<header class="sb-header-tr">
     <div class="sb-header-tr-top">
         <div class="sb-header-tr-inner sb-header-tr-top-inner">
             <?php
