@@ -44,18 +44,77 @@ if (!function_exists('sb_content_signature_append')) {
         // the filter chain).
         if (strpos($content, 'class="sb-content-signature"') !== false) return $content;
 
-        // sprintf into the localized template — %s is replaced with the site
-        // name wrapped in localized quotation marks (using «…» which reads
-        // naturally across most Latin/Cyrillic locales; en/it/etc will still
-        // parse them fine as decorative quotes).
-        $quoted_site = '«' . esc_html($site_name) . '»';
-        $template    = function_exists('sb_t') ? sb_t('content_by_team') : 'Content created by the %s team';
-        $line        = sprintf($template, $quoted_site);
+        // Wrap the site name in a link to the About-Us page (any page tagged
+        // with [W], i.e. fsr_about=1). Fall back to plain text if no such
+        // page exists. sb_content_signature_get_about_url() caches the
+        // lookup so this doesn't cost a query on every request.
+        $about_url = sb_content_signature_get_about_url();
+        if ($about_url !== '') {
+            $quoted_site = '«<a href="' . esc_url($about_url) . '">' . esc_html($site_name) . '</a>»';
+        } else {
+            $quoted_site = '«' . esc_html($site_name) . '»';
+        }
+        $template = function_exists('sb_t') ? sb_t('content_by_team') : 'Content created by the %s team';
+        $line     = sprintf($template, $quoted_site);
 
         $signature = "\n<p class=\"sb-content-signature\">" . $line . "</p>\n";
         return $content . $signature;
     }
     add_filter('the_content', 'sb_content_signature_append', 100);
+}
+
+if (!function_exists('sb_content_signature_get_about_url')) {
+    /**
+     * Return the permalink of the "About Us" page (the one tagged with [W] /
+     * fsr_about=1) or empty string if there is none. Result is cached in a
+     * transient for 24 hours and in a static var for the request; the
+     * transient is invalidated whenever any page is saved or deleted so a
+     * newly-created or repurposed About page shows up right away.
+     */
+    function sb_content_signature_get_about_url() {
+        static $cached = null;
+        if ($cached !== null) return $cached;
+
+        $key = 'sb_about_url_v1';
+        $url = get_transient($key);
+        if ($url !== false) {
+            return $cached = (string)$url;
+        }
+
+        $about = get_posts([
+            'post_type'        => 'page',
+            'meta_key'         => 'fsr_about',
+            'meta_value'       => '1',
+            'posts_per_page'   => 1,
+            'fields'           => 'ids',
+            'post_status'      => 'publish',
+            'suppress_filters' => true,
+            'no_found_rows'    => true,
+        ]);
+        $url = !empty($about) ? (string)get_permalink($about[0]) : '';
+
+        set_transient($key, $url, DAY_IN_SECONDS);
+        return $cached = $url;
+    }
+
+    // Invalidate the About-URL transient when any page changes state — a
+    // save/delete could add, remove, or change the About page. Filtered to
+    // 'page' post type so nav_menu_item, revisions, etc. don't invalidate.
+    add_action('save_post_page', function () {
+        delete_transient('sb_about_url_v1');
+    });
+    add_action('deleted_post', function ($post_id) {
+        $post = get_post($post_id);
+        if ($post && $post->post_type === 'page') {
+            delete_transient('sb_about_url_v1');
+        }
+    });
+    add_action('trashed_post', function ($post_id) {
+        $post = get_post($post_id);
+        if ($post && $post->post_type === 'page') {
+            delete_transient('sb_about_url_v1');
+        }
+    });
 }
 
 if (!function_exists('sb_content_signature_styles')) {
@@ -73,6 +132,23 @@ if (!function_exists('sb_content_signature_styles')) {
                 font-style: italic;
                 text-align: center;
                 letter-spacing: 0.01em;
+            }
+            /* The site name inside the signature is wrapped in <a href="…">
+               pointing at the About page (fsr_about=1). Style it to blend
+               with the italic muted line — a subtle underline signals it's
+               clickable without breaking the ancillary tone of the block. */
+            .sb-content-signature a {
+                color: inherit;
+                font-style: inherit;
+                text-decoration: underline;
+                text-decoration-color: var(--sb-color-border, #d1d5db);
+                text-decoration-thickness: 1px;
+                text-underline-offset: 3px;
+                transition: color 0.15s, text-decoration-color 0.15s;
+            }
+            .sb-content-signature a:hover {
+                color: var(--sb-color-text, #111);
+                text-decoration-color: currentColor;
             }
 CSS;
         wp_add_inline_style('sb-content-signature', $css);

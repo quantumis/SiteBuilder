@@ -87,6 +87,39 @@ if (!function_exists('sb_articles_grid_append')) {
     }
 
     /**
+     * Turn raw source (post_content or manual excerpt) into the plain-text
+     * excerpt shown on a card. Handles two markup forms that the default
+     * WordPress excerpt trimming leaves broken:
+     *
+     *   1. `$$LINK slug | text$$` — link-resolver's inline syntax. Cards
+     *      shouldn't render these as clickable links (they'd nest an <a>
+     *      inside the card's outer <a>, which is invalid HTML). We strip
+     *      the `$$LINK slug |` and closing `$$`, keeping just the text —
+     *      matches user intent: "$$LINK should not become a link in the card".
+     *
+     *   2. `[sb_year]`, `[sb_date]` and other Site Builder shortcodes.
+     *      Without do_shortcode() they'd appear as literal `[sb_year]` in
+     *      the card. Guarded on `[sb_` prefix so plain text isn't piped
+     *      through the shortcode engine for no reason.
+     *
+     * The rest of the pipeline is the same as before: strip tags, trim to
+     * 22 words with ellipsis.
+     */
+    function sb_articles_grid_prepare_excerpt($raw) {
+        if (!is_string($raw) || $raw === '') return '';
+
+        // Strip $$LINK slug | text$$ → keep only the text part
+        $raw = preg_replace('/\$\$LINK\s*[^|]*?\s*\|\s*(.*?)\$\$/', '$1', $raw);
+
+        // Resolve [sb_*] shortcodes so card previews show real values
+        if (strpos($raw, '[sb_') !== false && function_exists('do_shortcode')) {
+            $raw = do_shortcode($raw);
+        }
+
+        return wp_trim_words(wp_strip_all_tags($raw), 22, '…');
+    }
+
+    /**
      * Render a single article card.
      */
     function sb_articles_grid_card($post) {
@@ -99,8 +132,13 @@ if (!function_exists('sb_articles_grid_append')) {
                 'alt'   => esc_attr($title),
             ]);
         }
-        // Manual excerpt if set, otherwise auto-trimmed from content
-        $excerpt = has_excerpt($post->ID) ? get_the_excerpt($post) : wp_trim_words(wp_strip_all_tags($post->post_content), 22, '…');
+        // Manual excerpt if set, otherwise auto-trimmed from content. Both
+        // paths pass through prepare_card_excerpt() which strips $$LINK…$$
+        // syntax (leaves the link text visible without becoming an <a>) and
+        // resolves [sb_year] / [sb_date] shortcodes before trimming — so card
+        // previews show the actual "2026" and readable text, not raw markup.
+        $raw = has_excerpt($post->ID) ? $post->post_excerpt : $post->post_content;
+        $excerpt = sb_articles_grid_prepare_excerpt($raw);
 
         $out  = '    <article class="sb-article-card">' . "\n";
         $out .= '      <a class="sb-article-card-link" href="' . esc_url($link) . '">' . "\n";
