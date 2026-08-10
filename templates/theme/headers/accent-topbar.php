@@ -10,12 +10,7 @@
 if (!defined('ABSPATH')) exit;
 ?>
 <header class="sb-header-at">
-    <div class="sb-header-at-strip">
-        <div class="sb-header-at-strip-inner">
-            <span class="sb-header-at-tagline"><?php echo esc_html(get_bloginfo('description')); ?></span>
-            <a class="sb-header-at-home" href="<?php echo esc_url(home_url('/')); ?>"><?php echo esc_html(sb_t('home')); ?></a>
-        </div>
-    </div>
+  
     <div class="sb-header-at-main">
         <div class="sb-header-at-inner">
             <?php

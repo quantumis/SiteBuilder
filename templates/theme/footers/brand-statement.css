@@ -7,13 +7,13 @@
     margin-top: 48px;
 }
 .sb-footer-bs-inner {
-    max-width: var(--sb-content-max-width, 920px);
+    max-width: var(--sb-footer-max-width, 1000px);
     margin: 0 auto;
 }
 .sb-footer-bs-grid {
     display: grid;
-    grid-template-columns: 2fr 1fr 1fr 1fr;
-    gap: 40px;
+    grid-template-columns: 1fr 1fr 1fr 1fr;
+    gap: 80px;
     margin-bottom: 36px;
 }
 .sb-footer-bs-brand-col { padding-right: 24px; }

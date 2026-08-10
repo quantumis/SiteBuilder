@@ -5,7 +5,7 @@
     border-bottom: 1px solid var(--sb-color-border, #e5e7eb);
 }
 .sb-header-mega-inner {
-    max-width: var(--sb-content-max-width, 920px);
+    max-width: var(--sb-header-max-width, 1400px);
     margin: 0 auto;
     display: flex;
     align-items: center;

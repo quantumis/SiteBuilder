@@ -1,0 +1,40 @@
+<?php
+/**
+ * Header variant: Centered Rail
+ * — logo centered above a compact navigation rail
+ * — 3-level dropdown on desktop
+ * — burger on mobile
+ * — h1 around logo only on the front page
+ */
+if (!defined('ABSPATH')) exit;
+
+$logo_html = '';
+if (function_exists('the_custom_logo') && has_custom_logo()) {
+    ob_start(); the_custom_logo(); $logo_html = ob_get_clean();
+} else {
+    $logo_html = '<a class="sb-header-cr-name" href="' . esc_url(home_url('/')) . '">' . esc_html(get_bloginfo('name')) . '</a>';
+}
+?>
+<header class="sb-header-centered-rail" role="banner">
+    <div class="sb-header-cr-inner">
+        <div class="sb-header-cr-top">
+            <?php if (is_front_page()): ?>
+                <h1 class="sb-header-cr-brand"><?php echo $logo_html; ?></h1>
+            <?php else: ?>
+                <div class="sb-header-cr-brand"><?php echo $logo_html; ?></div>
+            <?php endif; ?>
+            <button class="sb-header-cr-burger" type="button" aria-controls="sb-cr-nav" aria-expanded="false" aria-label="<?php echo esc_attr(sb_t('primary_menu')); ?>">
+                <span></span><span></span><span></span>
+            </button>
+        </div>
+        <nav id="sb-cr-nav" class="sb-header-cr-nav" aria-label="<?php echo esc_attr(sb_t('primary_menu')); ?>">
+            <?php wp_nav_menu([
+                'theme_location' => 'primary',
+                'container' => false,
+                'menu_class' => 'sb-menu sb-menu-cr',
+                'depth' => 3,
+                'fallback_cb' => false,
+            ]); ?>
+        </nav>
+    </div>
+</header>

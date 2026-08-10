@@ -37,7 +37,7 @@
 /* Main bar */
 .sb-header-at-main { border-bottom: 1px solid var(--sb-color-border, #e5e7eb); }
 .sb-header-at-inner {
-    max-width: var(--sb-content-max-width, 920px);
+    max-width: var(--sb-header-max-width, 1400px);
     margin: 0 auto;
     display: flex;
     align-items: center;
@@ -50,7 +50,7 @@
     color: var(--sb-color-text, #111);
     text-decoration: none;
 }
-.sb-header-at-brand img { max-height: 38px; width: auto; display: block; }
+.sb-header-at-brand img { max-height: 43px; width: auto; display: block; }
 
 /* Nav */
 .sb-header-at-nav > ul { list-style: none; margin: 0; padding: 0; display: flex; gap: 4px; }

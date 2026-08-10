@@ -1,0 +1,58 @@
+/* midnight-sapphire — universal betting scheme.
+   Deep navy night base, steel/sapphire-blue accent like a live-odds ticker,
+   cool off-white text. Dark-first, high contrast, trustworthy and neutral —
+   not tied to a single sport or to casino gold. */
+:root {
+    --sb-color-bg:              #0d1420;
+    --sb-color-bg-alt:          #101827;
+    --sb-color-text:            #eaf1fb;
+    --sb-color-muted:           #8896ac;
+    --sb-color-link:            #4da3ff;
+    --sb-color-border:          #22304a;
+    --sb-color-accent:          #4da3ff;
+
+    --sb-font-body:             "Inter", "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    --sb-font-heading:          "Inter", "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    --sb-font-size:             16px;
+    --sb-line-height:           1.68;
+    --sb-content-max-width:     1040px;
+}
+
+body.sb-site {
+    background: var(--sb-color-bg);
+    color: var(--sb-color-text);
+    font-family: var(--sb-font-body);
+    font-size: var(--sb-font-size);
+    line-height: var(--sb-line-height);
+}
+
+body.sb-site h1,
+body.sb-site h2,
+body.sb-site h3,
+body.sb-site h4 {
+    font-family: var(--sb-font-heading);
+    color: var(--sb-color-text);
+    letter-spacing: -0.01em;
+}
+
+body.sb-site a {
+    color: var(--sb-color-link);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+body.sb-site a:hover {
+    color: var(--sb-color-text);
+}
+
+/* Left accent bar on H2 — a ticker-rail touch that ties the scheme to the
+   live-betting feel without adding markup. */
+body.sb-site .sb-content h2 {
+    padding-left: 12px;
+    border-left: 3px solid var(--sb-color-accent);
+}
+
+/* Readable selection on the dark base */
+body.sb-site ::selection {
+    background: var(--sb-color-accent);
+    color: var(--sb-color-bg);
+}

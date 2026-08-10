@@ -46,18 +46,12 @@ if (!defined('ABSPATH')) exit;
                 </ul>
             </div>
             <div class="sb-footer-nl-col">
-                <h3 class="sb-footer-nl-heading"><?php echo esc_html(sb_t('legal')); ?></h3>
-                <ul class="sb-footer-nl-list">
-                    <?php
-                    // Utility pages (privacy, cookies, legal, etc)
-                    $utility_pages = get_pages(['parent' => 0, 'sort_column' => 'menu_order']);
-                    foreach ($utility_pages as $p) {
-                        if ((int)get_post_meta($p->ID, 'fsr_utility', true) !== 1) continue;
-                        if ((int)get_post_meta($p->ID, 'fsr_articles_grid', true) === 1) continue;
-                        echo '<li><a href="' . esc_url(get_permalink($p)) . '">' . esc_html(get_the_title($p)) . '</a></li>';
-                    }
-                    ?>
-                </ul>
+             
+                <?php echo do_shortcode('[sb_regulators
+                    title_class="sb-footer-newvariant-heading sb-footer-nl-heading"
+                    list_class="sb-footer-newvariant-list sb-footer-nl-list"
+                ]'); ?>
+            
             </div>
         </div>
         <div class="sb-footer-nl-copyright">

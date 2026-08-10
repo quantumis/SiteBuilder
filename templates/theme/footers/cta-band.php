@@ -11,7 +11,7 @@ if (!defined('ABSPATH')) exit;
     <div class="sb-footer-cta-inner">
         <div class="sb-footer-cta-band">
             <div class="sb-footer-cta-band-text">
-                <h2 class="sb-footer-cta-title"><?php echo esc_html(get_bloginfo('name')); ?></h2>
+                <h3 class="sb-footer-cta-title"><?php echo esc_html(get_bloginfo('name')); ?></h3>
                 <p class="sb-footer-cta-desc"><?php echo esc_html(get_bloginfo('description')); ?></p>
             </div>
             <a class="sb-footer-cta-btn" href="<?php echo esc_url(home_url('/')); ?>">
@@ -46,18 +46,11 @@ if (!defined('ABSPATH')) exit;
                     ?>
                 </ul>
             </div>
-            <div class="sb-footer-cta-col">
-                <h3 class="sb-footer-cta-heading"><?php echo esc_html(sb_t('legal')); ?></h3>
-                <ul class="sb-footer-cta-list">
-                    <?php
-                    $utility_pages = get_pages(['parent' => 0, 'sort_column' => 'menu_order']);
-                    foreach ($utility_pages as $p) {
-                        if ((int)get_post_meta($p->ID, 'fsr_utility', true) !== 1) continue;
-                        if ((int)get_post_meta($p->ID, 'fsr_articles_grid', true) === 1) continue;
-                        echo '<li><a href="' . esc_url(get_permalink($p)) . '">' . esc_html(get_the_title($p)) . '</a></li>';
-                    }
-                    ?>
-                </ul>
+           <div class="sb-footer-newvariant-col">
+                <?php echo do_shortcode('[sb_regulators
+                    title_class="sb-footer-newvariant-heading sb-footer-cta-heading"
+                    list_class="sb-footer-newvariant-list sb-footer-bs-list "
+                ]'); ?>
             </div>
         </div>
         <div class="sb-footer-cta-copyright">

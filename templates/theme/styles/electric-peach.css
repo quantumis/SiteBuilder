@@ -1,0 +1,76 @@
+/* Electric Peach — warm peach, aubergine и electric purple */
+:root {
+    --sb-color-bg:              #fff0e7;
+    --sb-color-bg-alt:          #f7ddd1;
+    --sb-color-text:            #2d1828;
+    --sb-color-muted:           #80636f;
+    --sb-color-link:            #7135b5;
+    --sb-color-link-hover:      #512187;
+    --sb-color-border:          #e8c8bc;
+    --sb-color-accent:          #ff5e57;
+
+    --sb-font-body:             -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', system-ui, sans-serif;
+    --sb-font-heading:          Georgia, 'Times New Roman', serif;
+    --sb-font-size:             16px;
+    --sb-line-height:           1.7;
+    --sb-content-max-width:     920px;
+}
+
+body.sb-site {
+    background:
+        radial-gradient(circle at 90% 0%, rgba(113, 53, 181, 0.06), transparent 30%),
+        var(--sb-color-bg);
+    color: var(--sb-color-text);
+    font-family: var(--sb-font-body);
+    font-size: var(--sb-font-size);
+    line-height: var(--sb-line-height);
+}
+
+body.sb-site h1,
+body.sb-site h2,
+body.sb-site h3,
+body.sb-site h4 {
+    color: var(--sb-color-text);
+    font-family: var(--sb-font-heading);
+    font-weight: 600;
+    letter-spacing: -0.025em;
+}
+
+body.sb-site h1 {
+    background: linear-gradient(100deg, #7135b5, #d43f74, #ff5e57);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+body.sb-site a {
+    color: var(--sb-color-link);
+    text-decoration-color: rgba(113, 53, 181, 0.3);
+    text-underline-offset: 4px;
+}
+
+body.sb-site a:hover {
+    color: var(--sb-color-link-hover);
+}
+
+body.sb-site strong {
+    color: #c52f52;
+}
+
+body.sb-site blockquote {
+    padding: 20px 24px;
+    background: rgba(255, 255, 255, 0.35);
+    border: 1px solid var(--sb-color-border);
+    border-radius: 18px 4px 18px 4px;
+}
+
+body.sb-site code {
+    color: var(--sb-color-link);
+    background: var(--sb-color-bg-alt);
+    padding: 2px 7px;
+    border-radius: 8px;
+}
+
+body.sb-site img {
+    border-radius: 24px 6px 24px 6px;
+}

@@ -1,0 +1,58 @@
+/* noir-gold — dark luxe casino scheme.
+   Near-black anchor, champagne-gold accent like felt trim and chip edging,
+   warm off-white text. Dark-first, high contrast, restrained. */
+:root {
+    --sb-color-bg:              #0b0b0d;
+    --sb-color-bg-alt:          #16161a;
+    --sb-color-text:            #f4f1e8;
+    --sb-color-muted:           #9a958a;
+    --sb-color-link:            #d4af37;
+    --sb-color-border:          #2a2a2f;
+    --sb-color-accent:          #d4af37;
+
+    --sb-font-body:             "Georgia", "Times New Roman", serif;
+    --sb-font-heading:          "Georgia", "Times New Roman", serif;
+    --sb-font-size:             16px;
+    --sb-line-height:           1.7;
+    --sb-content-max-width:     1080px;
+}
+
+body.sb-site {
+    background: var(--sb-color-bg);
+    color: var(--sb-color-text);
+    font-family: var(--sb-font-body);
+    font-size: var(--sb-font-size);
+    line-height: var(--sb-line-height);
+}
+
+body.sb-site h1,
+body.sb-site h2,
+body.sb-site h3,
+body.sb-site h4 {
+    font-family: var(--sb-font-heading);
+    color: var(--sb-color-text);
+    letter-spacing: 0.01em;
+}
+
+body.sb-site a {
+    color: var(--sb-color-link);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+body.sb-site a:hover {
+    color: var(--sb-color-text);
+}
+
+/* Gold rule under H2 — a chip-trim touch that ties the scheme to the casino
+   theme without adding markup. Kept inline-block so it hugs the heading. */
+body.sb-site .sb-content h2 {
+    padding-bottom: 6px;
+    border-bottom: 2px solid var(--sb-color-accent);
+    display: inline-block;
+}
+
+/* Readable selection on the dark base */
+body.sb-site ::selection {
+    background: var(--sb-color-accent);
+    color: var(--sb-color-bg);
+}

@@ -24,7 +24,7 @@ if (!defined('ABSPATH')) exit;
                 </a>
             </div>
             <div class="sb-footer-bs-col">
-                <h2 class="sb-footer-bs-heading"><?php echo esc_html(sb_t('navigation')); ?></h2>
+                <h3 class="sb-footer-bs-heading"><?php echo esc_html(sb_t('navigation')); ?></h3>
                 <?php
                 if (has_nav_menu('footer')) {
                     wp_nav_menu([
@@ -38,7 +38,7 @@ if (!defined('ABSPATH')) exit;
                 ?>
             </div>
             <div class="sb-footer-bs-col">
-                <h2 class="sb-footer-bs-heading"><?php echo esc_html(sb_t('site')); ?></h2>
+                <h3 class="sb-footer-bs-heading"><?php echo esc_html(sb_t('site')); ?></h3>
                 <ul class="sb-footer-bs-list">
                     <li><a href="<?php echo esc_url(home_url('/')); ?>"><?php echo esc_html(sb_t('home')); ?></a></li>
                     <?php
@@ -50,18 +50,11 @@ if (!defined('ABSPATH')) exit;
                     ?>
                 </ul>
             </div>
-            <div class="sb-footer-bs-col">
-                <h2 class="sb-footer-bs-heading"><?php echo esc_html(sb_t('legal')); ?></h2>
-                <ul class="sb-footer-bs-list">
-                    <?php
-                    $utility_pages = get_pages(['parent' => 0, 'sort_column' => 'menu_order']);
-                    foreach ($utility_pages as $p) {
-                        if ((int)get_post_meta($p->ID, 'fsr_utility', true) !== 1) continue;
-                        if ((int)get_post_meta($p->ID, 'fsr_articles_grid', true) === 1) continue;
-                        echo '<li><a href="' . esc_url(get_permalink($p)) . '">' . esc_html(get_the_title($p)) . '</a></li>';
-                    }
-                    ?>
-                </ul>
+           <div class="sb-footer-newvariant-col">
+                <?php echo do_shortcode('[sb_regulators
+                    title_class="sb-footer-newvariant-heading sb-footer-bs-heading"
+                    list_class="sb-footer-newvariant-list sb-footer-bs-list "
+                ]'); ?>
             </div>
         </div>
         <div class="sb-footer-bs-copyright">

@@ -1,0 +1,5 @@
+{
+  "name": "Balanced Center",
+  "description": "Sticky header с glassmorphism эффектом, центрированным градиентным логотипом и pill-кнопками меню. Пункты с дочерними страницами открывают компактную floating-панель под своей кнопкой вместо разрыва общей сетки.",
+  "preview_type": "sticky-horizontal"
+}

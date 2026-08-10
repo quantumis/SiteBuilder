@@ -1,0 +1,463 @@
+/* templates/theme/headers/split-flap-board.css */
+
+.sb-header-split-flap-board {
+    position: relative;
+    z-index: 1000;
+    background: #111;
+    border-bottom: 3px solid var(--sb-color-link, #f5a623);
+}
+
+.sb-header-split-flap-board a {
+    text-decoration: none;
+}
+
+.sb-header-split-flap-board a::after {
+    display: none !important;
+    content: none !important;
+}
+
+.sb-header-flap-inner {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 8px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+}
+
+/* ===== Flap tile mechanics =====
+   Each character becomes a small "tile" that visually consists of a
+   top half and a bottom half meeting at a hinge line, mimicking a
+   split-flap (Solari) display. On reveal/hover, .is-flipping triggers
+   a quick 3D rotation of the top half before settling on the target
+   character.
+*/
+.sb-flap-word {
+    display: inline-flex;
+    gap: 2px;
+    font-family: var(--sb-font-heading, 'Courier New', monospace);
+    flex-wrap: wrap;
+}
+
+.sb-flap-word-brand {
+    font-size: 18px;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+}
+
+.sb-flap-tile {
+    position: relative;
+    display: inline-block;
+    width: 0.62em;
+    height: 1.08em;
+    background: #1c1c1c;
+    border-radius: 2px;
+    color: #f4f4f0;
+    overflow: hidden;
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+    flex-shrink: 0;
+    perspective: 60px;
+}
+
+.sb-flap-tile.sb-flap-tile-space {
+    background: transparent;
+    box-shadow: none;
+}
+
+.sb-flap-tile::before {
+    /* hinge line */
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 50%;
+    height: 1px;
+    background: rgba(0, 0, 0, 0.6);
+    z-index: 3;
+}
+
+.sb-flap-tile-char {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1em;
+    line-height: 1;
+    backface-visibility: hidden;
+}
+
+.sb-flap-tile-char-current {
+    z-index: 1;
+}
+
+.sb-flap-tile-char-incoming {
+    z-index: 2;
+    transform: rotateX(-90deg);
+    transform-origin: 50% 100%;
+    opacity: 0;
+}
+
+.sb-flap-tile.is-flipping .sb-flap-tile-char-current {
+    animation: sb-flap-out 0.16s ease-in forwards;
+}
+
+.sb-flap-tile.is-flipping .sb-flap-tile-char-incoming {
+    animation: sb-flap-in 0.16s ease-out 0.14s forwards;
+}
+
+@keyframes sb-flap-out {
+    to {
+        transform: rotateX(90deg);
+        transform-origin: 50% 0%;
+        opacity: 0;
+    }
+}
+
+@keyframes sb-flap-in {
+    from {
+        transform: rotateX(-90deg);
+        transform-origin: 50% 100%;
+        opacity: 0;
+    }
+    to {
+        transform: rotateX(0deg);
+        opacity: 1;
+    }
+}
+
+/* Brand tiles slightly larger */
+.sb-flap-word-brand .sb-flap-tile {
+    width: 0.66em;
+    height: 1.12em;
+}
+
+/* ===== Nav ===== */
+.sb-header-flap-nav {
+    flex: 1;
+    display: flex;
+    justify-content: flex-end;
+}
+
+/* Logo image size */
+.sb-header-flap-brand img {
+    max-height: 40px;
+    width: auto;
+    display: block;
+}
+
+.sb-header-flap-brand .custom-logo-link {
+    display: inline-flex;
+    align-items: center;
+}
+
+.sb-header-flap-menu {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    justify-content: center;
+    flex-direction: row-reverse;
+    align-items: center;
+    gap: 4px;
+    flex-wrap: wrap;
+}
+
+.sb-flap-item {
+    margin: 0;
+    position: relative;
+}
+
+.sb-flap-link,
+.sb-flap-pill-link {
+    display: flex;
+    align-items: center;
+    height: 36px;
+    padding: 0 8px;
+    color: #d8d8d2;
+    transition: color 0.2s ease;
+    min-height: 36px;
+}
+
+.sb-flap-link:hover .sb-flap-word .sb-flap-tile,
+.sb-flap-pill-link:hover .sb-flap-word .sb-flap-tile {
+    box-shadow: inset 0 0 0 1px var(--sb-color-link, #f5a623);
+}
+
+.sb-flap-item.current-menu-item .sb-flap-tile {
+    box-shadow: inset 0 0 0 1px var(--sb-color-link, #f5a623);
+}
+
+.sb-flap-item .sb-flap-word {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.sb-flap-pill {
+    display: flex;
+    align-items: center;
+}
+
+.sb-flap-trigger {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 20px;
+    padding: 0 3px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #8a8a84;
+    transition: color 0.2s ease, transform 0.2s ease;
+}
+
+.sb-flap-trigger:hover {
+    color: var(--sb-color-link, #f5a623);
+}
+
+.sb-flap-caret {
+    width: 7px;
+    height: 7px;
+    flex-shrink: 0;
+    transition: transform 0.2s ease;
+}
+
+.sb-flap-item.sb-dropdown-open .sb-flap-caret {
+    transform: rotate(180deg);
+}
+
+/* Dropdown: reads like an additional row added to the board */
+.sb-flap-dropdown {
+    position: absolute;
+    top: calc(100% + 10px);
+    right: 0;
+    max-width: 560px;
+    background: #1c1c1c;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-top: 2px solid var(--sb-color-link, #f5a623);
+    padding: 10px;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-6px);
+    transition: opacity 0.18s ease, transform 0.18s ease, visibility 0.18s ease;
+    z-index: 999;
+}
+
+.sb-flap-item.sb-dropdown-open .sb-flap-dropdown {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+.sb-flap-dropdown-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+    gap: 2px;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.sb-flap-dropdown-grid::-webkit-scrollbar {
+    width: 6px;
+}
+
+.sb-flap-dropdown-grid::-webkit-scrollbar-track {
+    background: #111;
+}
+
+.sb-flap-dropdown-grid::-webkit-scrollbar-thumb {
+    background: var(--sb-color-link, #f5a623);
+}
+
+.sb-flap-dropdown a {
+    color: #d8d8d2;
+    padding: 7px 8px;
+    display: block;
+    font-family: var(--sb-font-heading, 'Courier New', monospace);
+    font-size: 11px;
+    letter-spacing: 0.02em;
+    border-bottom: 1px dotted rgba(255, 255, 255, 0.08);
+    transition: color 0.15s ease, background 0.15s ease;
+}
+
+.sb-flap-dropdown a:hover {
+    color: var(--sb-color-link, #f5a623);
+    background: rgba(245, 166, 35, 0.06);
+}
+
+/* View All button */
+.sb-flap-view-all {
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 12px 16px !important;
+    background: var(--sb-color-link, #f5a623) !important;
+    color: #1c1c1c !important;
+    font-weight: 700 !important;
+    border-radius: 4px !important;
+    transition: all 0.3s ease !important;
+    grid-column: 1 / -1;
+    margin-top: 4px;
+    font-family: var(--sb-font-heading, 'Courier New', monospace) !important;
+    font-size: 12.5px !important;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+.sb-flap-view-all:hover {
+    background: var(--sb-color-link-hover, #d89419) !important;
+    transform: scale(1.02) !important;
+}
+
+.sb-flap-view-all svg {
+    flex-shrink: 0;
+}
+
+/* Mobile toggle */
+.sb-header-flap-toggle {
+    display: none;
+    width: 34px;
+    height: 34px;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 4px;
+    background: none;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.sb-flap-toggle-line {
+    display: block;
+    width: 16px;
+    height: 2px;
+    background: #d8d8d2;
+    transition: all 0.3s ease;
+}
+
+.sb-header-flap-toggle[aria-expanded="true"] .sb-flap-toggle-line:nth-child(1) {
+    transform: translateY(3px) rotate(45deg);
+}
+
+.sb-header-flap-toggle[aria-expanded="true"] .sb-flap-toggle-line:nth-child(2) {
+    transform: translateY(-3px) rotate(-45deg);
+}
+
+@media (max-width: 1200px) {
+    .sb-flap-item .sb-flap-word {
+        max-width: 250px;
+    }
+}
+
+@media (max-width: 900px) {
+    .sb-header-flap-toggle {
+        display: flex;
+    }
+
+    .sb-flap-word-brand {
+        font-size: 16px;
+    }
+
+    .sb-header-flap-brand img {
+        max-height: 32px;
+    }
+
+    .sb-header-flap-nav {
+        display: none;
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: #111;
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+        box-shadow: 0 12px 24px rgba(0, 0, 0, 0.35);
+    }
+
+    .sb-header-flap-nav.is-open {
+        display: block;
+    }
+
+    .sb-header-flap-menu {
+        flex-direction: column;
+        align-items: stretch;
+        padding: 8px 16px 16px;
+        gap: 0;
+    }
+
+    .sb-flap-item {
+        border-bottom: 1px dotted rgba(255, 255, 255, 0.1);
+    }
+
+    .sb-flap-link,
+    .sb-flap-pill-link {
+        height: auto;
+        padding: 14px 4px;
+    }
+
+    .sb-flap-item .sb-flap-word {
+        max-width: 100%;
+    }
+
+    .sb-flap-pill {
+        justify-content: space-between;
+    }
+
+    .sb-flap-dropdown {
+        position: relative;
+        top: 0;
+        transform: none;
+        border: none;
+        border-top: none;
+        background: transparent;
+        padding: 0 0 8px 8px;
+        display: none;
+    }
+
+    .sb-flap-item.sb-dropdown-open .sb-flap-dropdown {
+        display: block;
+        opacity: 1;
+        visibility: visible;
+    }
+
+    .sb-flap-dropdown-grid {
+        grid-template-columns: 1fr;
+    }
+
+    /* Mobile: skip mechanical flip animation for perf, tiles render statically */
+    .sb-flap-tile-char-incoming,
+    .sb-flap-tile::before {
+        display: none;
+    }
+}
+
+@media (max-width: 600px) {
+    .sb-header-flap-inner {
+        padding: 8px 16px;
+    }
+
+    .sb-flap-word-brand {
+        font-size: 14px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .sb-flap-tile.is-flipping .sb-flap-tile-char-current,
+    .sb-flap-tile.is-flipping .sb-flap-tile-char-incoming {
+        animation: none !important;
+    }
+    .sb-flap-tile-char-incoming {
+        display: none;
+    }
+}
+
+.sb-header-flap-brand h1 {
+    margin: 0 !important;
+}
+
+body.sb-site ul {
+    margin: 0!important;
+}

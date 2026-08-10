@@ -87,6 +87,10 @@
     font-size: 0.85em;
     text-align: center;
 }
+.sb-regulators-item {
+	list-style: none;
+}
+
 @media (max-width: 800px) {
     .sb-footer-cta-band {
         flex-direction: column;

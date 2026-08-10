@@ -12,7 +12,7 @@
 }
 .sb-footer-min-grid {
     display: grid;
-    grid-template-columns: 1.5fr 1fr 1fr;
+    grid-template-columns: 1fr 1fr 1fr 1fr;
     gap: 56px;
     margin-bottom: 44px;
 }
@@ -70,4 +70,9 @@
 }
 @media (max-width: 480px) {
     .sb-footer-min-grid { grid-template-columns: 1fr; gap: 32px; }
+}
+ul {
+  
+    list-style-type: none;
+padding-left: 0;
 }
