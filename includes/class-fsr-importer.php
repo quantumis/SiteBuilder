@@ -125,6 +125,30 @@ class Site_Builder_FSR_Importer {
         $segments    = (array) ($data['segments']    ?? []);
         $is_root     = !empty($data['is_root']);
 
+        // === STEP-BY-STEP DIAGNOSTICS ===
+        // Every stage of import_page writes a line to error_log with a
+        // timestamp. If PHP hangs mid-processing (typical culprits: GD
+        // resampling on a corrupted webp, external HTTP call in a hook,
+        // deadlocked DB), the last line in error_log tells us which stage
+        // was executing. Without this the operator sees only "504" and has
+        // to guess which of 15+ operations froze.
+        //
+        // Log lines go to error_log (server-side, persists across crashes)
+        // AND are collected into $step_timings to attach to the tracker
+        // notice for successful pages — the operator can then see timings
+        // in the report right next to the page it belongs to.
+        $step_start = microtime(true);
+        $step_timings = [];
+        $step_log = function ($step) use (&$step_timings, $step_start, $slug) {
+            $ms = (int)((microtime(true) - $step_start) * 1000);
+            $step_timings[] = $step . ':' . $ms . 'ms';
+            // error_log lines are prefixed with a stable tag so operators
+            // can grep the server error log by "[SB-STEP]". Format includes
+            // pid so parallel batches don't interleave.
+            error_log('[SB-STEP pid=' . getmypid() . ' slug=' . $slug . '] ' . $step . ' at ' . $ms . 'ms');
+        };
+        $step_log('start');
+
         // 1. Resolve content
         if ($index_file !== '' && is_readable($index_file)) {
             $ext = strtolower(pathinfo($index_file, PATHINFO_EXTENSION));
@@ -161,11 +185,13 @@ class Site_Builder_FSR_Importer {
                 'content'     => '',
             ];
         }
+        $step_log('parsed');
 
         // 2. Replace inline shortcodes in all text fields
         foreach (['title', 'description', 'headline', 'content'] as $f) {
             $parsed[$f] = $this->replace_inline_shortcodes((string)$parsed[$f]);
         }
+        $step_log('shortcodes');
 
         // 2.5. Process images: resolve every <img src=""> in the page HTML to an
         // actual file on disk, upload to media library, rewrite src. Same for
@@ -186,11 +212,13 @@ class Site_Builder_FSR_Importer {
                     'missing'  => $img_result['missing'],
                 ];
             }
+            $step_log('images_content');
             if ($parsed['headimg'] !== '') {
                 $featured_attach_id = (int)$this->image_resolver->resolve_and_upload(
                     $parsed['headimg'], $page_dir, $parsed['headline']
                 );
             }
+            $step_log('images_featured');
         }
 
         // 2.6. Convert every relative <a href="..."> in the page HTML into a
@@ -206,6 +234,7 @@ class Site_Builder_FSR_Importer {
         if ($parsed['content'] !== '') {
             $parsed['content'] = $this->convert_internal_links_to_shortcodes($parsed['content']);
         }
+        $step_log('links');
 
         // 3. Determine page parent (chain through previous segments)
         $parent_id = $is_root ? 0 : $this->resolve_parent_id(array_slice($segments, 0, -1));
@@ -213,6 +242,7 @@ class Site_Builder_FSR_Importer {
             return ['ok' => false, 'title' => $parsed['title'],
                 'message' => 'Родительская страница не найдена: /' . implode('/', array_slice($segments, 0, -1))];
         }
+        $step_log('parent_resolved');
 
         // 4. Collision check
         $existing = get_posts([
@@ -292,6 +322,7 @@ class Site_Builder_FSR_Importer {
             $insert_args['post_date_gmt'] = get_gmt_from_date($post_date);
         }
         $post_id = wp_insert_post($insert_args, true);
+        $step_log('post_inserted');
 
         if (is_wp_error($post_id) || !$post_id) {
             $err = is_wp_error($post_id) ? $post_id->get_error_message() : 'wp_insert_post вернул 0';
@@ -368,6 +399,8 @@ class Site_Builder_FSR_Importer {
         update_post_meta($post_id, 'fsr_news_page',      !empty($flags['news'])     ? 1 : 0);
         update_post_meta($post_id, 'fsr_events_page',    !empty($flags['events'])   ? 1 : 0);
 
+        $step_log('meta_written');
+
         // (c) Menu placement.
         // If the flag included an explicit [;label], we pass that verbatim
         // and mark the menu item as 'label' (Menu_Sync won't overwrite it).
@@ -437,6 +470,8 @@ class Site_Builder_FSR_Importer {
             $msg .= ' [' . $img_stats['uploaded'] . '/' . $img_stats['found'] . ' картинок]';
         }
 
+        $step_log('done');
+
         return [
             'ok'         => true,
             'title'      => $parsed['title'],
@@ -444,6 +479,10 @@ class Site_Builder_FSR_Importer {
             'post_id'    => (int)$post_id,
             'img_stats'  => $img_stats,
             'featured'   => $featured_attach_id,
+            // Include step-by-step timings so the operator can see where
+            // each page spends time. Pipe-separated string is compact and
+            // survives serialization into the notice context intact.
+            'step_timings' => implode(' | ', $step_timings),
         ];
     }
 
@@ -1087,6 +1126,15 @@ class Site_Builder_FSR_Importer {
         $n = count($lines);
 
         while ($i < $n) {
+            // Defensive safety net: if a full iteration of this loop finishes
+            // without advancing $i, we have an infinite loop bug and the whole
+            // batch will die on max_execution_time. Any unmatched-but-unadvanced
+            // line is a symptom of a parser edge case we haven't handled yet
+            // (empty heading, empty list marker, etc). Force-advance and warn
+            // so the operator sees WHICH line was unparseable — better than
+            // a mysterious 120s hang with no error.
+            $iter_start_i = $i;
+
             $line = $lines[$i];
 
             if (trim($line) === '') {
@@ -1125,11 +1173,20 @@ class Site_Builder_FSR_Importer {
                 continue;
             }
 
-            // Heading H2-H6 (H1 already stripped by caller)
-            if (preg_match('/^(#{2,6})\s+(.+)$/', $line, $m)) {
+            // Heading H2-H6 (H1 already stripped by caller). Accept empty
+            // content: `## ` on its own is a stray heading marker often left
+            // by content team edits. Historic bug: with strict `.+` here, an
+            // empty heading fell through to paragraph gathering, which also
+            // excluded it (heading-like), so $i never advanced — infinite
+            // loop that killed the whole batch after 120s max_execution_time.
+            if (preg_match('/^(#{2,6})\s+(.*)$/', $line, $m)) {
                 $level = strlen($m[1]);
                 $text = $this->inline_md($m[2]);
-                $html .= "<h{$level}>{$text}</h{$level}>\n";
+                // Skip emitting empty headings — they'd render as visible
+                // empty <h2></h2> boxes on the page.
+                if (trim($text) !== '') {
+                    $html .= "<h{$level}>{$text}</h{$level}>\n";
+                }
                 $i++;
                 continue;
             }
@@ -1176,6 +1233,14 @@ class Site_Builder_FSR_Importer {
                 $text = $this->inline_md(implode(' ', $para));
                 $html .= "<p>{$text}</p>\n";
             }
+
+            // Safety net (see comment at loop top) — if nothing above advanced $i,
+            // record a warning and force advance so we don't infinite-loop.
+            if ($i === $iter_start_i) {
+                error_log('[SB-STEP] Unparseable markdown line, skipping: '
+                    . substr($lines[$i], 0, 80));
+                $i++;
+            }
         }
 
         return trim($html);
@@ -1199,12 +1264,25 @@ class Site_Builder_FSR_Importer {
     }
 
     private function parse_list(array $lines, int $start, string $type): array {
-        $pattern = $type === 'ul' ? '/^\s*[-*]\s+(.+)$/' : '/^\s*\d+\.\s+(.+)$/';
+        // Accept empty items ("- " or "1. " with nothing after) — historic
+        // bug: strict `.+` here returned consumed=0 when the first line was
+        // an empty list marker, and the outer loop's $i += 0 spun forever.
+        // Now we swallow empty items and keep advancing.
+        $pattern = $type === 'ul' ? '/^\s*[-*]\s+(.*)$/' : '/^\s*\d+\.\s+(.*)$/';
         $items = [];
         $i = $start;
         while ($i < count($lines) && preg_match($pattern, $lines[$i], $m)) {
-            $items[] = $this->inline_md($m[1]);
+            $item_text = trim($m[1]);
+            if ($item_text !== '') {
+                $items[] = $this->inline_md($item_text);
+            }
             $i++;
+        }
+        // Safety: if we matched zero non-empty items, still return $i - $start
+        // to advance the outer loop past the empty markers. Empty list block
+        // produces no HTML.
+        if (empty($items)) {
+            return ['', $i - $start];
         }
         $html = "<{$type}>\n";
         foreach ($items as $item) $html .= "  <li>{$item}</li>\n";

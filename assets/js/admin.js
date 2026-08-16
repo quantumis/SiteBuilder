@@ -1243,6 +1243,13 @@
                 'rollback': 'Откат импорта'
             })[imp.type] || imp.type;
 
+            // Show "hangs on" hint if the last update was long ago — often means
+            // PHP got killed mid-task or is currently stuck on it.
+            var hangHint = '';
+            if (imp.current_phase) {
+                hangHint = '<div class="sb-resume-phase">Последняя задача перед остановкой: <code>' + esc(imp.current_phase) + '</code></div>';
+            }
+
             var $banner = $(
                 '<div class="sb-resume-banner">' +
                     '<div class="sb-resume-icon">↻</div>' +
@@ -1252,10 +1259,12 @@
                             typeLabel + ' &middot; папка <code>' + esc(imp.folder_name) + '</code> &middot; ' +
                             'выполнено <strong>' + imp.processed + '</strong> из <strong>' + imp.total + '</strong> задач (' + pct + '%)' +
                         '</div>' +
+                        hangHint +
                         '<div class="sb-resume-progress"><div class="sb-resume-progress-bar" style="width:' + pct + '%"></div></div>' +
                     '</div>' +
                     '<div class="sb-resume-actions">' +
                         '<button type="button" class="button button-primary sb-resume-continue">Продолжить</button>' +
+                        '<button type="button" class="button sb-resume-skip" title="Если импорт зависает на одной и той же задаче — пропустить её и продолжить со следующей">Пропустить задачу и продолжить</button>' +
                         '<button type="button" class="button sb-resume-cancel">Отменить</button>' +
                     '</div>' +
                 '</div>'
@@ -1264,6 +1273,29 @@
 
             $banner.find('.sb-resume-continue').on('click', function () {
                 resumeImport(imp, $banner);
+            });
+            $banner.find('.sb-resume-skip').on('click', function () {
+                if (!confirm(
+                    'Пропустить задачу «' + (imp.current_phase || imp.processed + 1) + '»?\n\n' +
+                    'Счётчик сдвинется на 1, эта задача НЕ будет обработана. Используйте если импорт зависает на ней несколько раз подряд.'
+                )) return;
+                var $btn = $(this).prop('disabled', true).text('Пропуск…');
+                $.ajax({
+                    url: SiteBuilderData.ajaxUrl,
+                    type: 'POST',
+                    data: {
+                        action: 'site_builder_skip_task',
+                        nonce: SiteBuilderData.nonce,
+                        import_id: imp.id
+                    },
+                    timeout: 15000
+                }).done(function () {
+                    imp.processed += 1;
+                    resumeImport(imp, $banner);
+                }).fail(function () {
+                    $btn.prop('disabled', false).text('Пропустить задачу и продолжить');
+                    alert('Не удалось пропустить задачу. Попробуйте ещё раз.');
+                });
             });
             $banner.find('.sb-resume-cancel').on('click', function () {
                 if (!confirm('Отменить прерванный импорт? Уже созданные страницы останутся, но продолжение будет невозможно.')) return;

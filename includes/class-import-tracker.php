@@ -114,6 +114,21 @@ class Site_Builder_Import_Tracker {
         ));
     }
 
+    /**
+     * Write which task is currently in progress. Called before every task in
+     * the batch — so if PHP hangs, this is the last thing the DB knows about
+     * the impor. check_active_import reads it and shows the operator which
+     * page is the culprit.
+     */
+    public function set_current_phase(int $import_id, string $phase): void {
+        global $wpdb;
+        $wpdb->update(
+            $this->imports_table,
+            ['current_phase' => $phase, 'updated_at' => current_time('mysql')],
+            ['id' => $import_id]
+        );
+    }
+
     public function track_item(int $import_id, string $type, ?int $ref_id = null, ?string $ref_path = null, $ref_data = null): void {
         global $wpdb;
         $wpdb->insert($this->items_table, [

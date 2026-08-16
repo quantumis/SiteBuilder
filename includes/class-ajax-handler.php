@@ -28,6 +28,7 @@ class Site_Builder_Ajax_Handler {
         add_action('wp_ajax_site_builder_clear_lock',       [$this, 'clear_lock']);
         add_action('wp_ajax_site_builder_check_pages',      [$this, 'check_pages']);
         add_action('wp_ajax_site_builder_check_active',     [$this, 'check_active_import']);
+        add_action('wp_ajax_site_builder_skip_task',        [$this, 'skip_task']);
     }
 
     public static function nonce(): string {
@@ -822,6 +823,46 @@ class Site_Builder_Ajax_Handler {
         @set_time_limit(120);
         @ini_set('max_execution_time', 120);
 
+        // === HANG PROTECTION ===
+        // The most common cause of "process_batch never returns" on shared
+        // hosting isn't slow PHP — it's an outbound HTTP request that hangs.
+        // Many SEO/cache/CDN plugins trigger a wp_remote_get on save_post to
+        // ping sitemap.xml, invalidate CDN, update JSON-LD, etc. If the
+        // target host is down or slow to respond, wp_remote_get with no
+        // explicit timeout waits up to default_socket_timeout (60s) or
+        // indefinitely. Add up 5 such calls per page and you get a 5-minute
+        // hang no matter what you do to PHP-level timeout.
+        //
+        // Two defences layered here:
+        //   1. Cap ALL outbound HTTP to 15 seconds via http_request_args filter
+        //   2. Disable Yoast/RankMath post-save pings which are the most
+        //      common culprits in affiliate-site plugin stacks
+
+        add_filter('http_request_args', function ($args) {
+            $args['timeout']    = 15;   // total request budget
+            $args['redirection'] = 3;    // don't chase redirect chains forever
+            return $args;
+        }, PHP_INT_MAX);
+
+        // Yoast SEO: pings sitemap to search engines on every save_post.
+        // Harmless if it fails but hangs the request if the ping URL is slow.
+        remove_action('save_post', ['WPSEO_Sitemaps_Cache', 'invalidate_helper']);
+        remove_action('deleted_term_relationships', ['WPSEO_Sitemaps_Cache', 'invalidate_helper']);
+        if (class_exists('WPSEO_Ping')) {
+            remove_action('wpseo_ping_search_engines', ['WPSEO_Ping', 'ping']);
+        }
+
+        // RankMath: analogous background HTTP calls.
+        if (class_exists('RankMath\Sitemap\Cache_Watcher')) {
+            remove_action('save_post', ['RankMath\Sitemap\Cache_Watcher', 'invalidate_helper']);
+        }
+
+        // WordPress core pingback / trackback processing on new posts. Also
+        // makes outbound HTTP calls when the post_content has any links to
+        // sites that support pingback. Suppress during import.
+        remove_action('do_pings', 'do_all_pings', 10, 1);
+        add_filter('pings_open', '__return_false', PHP_INT_MAX);
+
         $tracker = new Site_Builder_Import_Tracker();
         $import = $tracker->get_import($import_id);
         if (!$import) wp_send_json_error(['message' => 'Импорт не найден']);
@@ -925,6 +966,20 @@ class Site_Builder_Ajax_Handler {
         foreach ($batch as $task) {
             $task_started = microtime(true);
             $kind = $task['kind'] ?? '';
+
+            // Record what we're about to work on IN THE DB, before execution.
+            // If PHP hangs on this task, check_active_import will report this
+            // exact task to the client — the operator sees "hangs on
+            // fsr_page: best-foreign-casinos-for-uk-players" and knows
+            // exactly which page is the culprit. Without this, a hung task
+            // is invisible until PHP is killed.
+            //
+            // current_phase is capped to 30 chars in the schema, so we pack
+            // kind and slug tersely.
+            $task_slug = isset($task['data']['slug']) ? (string)$task['data']['slug'] : '';
+            $phase_label = substr($kind . ':' . $task_slug, 0, 30);
+            $tracker->set_current_phase($import_id, $phase_label);
+
             try {
                 switch ($kind) {
                     case 'wipe_page':
@@ -1086,6 +1141,13 @@ class Site_Builder_Ajax_Handler {
                 if (isset($task['data']['index_file'])) {
                     $slow_ctx['file'] = basename((string)$task['data']['index_file']);
                 }
+                // If the importer emitted step-by-step timings (fsr_page does),
+                // include them so the operator sees WHERE time was spent —
+                // "parsed:80ms | images_content:12500ms | post_inserted:250ms"
+                // makes it obvious it's the images.
+                if (isset($result) && is_array($result) && !empty($result['step_timings'])) {
+                    $slow_ctx['steps'] = (string)$result['step_timings'];
+                }
                 $tracker->append_notice(
                     $import_id,
                     'Медленная задача (' . number_format($task_duration, 1) . ' сек)',
@@ -1164,9 +1226,7 @@ class Site_Builder_Ajax_Handler {
     }
 
     /**
-     * P0 — endpoint the admin JS polls when the plugin page loads. Returns
-     * info about any import that's still marked 'running' in the DB so the UI
-     * can show a "Resume from where you left off" banner.
+     * P0 — endpoint the admin JS polls when the plugin page loads.
      *
      * The typical scenario: nginx returned 504 to the client, but PHP finished
      * the batch and updated processed_count in the DB. The tab was closed or
@@ -1219,17 +1279,56 @@ class Site_Builder_Ajax_Handler {
         wp_send_json_success([
             'active' => true,
             'import' => [
-                'id'          => $import_id,
-                'type'        => $import->type,
-                'folder_name' => $import->folder_name,
-                'processed'   => $processed,
-                'total'       => $total,
-                'batch_size'  => $batch_size,
-                'started_at'  => $import->started_at,
+                'id'            => $import_id,
+                'type'          => $import->type,
+                'folder_name'   => $import->folder_name,
+                'processed'     => $processed,
+                'total'         => $total,
+                'batch_size'    => $batch_size,
+                'started_at'    => $import->started_at,
+                'current_phase' => (string)$import->current_phase,
+                'updated_at'    => (string)$import->updated_at,
                 // Server-side offset for the resume — client uses this
                 // instead of its own state.offset, which may have been lost.
-                'next_offset' => $processed,
+                'next_offset'   => $processed,
             ],
         ]);
+    }
+
+    /**
+     * Skip one task in the active import — bump processed_count by 1 so the
+     * next process_batch starts from the following task. Used when a specific
+     * task consistently hangs the batch (typical: a bad image that hangs
+     * GD, or a page that triggers a stuck external HTTP call).
+     *
+     * The skipped task appears in the report as a warning notice so the
+     * operator can revisit later.
+     */
+    public function skip_task(): void {
+        $this->authorize();
+        $import_id = isset($_POST['import_id']) ? (int)$_POST['import_id'] : 0;
+        if (!$import_id) wp_send_json_error(['message' => 'Не указан import_id']);
+
+        $tracker = new Site_Builder_Import_Tracker();
+        $import  = $tracker->get_import($import_id);
+        if (!$import) wp_send_json_error(['message' => 'Импорт не найден']);
+
+        // Look up which task we're skipping so we can log it meaningfully
+        $queue     = $tracker->get_queue($import_id);
+        $skipped   = $queue[(int)$import->processed_count] ?? null;
+        $skip_ctx  = ['reason' => 'manual_skip_from_resume_banner'];
+        if ($skipped) {
+            $skip_ctx['kind'] = (string)($skipped['kind'] ?? '');
+            $skip_ctx['slug'] = (string)($skipped['data']['slug'] ?? '');
+        }
+        if ($import->current_phase) {
+            $skip_ctx['current_phase'] = (string)$import->current_phase;
+        }
+        $tracker->append_notice($import_id, 'Задача пропущена оператором', $skip_ctx);
+
+        // Advance the offset. The next process_batch call will start with
+        // the task AFTER the one that was hanging.
+        $tracker->increment_processed($import_id, 1);
+        wp_send_json_success(['message' => 'Задача пропущена', 'new_offset' => (int)$import->processed_count + 1]);
     }
 }

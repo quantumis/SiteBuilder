@@ -1002,3 +1002,23 @@
     gap: 8px;
     flex-shrink: 0;
 }
+.sb-resume-phase {
+    font-size: 12px;
+    color: #78350f;
+    opacity: 0.85;
+    margin: 4px 0 6px;
+}
+.sb-resume-phase code {
+    background: rgba(0, 0, 0, 0.08);
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-family: Consolas, Monaco, monospace;
+}
+.sb-resume-actions .sb-resume-skip {
+    background: #fef3c7;
+    border-color: #d97706;
+    color: #78350f;
+}
+.sb-resume-actions .sb-resume-skip:hover {
+    background: #fde68a;
+}
