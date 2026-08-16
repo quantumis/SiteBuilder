@@ -7,6 +7,109 @@
     // anyRunning is shared by both forms so navigation handlers can see "is any import live".
     var anyRunning = false;
 
+    /**
+     * Smart recovery from a batch AJAX failure. Two main cases:
+     *
+     * 1) Transient (504/502/503/timeout/network drop): PHP may still be
+     *    running. Wait a moment, then ask the server via check_active what
+     *    the current DB offset is. If it advanced past our last known value,
+     *    PHP survived — continue. If it didn't advance for two consecutive
+     *    polls, PHP truly died — fall back to the resume banner.
+     *
+     * 2) Hard error: give up, surface the banner so user can retry manually.
+     *
+     * All timeouts here are console-logged so an operator can diagnose via F12.
+     */
+    function handleBatchFailure(xhr, textStatus, state, retryFn) {
+        var status = xhr.status;
+        var isTransient = (status === 504 || status === 502 || status === 503 || status === 0 || textStatus === 'timeout');
+        console.log('[SiteBuilder] batch failed:', {
+            status: status,
+            textStatus: textStatus,
+            isTransient: isTransient,
+            retriesUsed: state.retriesUsed || 0,
+            lastKnownProcessed: state.processed || 0
+        });
+
+        if (!isTransient) {
+            // Hard fail — server returned a real error. Show final message.
+            if (state.showResultFn) {
+                state.showResultFn('failed', 'Сетевая ошибка: HTTP ' + status);
+            }
+            return;
+        }
+
+        state.retriesUsed = (state.retriesUsed || 0) + 1;
+        if (state.retriesUsed > 3) {
+            // Three transient failures in a row — PHP is genuinely stuck.
+            // Show the resume banner so user can manually intervene.
+            if (state.showResultFn) {
+                state.showResultFn('failed',
+                    'Сервер не отвечает после нескольких попыток (HTTP ' + status + '). ' +
+                    'Импорт сохранён в БД. Обновите страницу (F5) — появится баннер «Продолжить импорт».');
+            }
+            return;
+        }
+
+        // Update UI to show we're diagnosing
+        if (state.updateProgressFn) {
+            state.updateProgressFn(state.processed || 0, state.total || 0,
+                'Проверяю статус сервера (попытка ' + state.retriesUsed + '/3)…');
+        }
+
+        // Wait 10 seconds, then poll check_active to see if PHP recovered
+        setTimeout(function () {
+            $.ajax({
+                url: SiteBuilderData.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'site_builder_check_active',
+                    nonce: SiteBuilderData.nonce
+                },
+                timeout: 15000
+            }).done(function (resp) {
+                if (!resp || !resp.success || !resp.data) {
+                    // check_active itself failed — try full retry
+                    console.log('[SiteBuilder] check_active gave no data, retrying batch');
+                    retryFn();
+                    return;
+                }
+                if (!resp.data.active) {
+                    // Server says nothing is running — either finished or was cancelled
+                    console.log('[SiteBuilder] check_active says no active import — likely completed');
+                    if (state.showResultFn) {
+                        state.showResultFn('completed',
+                            'Импорт завершён (обнаружено после восстановления). Обновите страницу для проверки результатов.');
+                    }
+                    return;
+                }
+                var currentDbProcessed = resp.data.import.processed;
+                var advanced = currentDbProcessed > (state.processed || 0);
+                console.log('[SiteBuilder] server offset check:',
+                    'was=' + (state.processed || 0), 'now=' + currentDbProcessed,
+                    'advanced=' + advanced);
+                if (advanced) {
+                    // PHP did survive and advance the offset — continue as normal.
+                    state.processed = currentDbProcessed;
+                    if (state.updateProgressFn) {
+                        state.updateProgressFn(currentDbProcessed, resp.data.import.total,
+                            'Восстановлено, продолжаю…');
+                    }
+                    state.retriesUsed = 0; // reset since we found forward progress
+                    retryFn();
+                } else {
+                    // No advance — PHP is probably stuck on the current task.
+                    // Try one more full retry; on next fail we'll bail to banner.
+                    retryFn();
+                }
+            }).fail(function () {
+                // Even check_active failed — server is probably down. One more try.
+                console.log('[SiteBuilder] check_active also failed, retrying batch anyway');
+                retryFn();
+            });
+        }, 10000);
+    }
+
     // ---- Tab navigation & unload protection ----
     // Intercept clicks on other tabs while an import is running. If user confirms,
     // best-effort cancel via sendBeacon, then let the navigation happen.
@@ -258,12 +361,21 @@
 
         function processBatch() {
             if (state.cancelled) return;
-            $.post(SiteBuilderData.ajaxUrl, {
-                action: 'site_builder_process_batch',
-                nonce: SiteBuilderData.nonce,
-                import_id: state.importId
-                // P0 — no offset sent. Server reads it from DB (processed_count),
-                // which is authoritative and survives client crashes.
+            $.ajax({
+                url: SiteBuilderData.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'site_builder_process_batch',
+                    nonce: SiteBuilderData.nonce,
+                    import_id: state.importId
+                    // P0 — no offset sent. Server reads it from DB.
+                },
+                // AJAX-level timeout — jQuery without this waits FOREVER for
+                // a hung PHP request, and .fail() never fires. 90 seconds is
+                // just above the typical nginx proxy_read_timeout (60s), so
+                // we normally get the nginx 504 first; but if nginx itself is
+                // unusually patient, we cut the wire ourselves.
+                timeout: 90000
             }).done(function (resp) {
                 if (!resp || !resp.success) {
                     var msg = (resp && resp.data && resp.data.message) || SiteBuilderData.strings.genericError;
@@ -272,37 +384,16 @@
                 }
                 var data = resp.data;
                 state.total = data.total || state.total;
+                state.processed = data.processed || 0;
+                state.retriesUsed = 0; // reset on success
                 updateProgress(data.processed, state.total, data.current_label || '');
                 if (data.done) {
                     showResult('completed', 'Обработано задач: ' + data.processed + ' из ' + state.total);
                     return;
                 }
-                // P1 — if the batch was time-boxed (stopped early to avoid
-                // nginx timeout), just continue immediately. Otherwise short
-                // delay to let the server breathe between batches.
                 setTimeout(processBatch, data.time_boxed ? 50 : 100);
-            }).fail(function (xhr) {
-                // P0 — 504 from nginx / 502 / 503 / 0 (network drop) don't
-                // mean the server failed; PHP may still be finishing the
-                // batch. Retry once after a short pause. If the server truly
-                // failed, next attempt will give a clean error.
-                var status = xhr.status;
-                var isTransient = (status === 504 || status === 502 || status === 503 || status === 0);
-                if (isTransient && !state.retriedThisBatch) {
-                    state.retriedThisBatch = true;
-                    updateProgress(state.processed || 0, state.total || 0,
-                        'Соединение прервано (HTTP ' + status + '), пробую продолжить…');
-                    // Give the server a few seconds to finish whatever batch
-                    // caused the timeout, then resume — the server-side offset
-                    // will have advanced during that time.
-                    setTimeout(function () {
-                        state.retriedThisBatch = false;
-                        processBatch();
-                    }, 5000);
-                    return;
-                }
-                showResult('failed', 'Сетевая ошибка: HTTP ' + status +
-                    '. Импорт остановлен, но данные сохранены. Обновите страницу — появится баннер для продолжения.');
+            }).fail(function (xhr, textStatus) {
+                handleBatchFailure(xhr, textStatus, state, processBatch);
             });
         }
 
@@ -344,6 +435,12 @@
                 state.importId = resp.data.import_id;
                 state.offset = 0;
                 state.total = resp.data.total || 0;
+                state.processed = 0;
+                state.retriesUsed = 0;
+                // Give handleBatchFailure access to the same progress/result
+                // helpers the wireImporter closure uses.
+                state.updateProgressFn = updateProgress;
+                state.showResultFn = showResult;
                 anyRunning = true;
                 currentRunningState = state;
                 $progressTitle.text(SiteBuilderData.strings.inProgress);
@@ -1095,16 +1192,41 @@
     // server-side offset (processed_count in DB), not any client state.
     // ============================================================
     (function () {
+        // Try multiple selectors — the plugin page wrapper class has varied
+        // across versions. Also fall back to WordPress-standard #wpbody-content
+        // so the banner ALWAYS appears somewhere visible even if wrapper class
+        // is missing.
         var $wrap = $('.site-builder-wrap');
-        if (!$wrap.length) return;
+        if (!$wrap.length) $wrap = $('.wrap.site-builder-wrap');
+        if (!$wrap.length) $wrap = $('.wrap:has(h1:contains("Site Builder"))').first();
+        if (!$wrap.length) {
+            console.log('[SiteBuilder] resume-banner: не найдена обёртка страницы плагина');
+            return;
+        }
 
-        $.post(SiteBuilderData.ajaxUrl, {
-            action: 'site_builder_check_active',
-            nonce: SiteBuilderData.nonce
+        console.log('[SiteBuilder] resume-banner: проверяю активный импорт…');
+        $.ajax({
+            url: SiteBuilderData.ajaxUrl,
+            type: 'POST',
+            data: {
+                action: 'site_builder_check_active',
+                nonce: SiteBuilderData.nonce
+            },
+            timeout: 15000
         }).done(function (resp) {
-            if (!resp || !resp.success || !resp.data || !resp.data.active) return;
-            var imp = resp.data.import;
-            renderResumeBanner(imp);
+            console.log('[SiteBuilder] check_active response:', resp);
+            if (!resp || !resp.success || !resp.data) {
+                console.log('[SiteBuilder] check_active: некорректный ответ');
+                return;
+            }
+            if (!resp.data.active) {
+                console.log('[SiteBuilder] check_active: активных импортов нет');
+                return;
+            }
+            console.log('[SiteBuilder] найден активный импорт, рендерю баннер:', resp.data.import);
+            renderResumeBanner(resp.data.import);
+        }).fail(function (xhr, textStatus) {
+            console.log('[SiteBuilder] check_active failed:', xhr.status, textStatus);
         });
 
         function renderResumeBanner(imp) {
@@ -1169,44 +1291,53 @@
             var state = {
                 importId: imp.id,
                 total: imp.total,
-                retriedThisBatch: false,
-                cancelled: false
+                processed: imp.processed,
+                retriesUsed: 0,
+                cancelled: false,
+                // Wire helpers so handleBatchFailure can update this banner
+                updateProgressFn: function (processed, total, label) {
+                    var pct = total > 0 ? Math.round((processed / total) * 100) : 0;
+                    $bar.css('width', pct + '%');
+                    $meta.html('Выполнено <strong>' + processed + '</strong> из <strong>' + total + '</strong> (' + pct + '%)');
+                    $label.text(label || '');
+                },
+                showResultFn: function (kind, message) {
+                    $banner.find('.sb-resume-title').text(
+                        kind === 'completed' ? '✓ Импорт завершён' : 'Не удалось продолжить импорт'
+                    );
+                    if (kind === 'completed') $banner.addClass('sb-resume-done');
+                    $label.text(message || '');
+                }
             };
 
             function tick() {
                 if (state.cancelled) return;
-                $.post(SiteBuilderData.ajaxUrl, {
-                    action: 'site_builder_process_batch',
-                    nonce: SiteBuilderData.nonce,
-                    import_id: state.importId
+                $.ajax({
+                    url: SiteBuilderData.ajaxUrl,
+                    type: 'POST',
+                    data: {
+                        action: 'site_builder_process_batch',
+                        nonce: SiteBuilderData.nonce,
+                        import_id: state.importId
+                    },
+                    timeout: 90000
                 }).done(function (resp) {
                     if (!resp || !resp.success) {
                         $banner.find('.sb-resume-title').text('Не удалось продолжить импорт');
                         return;
                     }
                     var d = resp.data;
-                    var pct = d.total > 0 ? Math.round((d.processed / d.total) * 100) : 0;
-                    $bar.css('width', pct + '%');
-                    $meta.html('Выполнено <strong>' + d.processed + '</strong> из <strong>' + d.total + '</strong> (' + pct + '%)');
-                    $label.text(d.current_label || '');
+                    state.processed = d.processed || 0;
+                    state.total = d.total || state.total;
+                    state.retriesUsed = 0;
+                    state.updateProgressFn(d.processed, d.total, d.current_label || '');
                     if (d.done) {
-                        $banner.find('.sb-resume-title').text('✓ Импорт завершён');
-                        $banner.addClass('sb-resume-done');
+                        state.showResultFn('completed', 'Обработано задач: ' + d.processed + ' из ' + d.total);
                         return;
                     }
                     setTimeout(tick, d.time_boxed ? 50 : 100);
-                }).fail(function (xhr) {
-                    var status = xhr.status;
-                    if ((status === 504 || status === 502 || status === 503 || status === 0) && !state.retriedThisBatch) {
-                        state.retriedThisBatch = true;
-                        $label.text('Соединение прервано (HTTP ' + status + '), пробую продолжить…');
-                        setTimeout(function () {
-                            state.retriedThisBatch = false;
-                            tick();
-                        }, 5000);
-                        return;
-                    }
-                    $banner.find('.sb-resume-title').text('Сетевая ошибка: HTTP ' + status);
+                }).fail(function (xhr, textStatus) {
+                    handleBatchFailure(xhr, textStatus, state, tick);
                 });
             }
             tick();

@@ -815,6 +815,13 @@ class Site_Builder_Ajax_Handler {
         $import_id = isset($_POST['import_id']) ? (int)$_POST['import_id'] : 0;
         if (!$import_id) wp_send_json_error(['message' => 'Не указан import_id']);
 
+        // Try to raise PHP execution time to a safe ceiling. This is a hint —
+        // safe_mode/hardened hosting may ignore it, but where allowed it lets
+        // a single batch finish even when it flirts with the default 30s cap.
+        // Any longer than 120s and we'll hit nginx timeouts anyway.
+        @set_time_limit(120);
+        @ini_set('max_execution_time', 120);
+
         $tracker = new Site_Builder_Import_Tracker();
         $import = $tracker->get_import($import_id);
         if (!$import) wp_send_json_error(['message' => 'Импорт не найден']);
@@ -1053,6 +1060,16 @@ class Site_Builder_Ajax_Handler {
             }
             $processed_in_batch++;
 
+            // Persist the offset advance IMMEDIATELY, per task, not at end
+            // of batch. This is critical for crash recovery: if PHP gets
+            // killed mid-batch (nginx 504 → fcgi kill signal), we've still
+            // saved the position of the last completed task. The client's
+            // "resume" then continues from the exact next task.
+            //
+            // Cost: 1 extra UPDATE per task (~1ms). Negligible next to the
+            // 1-10 seconds a real task takes.
+            $tracker->increment_processed($import_id, 1);
+
             // P2 — log slow tasks so we can see accumulation trends in the
             // report. Only tasks over threshold — quiet the log for normal
             // sub-second inserts. Duration is server-side wall time including
@@ -1084,9 +1101,8 @@ class Site_Builder_Ajax_Handler {
             }
         }
 
-        $tracker->increment_processed($import_id, $processed_in_batch);
-        // new_offset = offset (server-side, from DB before this batch) + how many we processed
-        // Note: after increment_processed above, DB now holds this same value.
+        // No longer need increment_processed here — done per-task above.
+        // But we still need to compute new_offset for the response.
         $new_offset = $offset + $processed_in_batch;
         $done = $new_offset >= $total;
         // Signal to the client that the batch stopped early due to the time

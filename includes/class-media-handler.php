@@ -85,7 +85,28 @@ class Site_Builder_Media_Handler {
 
         if (!$attach_id || is_wp_error($attach_id)) return null;
 
+        // Performance: on slow shared hosting, wp_generate_attachment_metadata
+        // is often the biggest per-page cost — for a large webp it can spawn
+        // 5-8 thumbnail sizes, each requiring a full GD resample. On Hostinger
+        // that adds up to 30-60 seconds for a page with 3 images, which
+        // triggers the nginx 504 timeout.
+        //
+        // We temporarily restrict the size set to just thumbnail + medium
+        // during import. These are the only sizes affiliate content typically
+        // uses (thumbnail in the admin listing, medium in inline content).
+        // Other sizes (medium_large, large, custom theme sizes) can be
+        // regenerated later via a plugin like "Regenerate Thumbnails" if
+        // ever needed — but 99% of the time they aren't.
+        //
+        // Filter is applied only around this one call, then removed, so the
+        // WordPress admin behaves normally outside of imports.
+        $size_filter = function ($sizes) {
+            return array_intersect_key($sizes, ['thumbnail' => 1, 'medium' => 1]);
+        };
+        add_filter('intermediate_image_sizes_advanced', $size_filter, 10, 1);
         $metadata = wp_generate_attachment_metadata($attach_id, $upload['file']);
+        remove_filter('intermediate_image_sizes_advanced', $size_filter, 10);
+
         wp_update_attachment_metadata($attach_id, $metadata);
 
         if ($alt_text) {
