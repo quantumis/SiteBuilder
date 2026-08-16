@@ -1,0 +1,367 @@
+/* templates/theme/headers/liquid-underline.css */
+
+.sb-header-liquid-underline {
+    position: relative;
+    z-index: 1000;
+    background: var(--sb-color-bg, #fff);
+    border-bottom: 1px solid var(--sb-color-border, #e5e7eb);
+}
+
+.sb-header-liquid-underline a {
+    text-decoration: none;
+}
+
+.sb-header-liquid-underline a::after {
+    display: none !important;
+    content: none !important;
+}
+
+.sb-header-liquid-inner {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 16px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 40px;
+}
+
+/* Brand */
+.sb-header-liquid-brand {
+    display: flex;
+    gap: 5px;
+    flex-shrink: 0;
+}
+
+.sb-header-liquid-brand a {
+    display: flex;
+    align-items: center;
+    color: var(--sb-color-text, #111);
+    font-size: 23px;
+    font-weight: 800;
+    font-family: var(--sb-font-heading, sans-serif);
+    letter-spacing: -0.02em;
+}
+
+.sb-header-liquid-brand img {
+    max-height: 36px;
+    width: auto;
+    display: block;
+}
+
+/* Navigation — the liquid blob lives inside this relative wrapper */
+.sb-header-liquid-nav {
+    flex: 1;
+    display: flex;
+    justify-content: flex-end;
+    position: relative;
+}
+
+.sb-header-liquid-menu {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: row-reverse;
+    column-gap: 20px;
+    flex-wrap: wrap;
+    position: relative;
+}
+
+/* The liquid indicator itself: a single absolutely-positioned pill that
+   the JS moves/resizes under the hovered item, with a squash-stretch feel
+   via border-radius + transform easing. */
+.sb-liquid-indicator {
+    position: absolute;
+    height: 3px;
+    border-radius: 3px;
+    background: var(--sb-color-link, #2563eb);
+    opacity: 0;
+    pointer-events: none;
+    transition:
+        left 0.45s cubic-bezier(0.34, 1.56, 0.64, 1),
+        top 0.45s cubic-bezier(0.34, 1.56, 0.64, 1),
+        width 0.45s cubic-bezier(0.34, 1.56, 0.64, 1),
+        opacity 0.2s ease,
+        transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+    transform-origin: center;
+}
+
+.sb-header-liquid-nav.sb-liquid-active .sb-liquid-indicator {
+    opacity: 1;
+}
+
+.sb-liquid-item {
+    margin: 0;
+    position: relative;
+}
+
+.sb-liquid-link,
+.sb-liquid-pill-link {
+    display: flex;
+    align-items: center;
+    height: 44px;
+    padding: 0 16px;
+    color: var(--sb-color-text, #111);
+    font-size: 14.5px;
+    font-weight: 600;
+    transition: color 0.2s ease;
+}
+
+.sb-liquid-link:hover,
+.sb-liquid-pill-link:hover {
+    color: var(--sb-color-link, #2563eb);
+}
+
+.sb-liquid-item.current-menu-item .sb-liquid-link,
+.sb-liquid-item.current-menu-item .sb-liquid-pill-link {
+    color: var(--sb-color-link, #2563eb);
+}
+
+.sb-liquid-pill {
+    display: flex;
+    align-items: center;
+}
+
+.sb-liquid-trigger {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 24px;
+    padding: 0 4px 0 4px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--sb-color-muted, #6b7280);
+    transition: color 0.2s ease;
+}
+
+.sb-liquid-trigger:hover {
+    color: var(--sb-color-link, #2563eb);
+}
+
+.sb-liquid-caret {
+    width: 9px;
+    height: 9px;
+    flex-shrink: 0;
+    transition: transform 0.2s ease;
+}
+
+.sb-liquid-item.sb-dropdown-open .sb-liquid-caret {
+    transform: rotate(180deg);
+}
+
+/* Dropdown */
+.sb-liquid-dropdown {
+    position: absolute;
+    top: calc(100% + 10px);
+    transform: translateX(-50%) translateY(-6px);
+    min-width: 280px;
+    max-width: 560px;
+    background: var(--sb-color-bg, #fff);
+    border: 1px solid var(--sb-color-border, #e5e7eb);
+    border-radius: 12px;
+    padding: 12px;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.12);
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s ease;
+    z-index: 999;
+}
+
+.sb-liquid-item.sb-dropdown-open .sb-liquid-dropdown {
+    opacity: 1;
+    visibility: visible;
+}
+
+.sb-liquid-dropdown-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 4px;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.sb-liquid-dropdown-grid::-webkit-scrollbar {
+    width: 6px;
+}
+
+.sb-liquid-dropdown-grid::-webkit-scrollbar-track {
+    background: var(--sb-color-bg-alt, #f2f2f2);
+    border-radius: 10px;
+}
+
+.sb-liquid-dropdown-grid::-webkit-scrollbar-thumb {
+    background: var(--sb-color-link, #2563eb);
+    border-radius: 10px;
+}
+
+.sb-liquid-dropdown a {
+    color: var(--sb-color-text, #111);
+    padding: 9px 12px;
+    display: block;
+    font-size: 14px;
+    font-weight: 500;
+    border-radius: 8px;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+
+.sb-liquid-dropdown a:hover {
+    background: var(--sb-color-bg-alt, #f2f6ff);
+    color: var(--sb-color-link, #2563eb);
+}
+
+/* View All button */
+.sb-liquid-view-all {
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 12px 16px !important;
+    background: var(--sb-color-link, #2563eb) !important;
+    color: #fff !important;
+    font-weight: 600 !important;
+    border-radius: 10px !important;
+    transition: all 0.3s ease !important;
+    grid-column: 1 / -1;
+    margin-top: 4px;
+}
+
+.sb-liquid-view-all:hover {
+    background: var(--sb-color-link-hover, #1d4ed8) !important;
+    transform: scale(1.02) !important;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+}
+
+.sb-liquid-view-all svg {
+    flex-shrink: 0;
+}
+
+.sb-liquid-view-all span {
+    font-size: 14px;
+    letter-spacing: 0.02em;
+}
+
+/* Mobile toggle */
+.sb-header-liquid-toggle {
+    display: none;
+    width: 40px;
+    height: 40px;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 5px;
+    background: none;
+    border: 1px solid var(--sb-color-border, #e5e7eb);
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+.sb-header-liquid-toggle span {
+    display: block;
+    width: 18px;
+    height: 2px;
+    background: #ffffff;
+    transition: all 0.3s ease;
+}
+
+.sb-header-liquid-toggle[aria-expanded="true"] span:nth-child(1) {
+    transform: translateY(7px) rotate(45deg);
+}
+
+.sb-header-liquid-toggle[aria-expanded="true"] span:nth-child(2) {
+    opacity: 0;
+}
+
+.sb-header-liquid-toggle[aria-expanded="true"] span:nth-child(3) {
+    transform: translateY(-7px) rotate(-45deg);
+}
+
+@media (max-width: 900px) {
+    .sb-header-liquid-toggle {
+        display: flex;
+    }
+
+    .sb-liquid-indicator {
+        display: none;
+    }
+
+    .sb-header-liquid-nav {
+        display: none;
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: var(--sb-color-bg, #fff);
+        border-top: 1px solid var(--sb-color-border, #e5e7eb);
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+    }
+
+    .sb-header-liquid-nav.is-open {
+        display: block;
+    }
+
+    .sb-header-liquid-menu {
+        flex-direction: column;
+        align-items: stretch;
+        padding: 8px 16px;
+        gap: 2px;
+    }
+
+    .sb-liquid-link,
+    .sb-liquid-pill-link,
+    .sb-liquid-trigger {
+        height: auto;
+        padding: 12px 8px;
+    }
+
+    .sb-liquid-pill {
+        justify-content: space-between;
+    }
+
+    .sb-liquid-dropdown {
+        position: relative;
+        transform: none;
+        box-shadow: none;
+        border: none;
+        border-radius: 8px;
+        background: var(--sb-color-bg-alt, #f7f7fb);
+        margin: 2px 0 6px;
+        display: none;
+    }
+
+    .sb-liquid-item.sb-dropdown-open .sb-liquid-dropdown {
+        display: block;
+        opacity: 1;
+        visibility: visible;
+    }
+
+    .sb-liquid-dropdown-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .sb-liquid-indicator,
+    .sb-liquid-link,
+    .sb-liquid-pill-link,
+    .sb-liquid-dropdown,
+    .sb-liquid-trigger,
+    .sb-liquid-caret {
+        transition: none !important;
+    }
+}
+
+.sb-header-liquid-brand h1 {
+    margin: 0 !important;
+}
+
+h1 {
+   margin: 0!important;
+}
+
+body.sb-site li {
+    margin-bottom: 0!important;
+}

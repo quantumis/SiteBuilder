@@ -1,0 +1,154 @@
+/* vault-ledger footer — a bordered "ledger" card holds brand + three link
+   columns, separated by gold hairline dividers, then a bottom band with the
+   copyright and an 18+ responsible-gambling disclaimer. Built for the
+   noir-gold scheme; falls back gracefully on light schemes via var defaults. */
+.sb-footer-vault-ledger {
+    background: var(--sb-color-bg, #0b0b0d);
+    color: var(--sb-color-text, #f4f1e8);
+    padding: 40px 20px;
+}
+.sb-footer-vault-ledger-inner {
+    max-width: var(--sb-content-max-width, 1080px);
+    margin: 0 auto;
+}
+/* The ledger card */
+.sb-footer-vault-ledger-card {
+    border: none;
+    border-radius: 0;
+    background: transparent;
+    padding: 34px 0 22px;
+}
+/* Top band: brand column wider, three link columns to the right */
+.sb-footer-vault-ledger-top {
+    display: grid;
+    grid-template-columns: 1.7fr 1fr 1fr 1fr;
+    gap: 30px;
+    align-items: start;
+    padding-bottom: 24px;
+    border-bottom: 1px solid var(--sb-color-accent, #d4af37);
+}
+/* Brand column */
+.sb-footer-vault-ledger-intro {
+    min-width: 0;
+}
+.sb-footer-vault-ledger-intro img {
+    max-height: 42px;
+    width: auto;
+    display: block;
+    margin-bottom: 12px;
+}
+.sb-footer-vault-ledger-name {
+    display: inline-block;
+    font-family: var(--sb-font-heading, var(--sb-font-body, sans-serif));
+    font-size: 1.3em;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    color: var(--sb-color-text, #f4f1e8);
+    text-decoration: none;
+}
+.sb-footer-vault-ledger-desc {
+    margin: 10px 0 0;
+    color: var(--sb-color-muted, #9a958a);
+    font-size: 0.9em;
+    line-height: 1.6;
+    max-width: 42ch;
+}
+/* Link columns */
+.sb-footer-vault-ledger-col {
+    min-width: 0;
+}
+.sb-footer-vault-ledger-heading {
+    margin: 0 0 14px;
+    padding-bottom: 6px;
+    font-family: var(--sb-font-heading, var(--sb-font-body, sans-serif));
+    font-size: 0.78em;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--sb-color-accent, #d4af37);
+    border-bottom: 1px solid var(--sb-color-border, #2a2a2f);
+}
+.sb-footer-vault-ledger-col ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+}
+.sb-footer-vault-ledger-col a {
+    color: var(--sb-color-muted, #9a958a);
+    text-decoration: none;
+    font-size: 0.9em;
+    font-weight: 500;
+    transition: color 0.15s;
+}
+.sb-footer-vault-ledger-col a:hover,
+.sb-footer-vault-ledger-col .current-menu-item > a {
+    color: var(--sb-color-accent, #d4af37);
+}
+/* Bottom band */
+.sb-footer-vault-ledger-bottom {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+    padding-top: 18px;
+}
+.sb-footer-vault-ledger-copy {
+    margin: 0;
+    color: var(--sb-color-muted, #9a958a);
+    font-size: 0.82em;
+}
+.sb-footer-vault-ledger-disclaimer {
+    margin: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--sb-color-muted, #9a958a);
+    font-size: 0.82em;
+}
+.sb-footer-vault-ledger-age {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 30px;
+    height: 22px;
+    padding: 0 6px;
+    border: 1px solid var(--sb-color-accent, #d4af37);
+    border-radius: 3px;
+    color: var(--sb-color-accent, #d4af37);
+    font-size: 0.9em;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+}
+/* Tablet: brand full row, three link columns share the next row */
+@media (max-width: 860px) {
+    .sb-footer-vault-ledger-top {
+        grid-template-columns: 1fr 1fr 1fr;
+    }
+    .sb-footer-vault-ledger-intro {
+        grid-column: 1 / -1;
+    }
+}
+/* Mobile: single column stack */
+@media (max-width: 600px) {
+    .sb-footer-vault-ledger {
+        padding: 26px 14px;
+    }
+    .sb-footer-vault-ledger-card {
+        padding: 24px 18px 16px;
+    }
+    .sb-footer-vault-ledger-top {
+        grid-template-columns: 1fr;
+        gap: 22px;
+    }
+    .sb-footer-vault-ledger-intro {
+        grid-column: auto;
+    }
+    .sb-footer-vault-ledger-bottom {
+        justify-content: flex-start;
+    }
+}

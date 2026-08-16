@@ -1,0 +1,17 @@
+/* Style variant: Bright (default light scheme).
+ * White background, deep-blue accents, sans-serif typography.
+ */
+:root {
+    --sb-color-bg: #ffffff;
+    --sb-color-bg-alt: #f8f9fa;
+    --sb-color-text: #1f2937;
+    --sb-color-muted: #6b7280;
+    --sb-color-link: #2563eb;
+    --sb-color-accent: #2563eb;
+    --sb-color-border: #e5e7eb;
+    --sb-font-body: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+    --sb-font-heading: var(--sb-font-body);
+    --sb-font-size: 16px;
+    --sb-line-height: 1.65;
+    --sb-content-max-width: 920px;
+}

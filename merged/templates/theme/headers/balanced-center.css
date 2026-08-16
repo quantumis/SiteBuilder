@@ -1,0 +1,578 @@
+/* templates/theme/headers/balanced-center.css */
+
+.sb-header-balanced-center {
+    padding: 20px 20px 0px;
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(12px) saturate(180%);
+    -webkit-backdrop-filter: blur(12px) saturate(180%);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+    position: relative;
+    z-index: 1000;
+    transition: box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+}
+
+.sb-header-balanced-center a {
+    text-decoration: none;
+}
+
+.sb-header-balanced-center a::after {
+    display: none !important;
+    content: none !important;
+}
+
+.sb-header-balanced-center.scrolled {
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+}
+
+.sb-header-balanced-center-inner {
+    max-width: 1200px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+}
+
+/* ===================================================================
+   BRAND
+   =================================================================== */
+
+.sb-header-balanced-center-brand {
+    margin: 0 0 16px 0;
+    font-size: 0;
+    line-height: 1;
+}
+
+.sb-header-balanced-center-brand a {
+    display: inline-flex;
+    align-items: center;
+    color: var(--sb-color-text, #111);
+    font-size: 26px;
+    font-weight: 800;
+    font-family: var(--sb-font-heading, sans-serif);
+    letter-spacing: -0.03em;
+    transition: transform 0.3s ease, filter 0.3s ease;
+    background: linear-gradient(135deg, var(--sb-color-text, #111) 0%, var(--sb-color-link, #2563eb) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.sb-header-balanced-center-brand a:hover {
+    transform: scale(1.05);
+    filter: brightness(1.2);
+}
+
+.sb-header-balanced-center-brand img {
+    max-height: 32px;
+    width: auto;
+    display: block;
+}
+
+/* ===================================================================
+   MOBILE TOGGLE
+   =================================================================== */
+
+.sb-header-balanced-center-toggle {
+    display: none;
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 44px;
+    height: 44px;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 5px;
+    background: rgba(255, 255, 255, 0.9);
+    border: 2px solid var(--sb-color-link, #2563eb);
+    cursor: pointer;
+    padding: 8px;
+    z-index: 100;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    transition: background 0.3s ease;
+}
+
+.sb-header-balanced-center-toggle:hover {
+    background: var(--sb-color-link, #2563eb);
+}
+
+.sb-header-balanced-center-toggle span {
+    display: block !important;
+    width: 20px !important;
+    height: 2px !important;
+    background: #cbcbb9 !important;
+    transition: transform 0.3s ease, opacity 0.3s ease, background 0.3s ease !important;
+    border-radius: 2px !important;
+    flex-shrink: 0 !important;
+}
+
+.sb-header-balanced-center-toggle:hover span,
+.sb-header-balanced-center-toggle[aria-expanded="true"] span {
+    background: #fff !important;
+}
+
+.sb-header-balanced-center-toggle[aria-expanded="true"] {
+    background: var(--sb-color-link, #2563eb);
+}
+
+.sb-header-balanced-center-toggle[aria-expanded="true"] span:nth-child(1) {
+    transform: translateY(7px) rotate(45deg);
+}
+
+.sb-header-balanced-center-toggle[aria-expanded="true"] span:nth-child(2) {
+    opacity: 0;
+}
+
+.sb-header-balanced-center-toggle[aria-expanded="true"] span:nth-child(3) {
+    transform: translateY(-7px) rotate(-45deg);
+}
+
+/* ===================================================================
+   NAV — a centered row of pill buttons, fixed height, never reflows
+   =================================================================== */
+
+.sb-header-balanced-center-nav {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+}
+
+.sb-header-balanced-center-nav .sb-menu {
+    list-style: none;
+    padding-bottom: 1rem;
+    margin: 0;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px;
+    flex-direction: row-reverse;
+}
+
+.sb-balanced-item {
+    margin: 0;
+    position: relative;
+}
+
+/* the pill itself — link and, when present, trigger button share one
+   visual capsule so plain and dropdown items line up identically */
+.sb-balanced-link,
+.sb-balanced-pill {
+    height: 40px;
+    border-radius: 999px;
+    border: 1.5px solid var(--sb-color-link, #2563eb);
+    background: #fff;
+    transition: background 0.25s ease, border-color 0.25s ease, transform 0.2s ease, box-shadow 0.25s ease;
+}
+
+.sb-balanced-link-plain {
+    display: block;
+    line-height: 40px;
+    color: var(--sb-color-text, #111);
+    font-size: 13.5px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    padding: 0 20px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 220px;
+}
+
+.sb-balanced-link-plain:hover {
+    color: #fff;
+    background: var(--sb-color-link, #2563eb);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px -4px rgba(37, 99, 235, 0.45);
+}
+
+.sb-balanced-item.current-menu-item > .sb-balanced-link-plain {
+    color: #fff;
+    background: var(--sb-color-link, #2563eb);
+}
+
+/* dropdown pill: link + separate caret button, both inside one capsule */
+.sb-balanced-pill {
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+}
+
+.sb-balanced-pill:hover,
+.sb-balanced-pill:focus-within,
+.sb-balanced-item.sb-dropdown-open .sb-balanced-pill {
+    background: var(--sb-color-link, #2563eb);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px -4px rgba(37, 99, 235, 0.45);
+}
+
+.sb-balanced-link {
+    display: flex;
+    align-items: center;
+    color: var(--sb-color-text, #111);
+    font-size: 13.5px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    padding: 0px 10px 4px 10px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    transition: color 0.25s ease;
+}
+
+.sb-balanced-trigger {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    padding: 0 6px 0 6px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--sb-color-text, #111);
+}
+
+.sb-balanced-link:focus-visible,
+.sb-balanced-link-plain:focus-visible,
+.sb-balanced-trigger:focus-visible,
+.sb-header-balanced-center-brand a:focus-visible {
+    outline: 2px solid var(--sb-color-link, #2563eb);
+    outline-offset: 3px;
+    border-radius: 999px;
+}
+
+.sb-balanced-caret {
+    width: 9px;
+    height: 9px;
+    flex-shrink: 0;
+    transition: transform 0.25s ease;
+}
+
+.sb-balanced-item.sb-dropdown-open .sb-balanced-caret {
+    transform: rotate(180deg);
+}
+
+/* ===================================================================
+   DROPDOWN — floats below its own pill, never disturbs sibling layout.
+   Height animates via grid-template-rows: no JS measuring needed.
+   =================================================================== */
+
+.sb-balanced-dropdown {
+    position: absolute;
+    top: calc(100% + 10px);
+    left: 50%;
+    transform: translateX(-50%);
+    width: max-content;
+    min-width: 280px;
+    max-width: min(640px, 90vw);
+    z-index: 999;
+    display: grid;
+    grid-template-rows: 0fr;
+    transition: grid-template-rows 0.25s cubic-bezier(0.4, 0, 0.2, 1), max-height 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    pointer-events: none;
+    opacity: 0;
+    visibility: hidden;
+    max-height: 0;
+    overflow: hidden;
+}
+
+.sb-balanced-item.sb-dropdown-open .sb-balanced-dropdown {
+    grid-template-rows: 1fr;
+    pointer-events: auto;
+    opacity: 1;
+    visibility: visible;
+    max-height: 500px;
+    overflow: visible;
+}
+
+.sb-balanced-dropdown-grid {
+    overflow: hidden;
+}
+
+.sb-balanced-dropdown-grid > div,
+.sb-balanced-dropdown-grid {
+    background: rgba(255, 255, 255, 0.98);
+    backdrop-filter: blur(16px);
+}
+
+.sb-balanced-dropdown-grid {
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.14);
+    border-radius: 18px;
+    padding: 14px;
+    margin-top: 2px;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 4px;
+    max-height: 420px;
+    overflow-y: auto;
+}
+
+.sb-balanced-dropdown-grid::-webkit-scrollbar {
+    width: 8px;
+}
+
+.sb-balanced-dropdown-grid::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.05);
+    border-radius: 10px;
+}
+
+.sb-balanced-dropdown-grid::-webkit-scrollbar-thumb {
+    background: var(--sb-color-link, #2563eb);
+    border-radius: 10px;
+}
+
+.sb-balanced-dropdown-grid a {
+    color: var(--sb-color-text, #111);
+    padding: 10px 14px;
+    display: block;
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 1.35;
+    border-radius: 10px;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+
+.sb-balanced-dropdown-grid a:hover,
+.sb-balanced-dropdown-grid a:focus-visible {
+    background: var(--sb-color-bg-alt, #f2f6ff);
+    color: var(--sb-color-link, #2563eb);
+}
+
+.sb-balanced-dropdown-grid a:focus-visible {
+    outline: 2px solid var(--sb-color-link, #2563eb);
+    outline-offset: -2px;
+}
+
+/* View All button */
+.sb-balanced-view-all {
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 12px 16px !important;
+    background: var(--sb-color-link, #2563eb) !important;
+    color: #fff !important;
+    font-weight: 600 !important;
+    border-radius: 10px !important;
+    transition: all 0.3s ease !important;
+    grid-column: 1 / -1;
+    margin-top: 4px;
+}
+
+.sb-balanced-view-all:hover {
+    background: var(--sb-color-link-hover, #1d4ed8) !important;
+    transform: scale(1.02) !important;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+}
+
+.sb-balanced-view-all svg {
+    flex-shrink: 0;
+}
+
+.sb-balanced-view-all span {
+    font-size: 14px;
+    letter-spacing: 0.02em;
+}
+
+/* ===================================================================
+   MOBILE — burger + accordion
+   =================================================================== */
+
+@media (max-width: 768px) {
+    .sb-header-balanced-center {
+        padding: 20px 20px 20px;
+    }
+
+    .sb-header-balanced-center-inner {
+        align-items: flex-start;
+    }
+
+    .sb-header-balanced-center-brand {
+        max-width: calc(100% - 60px);
+        margin-bottom: 0;
+    }
+
+    .sb-header-balanced-center-toggle {
+        display: flex;
+    }
+
+    .sb-header-balanced-center-nav {
+        display: none;
+        width: 100%;
+        margin-top: 16px;
+    }
+
+    .sb-header-balanced-center-nav.is-open {
+        display: block;
+    }
+
+    .sb-header-balanced-center-nav .sb-menu {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0;
+    }
+
+    .sb-balanced-item {
+        border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+    }
+
+    .sb-balanced-item:last-child {
+        border-bottom: none;
+    }
+
+    .sb-balanced-link,
+    .sb-balanced-link-plain,
+    .sb-balanced-pill {
+        height: auto;
+        border: none;
+        border-radius: 0;
+        background: none !important;
+        box-shadow: none !important;
+        transform: none !important;
+        width: 100%;
+        max-width: none;
+    }
+
+    .sb-balanced-link-plain {
+        color: var(--sb-color-text, #111);
+        font-size: 16px;
+        padding: 4px 4px;
+    }
+
+    .sb-balanced-pill {
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    .sb-balanced-link {
+        color: var(--sb-color-text, #111) !important;
+        font-size: 16px;
+        padding: 4px 4px;
+        max-width: none;
+        flex: 1;
+    }
+
+    .sb-balanced-trigger {
+        color: var(--sb-color-text, #111) !important;
+        width: 40px;
+        padding: 0;
+    }
+
+    .sb-balanced-item.current-menu-item > .sb-balanced-link-plain {
+        color: var(--sb-color-link, #2563eb);
+    }
+
+    /* dropdown becomes an inline accordion panel instead of a floating card */
+    .sb-balanced-dropdown {
+        position: static;
+        transform: none;
+        width: 100%;
+        min-width: 0;
+        max-width: none;
+        top: auto;
+        display: none;
+        opacity: 1;
+        visibility: visible;
+    }
+    
+    .sb-balanced-item.sb-dropdown-open .sb-balanced-dropdown {
+        display: block;
+    }
+
+    .sb-balanced-dropdown-grid {
+        background: transparent;
+        border: none;
+        box-shadow: none;
+        border-radius: 0;
+        margin-top: 0;
+        padding: 4px 0 12px 4px;
+        max-height: calc(3 * 44px);
+        overflow-y: auto;
+        grid-template-columns: repeat(3, 1fr);
+    }
+
+    .sb-balanced-dropdown-grid::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    .sb-balanced-dropdown-grid::-webkit-scrollbar-track {
+        background: rgba(0, 0, 0, 0.05);
+        border-radius: 10px;
+    }
+
+    .sb-balanced-dropdown-grid::-webkit-scrollbar-thumb {
+        background: var(--sb-color-link, #2563eb);
+        border-radius: 10px;
+    }
+
+    .sb-balanced-dropdown-grid a {
+        color: var(--sb-color-muted, #6b7280);
+        font-size: 13.5px;
+        padding: 9px 8px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .sb-header-balanced-center,
+    .sb-header-balanced-center-brand a,
+    .sb-balanced-link,
+    .sb-balanced-pill,
+    .sb-balanced-caret,
+    .sb-balanced-dropdown {
+        transition: none !important;
+    }
+}
+
+.sb-site-content {
+    padding: 0 20px;
+}
+
+body.sb-site li {
+    margin-bottom: 0;
+}
+
+.sb-balanced-link .sb-balanced-link-plain {
+    padding: 0;
+}
+
+body.sb-site button {
+    height: 37px;
+}
+
+body.sb-site button, body.sb-site input[type="submit"], body.sb-site input[type="button"] {
+    box-shadow: unset;
+    border: unset;
+    border-radius: 2rem;
+}
+
+body.sb-site button:hover, body.sb-site input[type="submit"]:hover, body.sb-site input[type="button"]:hover {
+    box-shadow: unset;
+    border: unset;
+    border-radius: 2rem;
+}
+
+ul {
+    display: block;
+    list-style-type: disc;
+    margin-block-start: 0em;
+    margin-block-end: 0em;
+    padding-inline-start: 0px;
+    unicode-bidi: isolate;
+}
+
+@media (max-width: 450px) {
+    .sb-balanced-dropdown-grid {
+        grid-template-columns: repeat(1, 1fr);
+    }
+}
+
+@media (max-width: 769px) {
+        body.sb-site li {
+            margin-bottom: 0;
+            width: 100%;
+            max-width: 100%;
+    }
+}

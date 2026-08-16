@@ -1,0 +1,611 @@
+/* templates/theme/headers/floating-circle.css */
+
+.sb-header-floating-circle {
+    position: sticky;
+    top: 20px;
+    z-index: 1000;
+    margin: 20px auto 40px;
+    max-width: 100%;
+    padding: 0 20px;
+    transition: top 0.3s ease;
+}
+
+.sb-header-floating-circle a {
+    text-decoration: none;
+}
+
+.sb-header-floating-circle a::after {
+    display: none !important;
+    content: none !important;
+}
+
+.sb-header-floating-circle-inner {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    background: var(--sb-color-bg, #fff);
+    border: 2px solid var(--sb-color-border, #e5e7eb);
+    border-radius: 20px;
+    padding: 12px 24px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+    transition: padding 0.3s ease, box-shadow 0.3s ease;
+    max-width: 1400px;
+    margin: 0 auto;
+    flex-direction: row-reverse;
+}
+
+.sb-header-floating-circle.scrolled .sb-header-floating-circle-inner {
+    padding: 10px 24px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+}
+
+/* ===================================================================
+   NAV — top level items
+   =================================================================== */
+
+.sb-header-floating-circle-nav {
+    min-width: 0;
+}
+
+.sb-header-floating-circle-nav .sb-menu {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+    align-items: center;
+    flex-direction: row-reverse;
+}
+
+.sb-header-floating-circle-nav-left .sb-menu {
+    justify-content: flex-end;
+}
+
+.sb-header-floating-circle-nav-right .sb-menu {
+    justify-content: flex-start;
+}
+
+.sb-header-floating-circle-nav .sb-menu > li {
+    margin: 0;
+    position: relative;
+}
+
+/* plain items — no children */
+.sb-header-floating-circle-nav .sb-menu > li > a {
+    font: inherit;
+    color: var(--sb-color-text, #111);
+    font-size: 13px;
+    font-weight: 600;
+    padding: 5px 5px;
+    display: block;
+    border-radius: 8px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 180px;
+    transition: background 0.2s ease, color 0.2s ease;
+}
+
+.sb-header-floating-circle-nav .sb-menu > li > a:hover {
+    color: var(--sb-color-link, #2563eb);
+    background: var(--sb-color-bg-alt, #f9fafb);
+}
+
+.sb-header-floating-circle-nav .sb-menu > li.current > a {
+    color: var(--sb-color-link, #2563eb);
+}
+
+/* items WITH children: label + caret are two independent controls that
+   share one visual pill. The label keeps its own href — clicking it
+   navigates like any normal link. Only the caret opens the mega panel. */
+.sb-item-group {
+    display: flex;
+    align-items: center;
+    border-radius: 8px;
+    transition: background 0.2s ease;
+}
+
+.sb-item-group:hover,
+.sb-item-group:focus-within {
+    background: var(--sb-color-bg-alt, #f9fafb);
+}
+
+.sb-parent-link {
+    font: inherit;
+    color: var(--sb-color-text, #111);
+    font-size: 13px;
+    font-weight: 600;
+    padding: 9px 5px 9px 5px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 160px;
+    transition: color 0.2s ease;
+}
+
+.sb-item-group:hover > .sb-parent-link,
+li.sb-mega-active .sb-parent-link {
+    color: var(--sb-color-link, #2563eb);
+}
+
+.sb-trigger {
+    display: flex;
+    align-items: center;
+    padding: 9px 12px 9px 3px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: inherit;
+}
+
+.sb-header-floating-circle-nav .sb-menu > li > a:focus-visible,
+.sb-parent-link:focus-visible,
+.sb-trigger:focus-visible,
+.sb-header-floating-circle-brand a:focus-visible {
+    outline: 2px solid var(--sb-color-link, #2563eb);
+    outline-offset: 2px;
+    border-radius: 8px;
+}
+
+.sb-trigger-caret {
+    width: 8px;
+    height: 8px;
+    flex-shrink: 0;
+    transition: transform 0.25s ease;
+}
+
+li.sb-mega-active .sb-trigger-caret {
+    transform: rotate(180deg);
+}
+
+/* mega-grid-data is the raw source markup, hidden until JS moves its
+   contents into the shared mega panel */
+.sb-mega-grid-data[hidden] {
+    display: none;
+}
+
+/* ===================================================================
+   BRAND / LOGO
+   =================================================================== */
+
+.sb-header-floating-circle-brand {
+    margin: 0;
+    flex-shrink: 0;
+    position: relative;
+    z-index: 2;
+}
+
+.sb-header-floating-circle-brand a {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 160px !important;
+    min-width: 160px !important;
+    text-decoration: none;
+    transition: transform 0.3s ease, box-shadow 0.3s ease, width 0.3s ease, min-width 0.3s ease;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+}
+
+.sb-header-floating-circle.scrolled .sb-header-floating-circle-brand a {
+    width: 140px !important;
+    min-width: 140px !important;
+}
+
+.sb-header-floating-circle-brand a:hover {
+    transform: scale(1.1);
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.2);
+}
+
+.sb-header-floating-circle-brand img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.sb-header-floating-circle-brand span {
+    color: #fff;
+    font-size: 16px;
+    font-weight: 800;
+    font-family: var(--sb-font-heading, sans-serif);
+    text-align: center;
+}
+
+/* the signature detail: a hairline that grows from the logo down
+   toward the mega panel when it's open */
+.sb-mega-connector {
+    position: absolute;
+    left: 50%;
+    top: 100%;
+    transform: translateX(-50%);
+    width: 1px;
+    height: 0;
+    background: var(--sb-color-border, #e5e7eb);
+    transition: height 0.25s ease;
+    pointer-events: none;
+}
+
+.sb-header-floating-circle.sb-mega-open .sb-mega-connector {
+    height: 16px;
+    background: var(--sb-color-link, #2563eb);
+}
+
+/* ===================================================================
+   MEGA PANEL — one shared surface, aligned to the header capsule's own
+   centering (same max-width/side padding) so edges always line up.
+   Height animates via grid-template-rows: no JS measuring needed.
+   =================================================================== */
+
+.sb-mega-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(17, 17, 17, 0.28);
+    backdrop-filter: blur(3px);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s ease;
+    z-index: 998;
+}
+
+.sb-mega-backdrop.is-open {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.sb-mega-shell {
+    position: fixed;
+    left: 20px;
+    right: 20px;
+    max-width: 1400px;
+    margin-inline: auto;
+    top: calc(var(--sb-header-h, 88px) + 12px);
+    z-index: 999;
+    display: grid;
+    grid-template-rows: 0fr;
+    transition: grid-template-rows 0.3s ease;
+    pointer-events: none;
+}
+
+.sb-mega-shell.is-open {
+    grid-template-rows: 1fr;
+    pointer-events: auto;
+}
+
+.sb-mega-shell-inner {
+    overflow: hidden;
+}
+
+.sb-mega-panel {
+    background: var(--sb-color-bg, #fff);
+    border: 2px solid var(--sb-color-border, #e5e7eb);
+    border-radius: 20px;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.14);
+    padding: 24px 28px;
+    margin-top: 4px;
+}
+
+.sb-mega-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 6px 28px;
+}
+
+.sb-mega-grid a {
+    display: block;
+    padding: 9px 10px;
+    border-radius: 8px;
+    color: var(--sb-color-text, #111);
+    font-size: 14px;
+    line-height: 1.4;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+
+.sb-mega-grid a:hover,
+.sb-mega-grid a:focus-visible {
+    background: var(--sb-color-bg-alt, #f9fafb);
+    color: var(--sb-color-link, #2563eb);
+}
+
+.sb-mega-grid a:focus-visible {
+    outline: 2px solid var(--sb-color-link, #2563eb);
+    outline-offset: -2px;
+}
+
+/* View All button */
+.sb-floating-view-all {
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 12px 16px !important;
+    background: var(--sb-color-link, #2563eb) !important;
+    color: #fff !important;
+    font-weight: 600 !important;
+    border-radius: 10px !important;
+    transition: all 0.3s ease !important;
+    grid-column: 1 / -1;
+    margin-top: 8px;
+    max-width: 300px;
+    margin: 0 auto;
+}
+
+.sb-floating-view-all {
+    width: 32px;
+    height: 22px;
+}
+
+.sb-floating-view-all:hover {
+    background: var(--sb-color-link-hover, #1d4ed8) !important;
+    transform: scale(1.02) !important;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+}
+
+.sb-floating-view-all svg {
+    flex-shrink: 0;
+}
+
+.sb-floating-view-all span {
+    font-size: 14px;
+    letter-spacing: 0.02em;
+}
+
+/* ===================================================================
+   MOBILE — burger + accordion, same component, same tokens
+   =================================================================== */
+
+.sb-header-floating-circle-toggle {
+    display: none;
+}
+
+.sb-header-floating-circle-mobile-menu {
+    display: none;
+}
+
+@media (max-width: 968px) {
+    .sb-header-floating-circle {
+        top: 0;
+        margin: 0;
+        max-width: 100%;
+        padding: 0;
+    }
+
+    .sb-header-floating-circle-inner {
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        border-radius: 0;
+        border-left: none;
+        border-right: none;
+        padding: 16px 20px;
+        gap: 16px;
+    }
+
+    .sb-header-floating-circle-nav,
+    .sb-mega-backdrop,
+    .sb-mega-shell {
+        display: none !important;
+    }
+
+    .sb-header-floating-circle-brand {
+        order: 2 !important;
+        margin: 0;
+    }
+
+    .sb-header-floating-circle-brand a {
+        width: 150px !important;
+        min-width: 150px !important;
+    }
+
+    .sb-header-floating-circle-toggle {
+        display: flex !important;
+        flex-direction: column !important;
+        justify-content: center;
+        align-items: center;
+        gap: 5px;
+        width: 48px;
+        height: 48px;
+        background: var(--sb-color-link, #2563eb) !important;
+        border: none !important;
+        border-radius: 50% !important;
+        cursor: pointer;
+        padding: 0 !important;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+        transition: background 0.2s ease !important;
+        text-transform: none !important;
+        letter-spacing: 0 !important;
+        position: relative;
+        order: 1 !important;
+        flex-shrink: 0 !important;
+        font-size: 0 !important;
+        line-height: 1 !important;
+        margin: 0 !important;
+    }
+
+    .sb-header-floating-circle-toggle:hover {
+        background: var(--sb-color-accent, #1e40af) !important;
+    }
+
+    .sb-header-floating-circle-toggle:focus-visible {
+        outline: 2px solid var(--sb-color-text, #111);
+        outline-offset: 3px;
+    }
+
+    .sb-header-floating-circle-toggle span {
+        display: block !important;
+        width: 20px !important;
+        height: 2px !important;
+        background: #ffffff !important;
+        transition: transform 0.3s ease, opacity 0.3s ease !important;
+        border-radius: 2px !important;
+        flex-shrink: 0 !important;
+    }
+
+    .sb-header-floating-circle-toggle[aria-expanded="true"] span:nth-child(1) {
+        transform: translateY(7px) rotate(45deg);
+    }
+
+    .sb-header-floating-circle-toggle[aria-expanded="true"] span:nth-child(2) {
+        opacity: 0;
+    }
+
+    .sb-header-floating-circle-toggle[aria-expanded="true"] span:nth-child(3) {
+        transform: translateY(-7px) rotate(-45deg);
+    }
+
+    .sb-header-floating-circle-mobile-menu {
+        display: block;
+        max-height: 0;
+        overflow: hidden;
+        background: var(--sb-color-bg, #fff);
+        transition: max-height 0.3s ease;
+        border-bottom: 1px solid transparent;
+    }
+
+    .sb-header-floating-circle-mobile-menu.is-open {
+        max-height: calc(100vh - 90px);
+        overflow-y: auto;
+        border-bottom-color: var(--sb-color-border, #e5e7eb);
+    }
+
+    .sb-header-floating-circle-mobile-menu .sb-menu {
+        list-style: none;
+        flex-direction: column;
+        align-items: stretch;
+        display: flex;
+        padding: 12px 20px 20px;
+        margin: 0;
+        gap: 0;
+    }
+
+    .sb-header-floating-circle-mobile-menu .sb-menu > li {
+        margin: 0;
+        border-bottom: 1px solid var(--sb-color-border, #e5e7eb);
+    }
+
+    .sb-header-floating-circle-mobile-menu .sb-menu > li:last-child {
+        border-bottom: none;
+    }
+
+    .sb-header-floating-circle-mobile-menu .sb-menu > li > a {
+        width: 100%;
+        color: var(--sb-color-text, #111);
+        font-size: 16px;
+        font-weight: 600;
+        padding: 15px 0;
+        display: block;
+        max-width: none;
+    }
+
+    .sb-header-floating-circle-mobile-menu .sb-item-group {
+        width: 100%;
+        justify-content: space-between;
+        border-radius: 0;
+    }
+
+    .sb-header-floating-circle-mobile-menu .sb-item-group:hover,
+    .sb-header-floating-circle-mobile-menu .sb-item-group:focus-within {
+        background: none;
+    }
+
+    .sb-header-floating-circle-mobile-menu .sb-parent-link {
+        font-size: 16px;
+        padding: 15px 0;
+        flex: 1;
+    }
+
+    .sb-header-floating-circle-mobile-menu .sb-trigger {
+        padding: 15px 4px 15px 12px;
+    }
+
+    .sb-mobile-submenu {
+        display: grid;
+        grid-template-rows: 0fr;
+        transition: grid-template-rows 0.25s ease;
+    }
+
+    .sb-mobile-submenu-inner {
+        overflow: hidden;
+    }
+
+    li.sb-mega-active > .sb-mobile-submenu {
+        grid-template-rows: 1fr;
+    }
+
+    .sb-mobile-submenu .sb-mega-grid {
+        grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+        padding: 2px 0 14px;
+        gap: 2px 20px;
+        max-height: calc(3 * 44px);
+        overflow-y: auto;
+    }
+
+    .sb-mobile-submenu .sb-mega-grid::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    .sb-mobile-submenu .sb-mega-grid::-webkit-scrollbar-track {
+        background: rgba(0, 0, 0, 0.05);
+        border-radius: 10px;
+    }
+
+    .sb-mobile-submenu .sb-mega-grid::-webkit-scrollbar-thumb {
+        background: var(--sb-color-link, #2563eb);
+        border-radius: 10px;
+    }
+
+    .sb-mobile-submenu .sb-mega-grid a {
+        font-size: 14.5px;
+        color: var(--sb-color-muted, #6b7280);
+        padding: 10px 10px 10px 4px;
+        margin: 0 auto;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .sb-header-floating-circle,
+    .sb-header-floating-circle-inner,
+    .sb-header-floating-circle-brand a,
+    .sb-mega-connector,
+    .sb-mega-backdrop,
+    .sb-mega-shell,
+    .sb-trigger-caret,
+    .sb-header-floating-circle-mobile-menu,
+    .sb-mobile-submenu {
+        transition: none !important;
+    }
+}
+
+body.sb-site button {
+    background: var(--sb-color-button-bg, linear-gradient(135deg, var(--sb-color-link, #2563eb) 0%, var(--sb-color-accent, #1e40af) 100%));
+    color: var(--sb-color-button-text, #ffffff);
+    border: none;
+    padding: 4px 12px!important;
+    border-radius: 28px;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: var(--sb-shadow-sm);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+h1 {
+    margin: 0 !important;
+}
+
+ul {
+    display: block;
+    list-style-type: disc;
+    margin-block-start: 0em;
+    margin-block-end: 0em;
+    padding-inline-start: 0px;
+    unicode-bidi: isolate;
+}
+
+.sb-site-content {
+        padding: 0px 20px;
+}

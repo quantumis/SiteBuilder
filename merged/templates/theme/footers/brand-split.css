@@ -1,0 +1,99 @@
+/* brand-split — large brand area + compact link columns */
+.sb-footer-brand-split {
+    margin-top: 48px;
+    padding: 54px 20px 22px;
+    background: var(--sb-color-bg-alt, #f8f9fa);
+    border-top: 1px solid var(--sb-color-border, #e5e7eb);
+    color: var(--sb-color-text, #111);
+}
+.sb-footer-brand-split .sb-footer-bs-inner {
+    max-width: var(--sb-content-max-width, 920px);
+    margin: 0 auto;
+}
+.sb-footer-brand-split .sb-footer-bs-main {
+    display: grid;
+    grid-template-columns: 1fr 2fr;
+    gap: 64px;
+    padding-bottom: 42px;
+}
+.sb-footer-brand-split .sb-footer-bs-brand {
+    max-width: 460px;
+}
+.sb-footer-brand-split .sb-footer-bs-brand img {
+    display: block;
+    width: auto;
+    max-height: 44px;
+    margin-bottom: 20px;
+}
+.sb-footer-brand-split .sb-footer-bs-name {
+    margin-bottom: 18px;
+    font-family: var(--sb-font-heading, -apple-system, BlinkMacSystemFont, sans-serif);
+    font-size: 1.55em;
+    font-weight: 800;
+}
+.sb-footer-brand-split .sb-footer-bs-description {
+    max-width: 520px;
+    margin: 0;
+    color: var(--sb-color-muted, #6b7280);
+    font-size: 1.02em;
+    line-height: 1.7;
+}
+.sb-footer-brand-split .sb-footer-bs-links {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 36px;
+}
+.sb-footer-brand-split .sb-footer-bs-heading {
+    margin: 0 0 15px;
+    color: var(--sb-color-muted, #6b7280);
+    font-family: var(--sb-font-body, -apple-system, BlinkMacSystemFont, sans-serif);
+    font-size: .74em;
+    font-weight: 750;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+}
+.sb-footer-brand-split .sb-menu,
+.sb-footer-brand-split .sb-footer-bs-list {
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+.sb-footer-brand-split .sb-menu a,
+.sb-footer-brand-split .sb-footer-bs-list a {
+    color: var(--sb-color-text, #111);
+    text-decoration: none;
+    font-size: .9em;
+}
+.sb-footer-brand-split .sb-menu a:hover,
+.sb-footer-brand-split .sb-footer-bs-list a:hover,
+.sb-footer-brand-split .sb-footer-bs-top:hover {
+    color: var(--sb-color-link, #2563eb);
+}
+.sb-footer-brand-split .sb-footer-bs-bottom {
+    display: flex;
+    justify-content: space-between;
+    gap: 24px;
+    padding-top: 20px;
+    border-top: 1px solid var(--sb-color-border, #e5e7eb);
+    color: var(--sb-color-muted, #6b7280);
+    font-size: .83em;
+}
+.sb-footer-brand-split .sb-footer-bs-top {
+    flex: 0 0 auto;
+    color: var(--sb-color-text, #111);
+    text-decoration: none;
+}
+@media (max-width: 700px) {
+    .sb-footer-brand-split .sb-footer-bs-main {
+        grid-template-columns: 1fr;
+        gap: 36px;
+    }
+}
+@media (max-width: 480px) {
+    .sb-footer-brand-split { padding-top: 42px; }
+    .sb-footer-brand-split .sb-footer-bs-links { grid-template-columns: 1fr; gap: 28px; }
+    .sb-footer-brand-split .sb-footer-bs-bottom { flex-direction: column; }
+}

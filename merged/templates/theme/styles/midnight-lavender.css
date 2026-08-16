@@ -1,0 +1,16 @@
+:root {
+    --sb-color-bg:              #17151c;    /* deep lavender black */
+    --sb-color-bg-alt:          #211e29;    /* muted violet surface */
+    --sb-color-text:            #f1edf5;    /* soft lavender white */
+    --sb-color-muted:           #a39ba9;    /* muted lavender gray */
+    --sb-color-link:            #a78bba;    /* soft lavender */
+    --sb-color-link-hover:      #c2a9d1;    /* light lavender */
+    --sb-color-border:          #383240;    /* subtle violet border */
+    --sb-color-accent:          #826d94;    /* dusty violet */
+
+    --sb-font-body:             -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', system-ui, sans-serif;
+    --sb-font-heading:          -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', system-ui, sans-serif;
+    --sb-font-size:             16px;
+    --sb-line-height:           1.6;
+    --sb-content-max-width:     920px;
+}

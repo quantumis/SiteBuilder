@@ -1,0 +1,93 @@
+/*
+Theme Name: {{THEME_NAME}}
+Description: {{THEME_DESCRIPTION}}
+Version: {{THEME_VERSION}}
+Author: Site Builder Plugin
+Requires at least: 6.0
+Requires PHP: 8.0
+*/
+
+/* ===== Reset & base layout ===== */
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+    font-family: var(--sb-font-body, "Segoe UI", system-ui, -apple-system, sans-serif);
+    font-size: var(--sb-font-size, 16px);
+    line-height: var(--sb-line-height, 1.6);
+    color: var(--sb-color-text, #222);
+    background: var(--sb-color-bg, #fff);
+}
+img, video { max-width: 100%; height: auto; display: block; }
+a { color: var(--sb-color-link, #2271b1); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* ===== Site wrapper ===== */
+.sb-site {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+.sb-site-content {
+    flex: 1;
+    padding: 32px 20px;
+    max-width: var(--sb-content-max-width, 920px);
+    width: 100%;
+    margin: 0 auto;
+}
+
+/* ===== Typography ===== */
+h1, h2, h3, h4, h5, h6 {
+    font-family: var(--sb-font-heading, var(--sb-font-body, sans-serif));
+    line-height: 1.3;
+    margin: 1.4em 0 0.6em;
+}
+h1 { font-size: 2.2em; }
+h2 { font-size: 1.6em; }
+h3 { font-size: 1.3em; }
+
+/* ===== Content elements ===== */
+.sb-content figure { margin: 24px 0; }
+.sb-content figure img { border-radius: 4px; }
+.sb-content figcaption {
+    font-size: 0.9em;
+    color: var(--sb-color-muted, #666);
+    text-align: center;
+    margin-top: 6px;
+}
+.sb-content table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 20px 0;
+}
+.sb-content th, .sb-content td {
+    padding: 8px 12px;
+    border: 1px solid var(--sb-color-border, #e2e8f0);
+    text-align: left;
+}
+.sb-content th {
+    background: var(--sb-color-bg-alt, #f8f9fa);
+    font-weight: 600;
+}
+.sb-content blockquote {
+    border-left: 4px solid var(--sb-color-accent, #2271b1);
+    margin: 20px 0;
+    padding: 12px 20px;
+    background: var(--sb-color-bg-alt, #f8f9fa);
+    color: var(--sb-color-muted, #555);
+}
+.sb-content code {
+    background: var(--sb-color-bg-alt, #f0f0f1);
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 0.9em;
+}
+.sb-content pre {
+    background: var(--sb-color-bg-alt, #f0f0f1);
+    padding: 16px;
+    border-radius: 6px;
+    overflow-x: auto;
+}
+
+/* ===== Variant-specific styles (header, footer, color scheme) injected below ===== */
+
+{{VARIANT_STYLES}}

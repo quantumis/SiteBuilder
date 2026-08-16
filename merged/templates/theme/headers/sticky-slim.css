@@ -1,0 +1,138 @@
+/* sticky-slim — тонкая липкая шапка (48px) с dropdown на 3 уровня */
+.sb-header-slim {
+    position: sticky; top: 0; z-index: 100;
+    background: var(--sb-color-bg, #fff);
+    border-bottom: 1px solid var(--sb-color-border, #e5e7eb);
+    transition: box-shadow 0.2s;
+}
+.sb-header-slim.sb-slim-scrolled {
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+}
+.sb-header-slim-inner {
+    max-width:1400px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 20px;
+    height: 48px;
+}
+.sb-header-slim-brand {
+    margin: 0;
+    font-size: 1em;
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: -0.01em;
+}
+.sb-header-slim-brand a, .sb-header-slim-name {
+    color: var(--sb-color-text, #111);
+    text-decoration: none;
+}
+.sb-header-slim-brand img {
+    max-height: 32px;
+    width: auto;
+    display: block;
+}
+/* Nav */
+.sb-header-slim-nav ul { list-style: none; margin: 0; padding: 0; display: flex; gap: 4px; }
+.sb-header-slim-nav li { position: relative; }
+.sb-header-slim-nav a {
+    display: block;
+    padding: 8px 12px;
+    color: var(--sb-color-text, #111);
+    text-decoration: none;
+    font-size: 0.9em;
+    font-weight: 500;
+    border-radius: 4px;
+    transition: background 0.15s, color 0.15s;
+}
+.sb-header-slim-nav a:hover, .sb-header-slim-nav .current-menu-item > a {
+    color: var(--sb-color-link, #2563eb);
+    background: var(--sb-color-bg-alt, #f9fafb);
+}
+/* Dropdowns (2nd and 3rd level) */
+.sb-header-slim-nav .sub-menu {
+    position: absolute;
+    top: 100%; left: 0;
+    min-width: 200px;
+    background: var(--sb-color-bg, #fff);
+    border: 1px solid var(--sb-color-border, #e5e7eb);
+    border-radius: 6px;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+    padding: 6px;
+    display: none;
+    flex-direction: column;
+    gap: 2px;
+}
+.sb-header-slim-nav li:hover > .sub-menu,
+.sb-header-slim-nav li:focus-within > .sub-menu {
+    display: flex;
+}
+.sb-header-slim-nav .sub-menu .sub-menu {
+    top: 0; left: 100%;
+    margin-left: 4px;
+}
+.sb-header-slim-nav .sub-menu a {
+    padding: 6px 10px;
+    font-size: 0.88em;
+    white-space: nowrap;
+}
+/* Chevron for items with children */
+.sb-header-slim-nav .menu-item-has-children > a::after {
+    content: "▾";
+    display: inline-block;
+    margin-left: 4px;
+    font-size: 0.7em;
+    opacity: 0.6;
+}
+.sb-header-slim-nav .sub-menu .menu-item-has-children > a::after {
+    content: "▸";
+    float: right;
+    margin-left: 8px;
+}
+/* Burger — hidden on desktop */
+.sb-header-slim-burger {
+    display: none;
+    background: transparent; border: none;
+    padding: 8px; cursor: pointer;
+    flex-direction: column; gap: 4px;
+    width: 32px; height: 32px;
+    justify-content: center; align-items: center;
+}
+.sb-header-slim-burger span {
+    display: block; width: 18px; height: 2px;
+    background: var(--sb-color-text, #111);
+    transition: transform 0.2s, opacity 0.2s;
+}
+.sb-header-slim-burger[aria-expanded="true"] span:nth-child(1) { transform: translateY(6px) rotate(45deg); }
+.sb-header-slim-burger[aria-expanded="true"] span:nth-child(2) { opacity: 0; }
+.sb-header-slim-burger[aria-expanded="true"] span:nth-child(3) { transform: translateY(-6px) rotate(-45deg); }
+/* Mobile */
+@media (max-width: 800px) {
+    .sb-header-slim-burger { display: flex; }
+    .sb-header-slim-nav {
+        display: none;
+        position: absolute;
+        top: 100%; left: 0; right: 0;
+        background: var(--sb-color-bg, #fff);
+        border-bottom: 1px solid var(--sb-color-border, #e5e7eb);
+        padding: 12px;
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+        max-height: calc(100vh - 48px);
+        overflow-y: auto;
+    }
+    .sb-header-slim-nav.sb-slim-open { display: block; }
+    .sb-header-slim-nav ul { flex-direction: column; gap: 2px; }
+    .sb-header-slim-nav .sub-menu {
+        position: static;
+        display: block;
+        box-shadow: none;
+        border: none;
+        padding: 0 0 0 16px;
+        min-width: 0;
+    }
+    .sb-header-slim-nav .sub-menu .sub-menu {
+        margin-left: 0;
+    }
+    .sb-header-slim-nav .menu-item-has-children > a::after { content: "▾"; float: right; }
+}

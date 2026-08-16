@@ -1,0 +1,362 @@
+/* crest-marquee — "Command Deck" edition.
+   A disciplined black bar (brand / gold CTA / reticle trigger) that can never
+   overflow, plus the signature: a HUD command deck. Menu rows carry monospace
+   coordinate indices and corner target brackets; they sweep in on a radar arc,
+   and hover "locks target". Gold ticks on black, gold glow. */
+
+/* ===== Bar ===== */
+.sb-header-crest-marquee {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: var(--sb-color-bg, #0b0b0d);
+    border-bottom: 1px solid var(--sb-color-border, #2a2a2f);
+    transition: box-shadow 0.2s, border-color 0.2s;
+}
+.sb-header-crest-marquee.sb-cm-scrolled {
+    box-shadow: 0 2px 18px rgba(0, 0, 0, 0.55);
+    border-bottom-color: var(--sb-color-accent, #d4af37);
+}
+.sb-header-crest-marquee-inner {
+    max-width: var(--sb-content-max-width, 1080px);
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    padding: 0 24px;
+    min-height: 68px;
+}
+.sb-header-crest-marquee-brand {
+    margin: 0;
+    font-size: 1.2em;
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    min-width: 0;
+}
+.sb-header-crest-marquee-brand a,
+.sb-header-crest-marquee-name {
+    color: var(--sb-color-text, #f4f1e8);
+    text-decoration: none;
+}
+.sb-header-crest-marquee-brand img {
+    max-height: 42px;
+    width: auto;
+    display: block;
+}
+.sb-header-crest-marquee-rail {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex: 0 0 auto;
+}
+.sb-header-crest-marquee-cta-btn {
+    display: inline-block;
+    padding: 10px 22px;
+    background: var(--sb-color-accent, #d4af37);
+    color: #0b0b0d !important;
+    text-decoration: none;
+    font-size: 0.85em;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    border-radius: 2px;
+    border: 1px solid var(--sb-color-accent, #d4af37);
+    transition: background 0.15s, color 0.15s, box-shadow 0.15s;
+    white-space: nowrap;
+}
+.sb-header-crest-marquee-cta-btn:hover {
+    background: transparent;
+    color: var(--sb-color-accent, #d4af37) !important;
+    box-shadow: 0 0 0 1px var(--sb-color-accent, #d4af37) inset;
+}
+/* Trigger — a small reticle/crosshair */
+.sb-header-crest-marquee-trigger {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    flex: 0 0 auto;
+    padding: 9px 16px;
+    border: 1px solid var(--sb-color-border, #2a2a2f);
+    border-radius: 2px;
+    background: transparent;
+    color: var(--sb-color-text, #f4f1e8);
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 0.8em;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: border-color 0.15s, color 0.15s;
+}
+.sb-header-crest-marquee-trigger:hover {
+    border-color: var(--sb-color-accent, #d4af37);
+    color: var(--sb-color-accent, #d4af37);
+}
+.sb-header-crest-marquee-trigger:focus-visible {
+    outline: 2px solid var(--sb-color-accent, #d4af37);
+    outline-offset: 2px;
+}
+.sb-header-crest-marquee-trigger-reticle {
+    position: relative;
+    width: 14px;
+    height: 14px;
+    border: 1px solid var(--sb-color-accent, #d4af37);
+    border-radius: 50%;
+}
+.sb-header-crest-marquee-trigger-reticle::before,
+.sb-header-crest-marquee-trigger-reticle::after {
+    content: "";
+    position: absolute;
+    background: var(--sb-color-accent, #d4af37);
+}
+.sb-header-crest-marquee-trigger-reticle::before {
+    left: 50%; top: -3px; bottom: -3px; width: 1px; transform: translateX(-50%);
+}
+.sb-header-crest-marquee-trigger-reticle::after {
+    top: 50%; left: -3px; right: -3px; height: 1px; transform: translateY(-50%);
+}
+.sb-header-crest-marquee-trigger-label { white-space: nowrap; }
+
+/* ===== Command deck overlay ===== */
+.sb-header-crest-marquee-deck {
+    position: fixed;
+    inset: 0;
+    z-index: 999;
+}
+.sb-header-crest-marquee-deck[hidden] {
+    display: none;
+}
+body.sb-cm-menu-lock {
+    overflow: hidden;
+}
+.sb-header-crest-marquee-deck-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(5, 5, 7, 0.84);
+    opacity: 0;
+    transition: opacity 0.35s ease;
+    -webkit-backdrop-filter: blur(2px);
+    backdrop-filter: blur(2px);
+}
+.sb-header-crest-marquee-deck-panel {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    background:
+        radial-gradient(80% 90% at 88% -10%, rgba(212, 175, 55, 0.14) 0%, rgba(212, 175, 55, 0) 55%),
+        var(--sb-color-bg, #0b0b0d);
+    border-bottom: 2px solid var(--sb-color-accent, #d4af37);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+    transform: translateY(-100%);
+    transition: transform 0.42s cubic-bezier(0.16, 1, 0.3, 1);
+    max-height: 100vh;
+    overflow-y: auto;
+    /* Perspective for the radar sweep */
+    perspective: 1200px;
+}
+.sb-header-crest-marquee-deck.sb-cm-open .sb-header-crest-marquee-deck-backdrop {
+    opacity: 1;
+}
+.sb-header-crest-marquee-deck.sb-cm-open .sb-header-crest-marquee-deck-panel {
+    transform: translateY(0);
+}
+.sb-header-crest-marquee-deck-head {
+    max-width: var(--sb-content-max-width, 1080px);
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 26px 36px 16px;
+    border-bottom: 1px solid var(--sb-color-border, #2a2a2f);
+}
+.sb-header-crest-marquee-deck-eyebrow {
+    color: var(--sb-color-accent, #d4af37);
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 0.72em;
+    font-weight: 700;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+}
+.sb-header-crest-marquee-deck-eyebrow::before {
+    content: "\2316  ";
+    opacity: 0.7;
+}
+.sb-header-crest-marquee-close {
+    width: 42px;
+    height: 42px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--sb-color-border, #2a2a2f);
+    background: transparent;
+    color: var(--sb-color-text, #f4f1e8);
+    font-size: 1.6em;
+    line-height: 1;
+    cursor: pointer;
+    border-radius: 2px;
+    transition: border-color 0.15s, color 0.15s;
+}
+.sb-header-crest-marquee-close:hover {
+    border-color: var(--sb-color-accent, #d4af37);
+    color: var(--sb-color-accent, #d4af37);
+}
+.sb-header-crest-marquee-close:focus-visible {
+    outline: 2px solid var(--sb-color-accent, #d4af37);
+    outline-offset: 2px;
+}
+
+/* ===== Deck menu (HUD rows) ===== */
+.sb-header-crest-marquee-deck-nav {
+    max-width: var(--sb-content-max-width, 1080px);
+    margin: 0 auto;
+    padding: 12px 36px 48px;
+}
+.sb-header-crest-marquee-deck-nav ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+.sb-header-crest-marquee-deck-nav > ul {
+    counter-reset: sb-cm-coord;
+    transform-style: preserve-3d;
+}
+.sb-header-crest-marquee-deck-nav > ul > li {
+    counter-increment: sb-cm-coord;
+    position: relative;
+    /* Radar sweep start state; JS adds .sb-cm-in to rotate each row into place */
+    opacity: 0;
+    transform: rotateX(-35deg) translateY(-10px);
+    transform-origin: top center;
+}
+.sb-header-crest-marquee-deck-nav > ul > li.sb-cm-in {
+    opacity: 1;
+    transform: rotateX(0) translateY(0);
+    transition: opacity 0.4s ease, transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.sb-header-crest-marquee-deck-nav > ul > li > a {
+    position: relative;
+    display: flex;
+    align-items: baseline;
+    gap: 20px;
+    padding: 20px 24px;
+    color: var(--sb-color-text, #f4f1e8);
+    text-decoration: none;
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: 1.7em;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    transition: color 0.16s, background 0.16s;
+}
+/* Coordinate index like a HUD readout */
+.sb-header-crest-marquee-deck-nav > ul > li > a::before {
+    content: "T-" counter(sb-cm-coord, decimal-leading-zero);
+    flex: 0 0 auto;
+    align-self: center;
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 0.4em;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    color: var(--sb-color-accent, #d4af37);
+    opacity: 0.8;
+}
+/* Corner target brackets that snap in on hover */
+.sb-header-crest-marquee-deck-nav > ul > li > a::after {
+    content: "";
+    position: absolute;
+    inset: 8px 8px 8px 0;
+    border: 1px solid transparent;
+    pointer-events: none;
+    transition: border-color 0.16s, clip-path 0.16s;
+    /* Only the four corners show, like target brackets */
+    clip-path: polygon(0 0, 14px 0, 14px 2px, 2px 2px, 2px 14px, 0 14px,
+                       0 100%, 14px 100%, 14px calc(100% - 2px), 2px calc(100% - 2px), 2px calc(100% - 14px), 0 calc(100% - 14px),
+                       100% 0, 100% 14px, calc(100% - 2px) 14px, calc(100% - 2px) 2px, calc(100% - 14px) 2px, calc(100% - 14px) 0,
+                       100% 100%, calc(100% - 14px) 100%, calc(100% - 14px) calc(100% - 2px), calc(100% - 2px) calc(100% - 2px), calc(100% - 2px) calc(100% - 14px), 100% calc(100% - 14px));
+}
+.sb-header-crest-marquee-deck-nav > ul > li:hover > a {
+    color: var(--sb-color-accent, #d4af37);
+    background: rgba(212, 175, 55, 0.04);
+}
+.sb-header-crest-marquee-deck-nav > ul > li:hover > a::after {
+    border-color: var(--sb-color-accent, #d4af37);
+}
+.sb-header-crest-marquee-deck-nav .current-menu-item > a {
+    color: var(--sb-color-accent, #d4af37);
+}
+/* Accordion */
+.sb-header-crest-marquee-deck-nav .menu-item-has-children.sb-cm-expanded > a {
+    color: var(--sb-color-accent, #d4af37);
+}
+.sb-header-crest-marquee-deck-nav .sub-menu {
+    list-style: none;
+    margin: 0;
+    padding: 0 24px 14px 60px;
+    display: none;
+}
+.sb-header-crest-marquee-deck-nav .sub-menu.sb-cm-sub-open {
+    display: block;
+}
+.sb-header-crest-marquee-deck-nav .sub-menu a {
+    display: block;
+    padding: 9px 0;
+    color: var(--sb-color-muted, #9a927f);
+    text-decoration: none;
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 0.95em;
+    font-weight: 500;
+    transition: color 0.15s;
+}
+.sb-header-crest-marquee-deck-nav .sub-menu a::before {
+    content: "\21B3  ";
+    opacity: 0.5;
+}
+.sb-header-crest-marquee-deck-nav .sub-menu a:hover {
+    color: var(--sb-color-accent, #d4af37);
+}
+
+/* ===== Mobile (<=860px) ===== */
+@media (max-width: 860px) {
+    .sb-header-crest-marquee-inner {
+        min-height: 58px;
+        gap: 12px;
+    }
+    .sb-header-crest-marquee-cta-btn {
+        padding: 8px 14px;
+        font-size: 0.78em;
+    }
+    .sb-header-crest-marquee-trigger-label {
+        display: none;
+    }
+    .sb-header-crest-marquee-trigger {
+        padding: 9px 12px;
+    }
+    .sb-header-crest-marquee-deck-head {
+        padding: 20px 20px 12px;
+    }
+    .sb-header-crest-marquee-deck-nav {
+        padding: 10px 20px 36px;
+    }
+    .sb-header-crest-marquee-deck-nav > ul > li > a {
+        font-size: 1.3em;
+        gap: 14px;
+        padding: 16px 12px;
+    }
+}
+
+/* ===== Reduced motion ===== */
+@media (prefers-reduced-motion: reduce) {
+    .sb-header-crest-marquee-deck-panel,
+    .sb-header-crest-marquee-deck-backdrop,
+    .sb-header-crest-marquee-deck-nav > ul > li,
+    .sb-header-crest-marquee-deck-nav > ul > li.sb-cm-in {
+        transition: none;
+    }
+    .sb-header-crest-marquee-deck-nav > ul > li {
+        opacity: 1;
+        transform: none;
+    }
+}

@@ -1,0 +1,60 @@
+/* Electric lime — светлая энергичная схема, насыщенный красный акцент */
+:root {
+    --sb-color-bg:              #fafbf8;    /* soft neutral */
+    --sb-color-bg-alt:          #f0f3ea;    /* pale green gray */
+    --sb-color-text:            #171916;    /* near-black */
+    --sb-color-muted:           #6e746a;    /* muted olive gray */
+    --sb-color-link:            #3f6500;    /* accessible lime green */
+    --sb-color-link-hover:      #294500;    /* deep olive */
+    --sb-color-border:          #dde2d6;    /* neutral green border */
+    --sb-color-accent:          #b7f34a;    /* electric lime */
+
+    --sb-font-body:             -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', system-ui, sans-serif;
+    --sb-font-heading:          -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', system-ui, sans-serif;
+    --sb-font-size:             16px;
+    --sb-line-height:           1.6;
+    --sb-content-max-width:     920px;
+}
+
+body.sb-site {
+    background: var(--sb-color-bg);
+    color: var(--sb-color-text);
+    font-family: var(--sb-font-body);
+    font-size: var(--sb-font-size);
+    line-height: var(--sb-line-height);
+}
+body.sb-site h1, body.sb-site h2, body.sb-site h3, body.sb-site h4 {
+    font-family: var(--sb-font-heading);
+    color: var(--sb-color-text);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+}
+body.sb-site h1 { line-height: 1.15; }
+body.sb-site a {
+    color: var(--sb-color-link);
+    text-decoration: none;
+    font-weight: 600;
+    border-bottom: 2px solid transparent;
+    transition: color 0.15s, border-color 0.15s;
+}
+body.sb-site a:hover {
+    color: var(--sb-color-link-hover);
+    border-bottom-color: currentColor;
+}
+body.sb-site strong { color: var(--sb-color-accent); font-weight: 700; }
+body.sb-site blockquote {
+    border-left: 4px solid var(--sb-color-link);
+    padding: 12px 20px;
+    background: var(--sb-color-bg-alt);
+    border-radius: 0 6px 6px 0;
+    color: var(--sb-color-text);
+    font-weight: 500;
+}
+body.sb-site code {
+    background: var(--sb-color-bg-alt);
+    color: var(--sb-color-link-hover);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.9em;
+    font-family: ui-monospace, 'SF Mono', Monaco, monospace;
+}

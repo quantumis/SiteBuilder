@@ -1,0 +1,107 @@
+/* Ultraviolet Haze — глубокий violet-black и туманное lavender-свечение */
+:root {
+    --sb-color-bg:              #100d17;
+    --sb-color-bg-alt:          #1a1524;
+    --sb-color-text:            #f0eaf5;
+    --sb-color-muted:           #94899f;
+    --sb-color-link:            #c49ad9;
+    --sb-color-link-hover:      #e0b8f0;
+    --sb-color-border:          #30263d;
+    --sb-color-accent:          #ff7aa8;
+
+    --sb-font-body:             -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', system-ui, sans-serif;
+    --sb-font-heading:          -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', system-ui, sans-serif;
+    --sb-font-size:             16px;
+    --sb-line-height:           1.65;
+    --sb-content-max-width:     920px;
+}
+
+body.sb-site {
+    background:
+        radial-gradient(circle at 10% 10%, rgba(196, 154, 217, 0.12), transparent 28%),
+        radial-gradient(circle at 90% 30%, rgba(255, 122, 168, 0.07), transparent 30%),
+        var(--sb-color-bg);
+    color: var(--sb-color-text);
+    font-family: var(--sb-font-body);
+    font-size: var(--sb-font-size);
+    line-height: var(--sb-line-height);
+}
+
+body.sb-site h1,
+body.sb-site h2,
+body.sb-site h3,
+body.sb-site h4 {
+    color: var(--sb-color-text);
+    font-family: var(--sb-font-heading);
+    letter-spacing: -0.035em;
+}
+
+body.sb-site h1 {
+    text-shadow:
+        0 0 30px rgba(196, 154, 217, 0.25),
+        0 0 70px rgba(255, 122, 168, 0.08);
+}
+
+body.sb-site h2 {
+    position: relative;
+}
+
+body.sb-site h2::after {
+    content: "";
+    display: block;
+    width: 42px;
+    height: 3px;
+    margin-top: 10px;
+    background: linear-gradient(90deg, var(--sb-color-link), var(--sb-color-accent));
+    border-radius: 10px;
+}
+
+body.sb-site h3::after {
+    content: "";
+    display: block;
+    width: 42px;
+    height: 3px;
+    margin-top: 10px;
+    background: linear-gradient(90deg, var(--sb-color-link), var(--sb-color-accent));
+    border-radius: 10px;
+}
+
+body.sb-site a {
+    color: var(--sb-color-link);
+    text-decoration-color: rgba(196, 154, 217, 0.35);
+    text-underline-offset: 4px;
+    transition: color 0.2s, text-shadow 0.2s;
+}
+
+body.sb-site a:hover {
+    color: var(--sb-color-link-hover);
+    text-shadow: 0 0 14px rgba(196, 154, 217, 0.4);
+}
+
+body.sb-site strong {
+    color: var(--sb-color-accent);
+}
+
+body.sb-site blockquote {
+    padding: 20px 24px;
+    background: linear-gradient(
+        135deg,
+        rgba(196, 154, 217, 0.08),
+        rgba(255, 122, 168, 0.04)
+    );
+    border: 1px solid var(--sb-color-border);
+    border-radius: 12px;
+}
+
+body.sb-site code {
+    padding: 2px 7px;
+    color: var(--sb-color-link-hover);
+    background: var(--sb-color-bg-alt);
+    border: 1px solid var(--sb-color-border);
+    border-radius: 5px;
+}
+
+body.sb-site img {
+    border-radius: 14px;
+    box-shadow: 0 20px 60px rgba(116, 76, 140, 0.14);
+}

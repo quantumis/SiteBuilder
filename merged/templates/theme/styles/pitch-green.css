@@ -1,0 +1,52 @@
+/* pitch-green — sport / betting colour scheme.
+   Deep pitch green as the anchor, amber accent like a marker line or a ball
+   under floodlights, clean neutral text. Light-first, high contrast. */
+:root {
+    --sb-color-bg:              #ffffff;
+    --sb-color-bg-alt:          #f2f6f3;
+    --sb-color-text:            #14231a;
+    --sb-color-muted:           #5d6b62;
+    --sb-color-link:            #0f7a4a;
+    --sb-color-border:          #d8e3db;
+    --sb-color-accent:          #f2a900;
+
+    --sb-font-body:             "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    --sb-font-heading:          "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    --sb-font-size:             16px;
+    --sb-line-height:           1.65;
+    --sb-content-max-width:     920px;
+}
+
+body.sb-site {
+    background: var(--sb-color-bg);
+    color: var(--sb-color-text);
+    font-family: var(--sb-font-body);
+    font-size: var(--sb-font-size);
+    line-height: var(--sb-line-height);
+}
+
+body.sb-site h1,
+body.sb-site h2,
+body.sb-site h3,
+body.sb-site h4 {
+    font-family: var(--sb-font-heading);
+    color: var(--sb-color-text);
+    letter-spacing: -0.01em;
+}
+
+body.sb-site a {
+    color: var(--sb-color-link);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+body.sb-site a:hover {
+    color: var(--sb-color-accent);
+}
+
+/* Accent underline under H2 — a pitch-marker touch that ties the scheme
+   to the sport theme without adding markup. */
+body.sb-site .sb-content h2 {
+    padding-bottom: 6px;
+    border-bottom: 2px solid var(--sb-color-accent);
+    display: inline-block;
+}

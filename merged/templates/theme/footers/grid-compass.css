@@ -1,0 +1,141 @@
+/* grid-compass footer — an even four-column link grid under a thin accent top
+   line: brand + three titled columns (Navigation / Site / Legal), then a
+   compact bottom band with copyright and an 18+ responsible-gambling line.
+   Built for the midnight-sapphire scheme; falls back via var defaults. */
+.sb-footer-grid-compass {
+    background: var(--sb-color-bg-alt, #101827);
+    color: var(--sb-color-text, #eaf1fb);
+    border-top: 3px solid var(--sb-color-accent, #4da3ff);
+}
+.sb-footer-grid-compass-inner {
+    max-width: 1040px;
+    margin: 0 auto;
+    padding: 40px 22px 20px;
+}
+/* Even four-column grid */
+.sb-footer-grid-compass-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 1fr;
+    gap:128px;
+    align-items: start;
+    padding-bottom: 24px;
+    border-bottom: 1px solid var(--sb-color-border, #22304a);
+}
+/* Brand column */
+.sb-footer-grid-compass-brandcol {
+    min-width: 0;
+}
+.sb-footer-grid-compass-brandcol img {
+    max-height: 40px;
+    width: auto;
+    display: block;
+    margin-bottom: 12px;
+}
+.sb-footer-grid-compass-name {
+    display: inline-block;
+    font-family: var(--sb-font-heading, var(--sb-font-body, sans-serif));
+    font-size: 1.25em;
+    font-weight: 800;
+    letter-spacing: -0.01em;
+    color: var(--sb-color-text, #eaf1fb);
+    text-decoration: none;
+}
+.sb-footer-grid-compass-desc {
+    margin: 10px 0 0;
+    color: var(--sb-color-muted, #8896ac);
+    font-size: 0.9em;
+    line-height: 1.6;
+    max-width: 34ch;
+}
+/* Link columns */
+.sb-footer-grid-compass-col {
+    min-width: 0;
+}
+.sb-footer-grid-compass-heading {
+    margin: 0 0 12px;
+    font-family: var(--sb-font-heading, var(--sb-font-body, sans-serif));
+    font-size: 0.8em;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--sb-color-muted, #8896ac);
+}
+.sb-footer-grid-compass-col ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+}
+.sb-footer-grid-compass-col a {
+    color: var(--sb-color-text, #eaf1fb);
+    text-decoration: none;
+    font-size: 0.9em;
+    font-weight: 500;
+    transition: color 0.15s;
+}
+.sb-footer-grid-compass-col a:hover,
+.sb-footer-grid-compass-col .current-menu-item > a {
+    color: var(--sb-color-accent, #4da3ff);
+}
+/* Bottom band */
+.sb-footer-grid-compass-bottom {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+    padding-top: 18px;
+}
+.sb-footer-grid-compass-copy {
+    margin: 0;
+    color: var(--sb-color-muted, #8896ac);
+    font-size: 0.82em;
+}
+.sb-footer-grid-compass-disclaimer {
+    margin: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--sb-color-muted, #8896ac);
+    font-size: 0.82em;
+}
+.sb-footer-grid-compass-age {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 30px;
+    height: 22px;
+    padding: 0 6px;
+    border: 1px solid var(--sb-color-accent, #4da3ff);
+    border-radius: 3px;
+    color: var(--sb-color-accent, #4da3ff);
+    font-size: 0.9em;
+    font-weight: 800;
+}
+/* Tablet: two columns, brand spans full row */
+@media (max-width: 860px) {
+    .sb-footer-grid-compass-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+    .sb-footer-grid-compass-brandcol {
+        grid-column: 1 / -1;
+    }
+}
+/* Mobile: single column stack */
+@media (max-width: 560px) {
+    .sb-footer-grid-compass-inner {
+        padding: 28px 16px 16px;
+    }
+    .sb-footer-grid-compass-grid {
+        grid-template-columns: 1fr;
+        gap: 22px;
+    }
+    .sb-footer-grid-compass-brandcol {
+        grid-column: auto;
+    }
+    .sb-footer-grid-compass-bottom {
+        justify-content: flex-start;
+    }
+}

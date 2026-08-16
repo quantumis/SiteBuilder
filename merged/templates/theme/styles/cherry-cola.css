@@ -1,0 +1,80 @@
+/* Cherry Cola — глубокий cherry-black, cream и electric peach */
+:root {
+    --sb-color-bg:              #180e12;
+    --sb-color-bg-alt:          #25161c;
+    --sb-color-text:            #f6ece7;
+    --sb-color-muted:           #a58b8e;
+    --sb-color-link:            #ff8c72;
+    --sb-color-link-hover:      #ffb09d;
+    --sb-color-border:          #3b252d;
+    --sb-color-accent:          #e83e6f;
+
+    --sb-font-body:             -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', system-ui, sans-serif;
+    --sb-font-heading:          Georgia, 'Times New Roman', serif;
+    --sb-font-size:             16px;
+    --sb-line-height:           1.7;
+    --sb-content-max-width:     920px;
+}
+
+body.sb-site {
+    background:
+        linear-gradient(135deg, rgba(232, 62, 111, 0.035), transparent 35%),
+        var(--sb-color-bg);
+    color: var(--sb-color-text);
+    font-family: var(--sb-font-body);
+    font-size: var(--sb-font-size);
+    line-height: var(--sb-line-height);
+}
+
+body.sb-site h1,
+body.sb-site h2,
+body.sb-site h3,
+body.sb-site h4 {
+    color: var(--sb-color-text);
+    font-family: var(--sb-font-heading);
+    font-weight: 500;
+}
+
+body.sb-site h1 {
+    color: #ffd0c4;
+    font-style: italic;
+}
+
+body.sb-site a {
+    color: var(--sb-color-link);
+    text-decoration: none;
+    background-image: linear-gradient(var(--sb-color-accent), var(--sb-color-accent));
+    background-position: 0 100%;
+    background-repeat: no-repeat;
+    background-size: 0 1px;
+    transition: color 0.2s, background-size 0.25s;
+}
+
+body.sb-site a:hover {
+    color: var(--sb-color-link-hover);
+    background-size: 100% 1px;
+}
+
+body.sb-site strong {
+    color: #ff9db8;
+}
+
+body.sb-site blockquote {
+    padding: 22px 26px;
+    color: #d6bdba;
+    background: var(--sb-color-bg-alt);
+    border-left: 3px solid var(--sb-color-accent);
+    border-radius: 0 14px 14px 0;
+}
+
+body.sb-site code {
+    color: #ffb09d;
+    background: #2b1920;
+    border: 1px solid var(--sb-color-border);
+    padding: 2px 7px;
+    border-radius: 20px;
+}
+
+body.sb-site img {
+    border-radius: 16px 4px 16px 4px;
+}

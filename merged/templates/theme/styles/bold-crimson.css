@@ -1,0 +1,60 @@
+/* Bold Crimson — светлая энергичная схема, насыщенный красный акцент */
+:root {
+    --sb-color-bg:              #ffffff;    /* white */
+    --sb-color-bg-alt:          #f7f7f8;    /* cool light gray */
+    --sb-color-text:            #18181b;    /* near-black */
+    --sb-color-muted:           #71717a;    /* zinc gray */
+    --sb-color-link:            #dc2626;    /* crimson red */
+    --sb-color-link-hover:      #b91c1c;    /* deeper red */
+    --sb-color-border:          #e4e4e7;    /* light zinc border */
+    --sb-color-accent:          #18181b;    /* ink black */
+
+    --sb-font-body:             -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', system-ui, sans-serif;
+    --sb-font-heading:          -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', system-ui, sans-serif;
+    --sb-font-size:             16px;
+    --sb-line-height:           1.6;
+    --sb-content-max-width:     920px;
+}
+
+body.sb-site {
+    background: var(--sb-color-bg);
+    color: var(--sb-color-text);
+    font-family: var(--sb-font-body);
+    font-size: var(--sb-font-size);
+    line-height: var(--sb-line-height);
+}
+body.sb-site h1, body.sb-site h2, body.sb-site h3, body.sb-site h4 {
+    font-family: var(--sb-font-heading);
+    color: var(--sb-color-text);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+}
+body.sb-site h1 { line-height: 1.15; }
+body.sb-site a {
+    color: var(--sb-color-link);
+    text-decoration: none;
+    font-weight: 600;
+    border-bottom: 2px solid transparent;
+    transition: color 0.15s, border-color 0.15s;
+}
+body.sb-site a:hover {
+    color: var(--sb-color-link-hover);
+    border-bottom-color: currentColor;
+}
+body.sb-site strong { color: var(--sb-color-accent); font-weight: 700; }
+body.sb-site blockquote {
+    border-left: 4px solid var(--sb-color-link);
+    padding: 12px 20px;
+    background: var(--sb-color-bg-alt);
+    border-radius: 0 6px 6px 0;
+    color: var(--sb-color-text);
+    font-weight: 500;
+}
+body.sb-site code {
+    background: var(--sb-color-bg-alt);
+    color: var(--sb-color-link-hover);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.9em;
+    font-family: ui-monospace, 'SF Mono', Monaco, monospace;
+}

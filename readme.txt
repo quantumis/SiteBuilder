@@ -4,7 +4,7 @@ Tags: import, content, automation
 Requires at least: 6.0
 Tested up to: 6.6
 Requires PHP: 8.0
-Stable tag: 1.1.10
+Stable tag: 1.2.1
 
 Внутренний инструмент массового импорта контента в WordPress.
 

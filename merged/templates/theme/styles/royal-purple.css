@@ -1,0 +1,58 @@
+/* Royal Purple — тёмная схема, насыщенный фиолетовый + золото */
+:root {
+    --sb-color-bg:              #17121f;    /* deep aubergine */
+    --sb-color-bg-alt:          #221a2e;    /* lighter aubergine */
+    --sb-color-text:            #ede9f2;    /* soft lilac-white */
+    --sb-color-muted:           #9b8bb0;    /* muted lavender */
+    --sb-color-link:            #a855f7;    /* vivid violet */
+    --sb-color-link-hover:      #c084fc;    /* lighter violet */
+    --sb-color-border:          #362b47;    /* muted separator */
+    --sb-color-accent:          #e9c46a;    /* soft gold */
+
+    --sb-font-body:             -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', system-ui, sans-serif;
+    --sb-font-heading:          'Georgia', 'Times New Roman', serif;
+    --sb-font-size:             16px;
+    --sb-line-height:           1.7;
+    --sb-content-max-width:     920px;
+}
+
+body.sb-site {
+    background: var(--sb-color-bg);
+    color: var(--sb-color-text);
+    font-family: var(--sb-font-body);
+    font-size: var(--sb-font-size);
+    line-height: var(--sb-line-height);
+}
+body.sb-site h1, body.sb-site h2, body.sb-site h3, body.sb-site h4 {
+    font-family: var(--sb-font-heading);
+    color: var(--sb-color-text);
+    letter-spacing: -0.01em;
+}
+body.sb-site a {
+    color: var(--sb-color-link);
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+    transition: color 0.15s, border-color 0.15s;
+}
+body.sb-site a:hover {
+    color: var(--sb-color-link-hover);
+    border-bottom-color: currentColor;
+}
+body.sb-site strong { color: var(--sb-color-accent); }
+body.sb-site blockquote {
+    border-left: 3px solid var(--sb-color-accent);
+    padding: 12px 20px;
+    background: var(--sb-color-bg-alt);
+    border-radius: 0 6px 6px 0;
+    color: var(--sb-color-muted);
+    font-style: italic;
+}
+body.sb-site code {
+    background: var(--sb-color-bg-alt);
+    color: var(--sb-color-link);
+    padding: 2px 6px;
+    border-radius: 4px;
+    border: 1px solid var(--sb-color-border);
+    font-size: 0.9em;
+    font-family: ui-monospace, 'SF Mono', Monaco, monospace;
+}

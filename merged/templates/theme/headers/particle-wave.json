@@ -1,0 +1,5 @@
+{
+  "name": "Particle Wave",
+  "description": "Интерактивный хедер с canvas-анимацией частиц, которые реагируют на движение курсора и соединяются линиями.",
+  "preview_type": "sticky-horizontal"
+}

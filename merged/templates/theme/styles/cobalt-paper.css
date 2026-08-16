@@ -1,0 +1,79 @@
+/* Cobalt Paper — paper white, deep cobalt и fluorescent yellow */
+:root {
+    --sb-color-bg:              #f5f3ed;
+    --sb-color-bg-alt:          #e9e6dd;
+    --sb-color-text:            #151b2d;
+    --sb-color-muted:           #697083;
+    --sb-color-link:            #173fbf;
+    --sb-color-link-hover:      #0c2c94;
+    --sb-color-border:          #d2cfc5;
+    --sb-color-accent:          #e5ff3f;
+
+    --sb-font-body:             -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', system-ui, sans-serif;
+    --sb-font-heading:          -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', system-ui, sans-serif;
+    --sb-font-size:             16px;
+    --sb-line-height:           1.65;
+    --sb-content-max-width:     920px;
+}
+
+body.sb-site {
+    background: var(--sb-color-bg);
+    color: var(--sb-color-text);
+    font-family: var(--sb-font-body);
+    font-size: var(--sb-font-size);
+    line-height: var(--sb-line-height);
+}
+
+body.sb-site h1,
+body.sb-site h2,
+body.sb-site h3,
+body.sb-site h4 {
+    color: var(--sb-color-text);
+    font-family: var(--sb-font-heading);
+    font-weight: 800;
+    letter-spacing: -0.04em;
+}
+
+body.sb-site h1 {
+    position: relative;
+    display: inline;
+    box-shadow: inset 0 -0.28em 0 var(--sb-color-accent);
+}
+
+body.sb-site h2 {
+    color: var(--sb-color-link);
+}
+
+body.sb-site a {
+    color: var(--sb-color-link);
+    text-decoration-thickness: 1px;
+    text-underline-offset: 4px;
+}
+
+body.sb-site a:hover {
+    color: var(--sb-color-link-hover);
+    text-decoration-thickness: 2px;
+}
+
+body.sb-site strong {
+    box-shadow: inset 0 -0.55em 0 rgba(229, 255, 63, 0.75);
+}
+
+body.sb-site blockquote {
+    padding: 22px 26px;
+    background: #ffffff;
+    border: 1px solid var(--sb-color-text);
+    box-shadow: 5px 5px 0 var(--sb-color-link);
+}
+
+body.sb-site code {
+    color: #ffffff;
+    background: var(--sb-color-link);
+    padding: 3px 7px;
+    border-radius: 2px;
+}
+
+body.sb-site img {
+    border-radius: 2px;
+    box-shadow: 7px 7px 0 var(--sb-color-link);
+}

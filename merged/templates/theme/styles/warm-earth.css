@@ -1,0 +1,71 @@
+/* Warm Earth — тёплые земляные тона: кремовый, коричневый, терракотовый */
+:root {
+    --sb-color-bg:              #fdf8f3;    /* warm cream */
+    --sb-color-bg-alt:          #f5ede2;    /* darker cream */
+    --sb-color-text:            #3f2e1f;    /* deep espresso brown */
+    --sb-color-muted:           #857055;    /* muted wood */
+    --sb-color-link:            #c65d3d;    /* terracotta */
+    --sb-color-link-hover:      #a04829;    /* deeper terracotta */
+    --sb-color-border:          #e5d9c9;    /* soft sand */
+    --sb-color-accent:          #6b8c5e;    /* moss green */
+
+    --sb-font-body:             'Charter', 'Georgia', 'Times New Roman', serif;
+    --sb-font-heading:          'Merriweather', 'Charter', 'Georgia', serif;
+    --sb-font-size:             17px;
+    --sb-line-height:           1.75;
+    --sb-content-max-width:     880px;
+}
+
+body.sb-site {
+    background: var(--sb-color-bg);
+    color: var(--sb-color-text);
+    font-family: var(--sb-font-body);
+    font-size: var(--sb-font-size);
+    line-height: var(--sb-line-height);
+}
+
+body.sb-site h1, body.sb-site h2, body.sb-site h3, body.sb-site h4 {
+    font-family: var(--sb-font-heading);
+    color: var(--sb-color-text);
+    letter-spacing: -0.005em;
+    font-weight: 700;
+}
+body.sb-site h1 { line-height: 1.2; }
+body.sb-site h2 {
+    margin-top: 2em;
+    padding-bottom: 0.3em;
+    border-bottom: 1px solid var(--sb-color-border);
+}
+
+body.sb-site a {
+    color: var(--sb-color-link);
+    text-decoration: underline;
+    text-decoration-color: rgba(198, 93, 61, 0.4);
+    text-decoration-thickness: 1px;
+    text-underline-offset: 3px;
+    transition: color 0.15s, text-decoration-color 0.15s;
+}
+body.sb-site a:hover {
+    color: var(--sb-color-link-hover);
+    text-decoration-color: currentColor;
+    text-decoration-thickness: 2px;
+}
+
+body.sb-site strong { color: var(--sb-color-accent); }
+body.sb-site em     { color: var(--sb-color-muted); }
+body.sb-site blockquote {
+    border-left: 4px solid var(--sb-color-link);
+    padding: 12px 22px;
+    background: var(--sb-color-bg-alt);
+    border-radius: 0 6px 6px 0;
+    color: var(--sb-color-text);
+    font-style: italic;
+}
+body.sb-site code {
+    background: var(--sb-color-bg-alt);
+    color: var(--sb-color-link);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: ui-monospace, 'SF Mono', Monaco, monospace;
+    font-size: 0.9em;
+}
